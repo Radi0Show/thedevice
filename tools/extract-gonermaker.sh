@@ -6,10 +6,13 @@
 # font, background and soul. Those come out of the data file — nobody's copy
 # but your own — and this script is how they get there.
 #
-# The AUDIO is deliberately NOT in the repository (see .gitignore): the
-# soundtrack is sold separately, so each player extracts their own. Without
-# it the sequence runs in silence, which the scene survives — its typer is
-# `snd_nosound` and the drone is the only sound in it.
+# Everything it writes is committed, audio included. You only need to run
+# this to REGENERATE the assets — after a game update, or to prove that what
+# is in the repository is what the data file actually contains.
+#
+# Note what "audio" means for this scene: one looping drone. The typer is
+# `snd_nosound`, so the text itself is silent, and the appearance chime fires
+# exactly once.
 #
 #   tools/extract-gonermaker.sh [path-to-DELTARUNE.app]
 #

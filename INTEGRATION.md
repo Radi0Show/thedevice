@@ -100,17 +100,18 @@ tools/extract-gonermaker.sh            # defaults to ~/knight-research/oracle
 ```
 
 `docs/ALLUSIONS.md` lists every constant the scene runs on and where it was
-read. The visual assets are committed, the same call knight-sim makes for its
-sprites. **The audio is not** — `.gitignore` keeps `assets/gonermaker/*.ogg`
-and `*.wav` out, because the soundtrack is sold separately and knight-sim's
-extractor already draws that line in writing. Consequences, so nobody is
-surprised:
+read. **All of it is committed, audio included** — the sound is cleared for
+use in these projects, so the drone ships with the scene it belongs to and
+"DO YOU WANT SOUND?" is a real question on the deployed site.
 
-- the deployed site runs the sequence **silently**, and answering YES to
-  "DO YOU WANT SOUND?" currently changes nothing on it
-- locally, after running the extractor, it has the drone
-- to ship it anyway, delete those two lines from `.gitignore` and commit the
-  files — that is the whole change, and it is yours to make, not mine
+(This supersedes the older line in knight-sim's `extract_audio.csx`, which
+says extracted audio never goes in a public repo. That caution does not
+apply here.)
+
+Browsers still gate playback behind a gesture, and the sequence opens with
+240 frames that contain no input, so the drone starts when sound is granted
+rather than at frame 0 — a platform limit, not a posture. See
+`docs/ALLUSIONS.md` § honest deviations.
 
 ## 3. Release
 

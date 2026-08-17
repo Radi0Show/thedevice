@@ -321,9 +321,8 @@ async function runInterrogation(){
   try {
     answers = await runIntro(introCanvas, io);
   } catch (err) {
-    // The assets are the game's own and are not in the repo by default; if
-    // they are missing the sequence cannot run, and a visitor should still
-    // reach the menu rather than a black screen.
+    // If an asset is missing the sequence cannot draw, and a visitor should
+    // still reach the menu rather than sit on a black screen.
     console.error('the interrogation could not run:', err);
     answers = { photosensitive: true, soundOn: false };
   }

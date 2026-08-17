@@ -19,15 +19,12 @@ Static files only — no build step, no backend. Serve the repo root:
 python3 -m http.server 8300
 ```
 
-The game's assets are not redistributable guesswork — regenerate them from
-your own copy:
+The sequence's assets — font, background, soul and the drone — are in the
+repository, and are regenerated from a copy of the game with:
 
 ```sh
 tools/extract-gonermaker.sh
 ```
-
-The audio is deliberately not in the repository, so the deployed sequence
-runs in silence until you extract it locally. See INTEGRATION.md § 2b.
 
 **Current state: self-contained.** No simulator is vendored yet;
 `/DEVICE_KNIGHT/` shows NOT CONNECTED and the attack index renders from a
