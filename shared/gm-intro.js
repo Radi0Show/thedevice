@@ -73,19 +73,28 @@ export async function runIntro(canvas, io = {}) {
 
   /* ---------------- audio ----------------
      The drone is `global.currentsong[0] = snd_init("AUDIO_DRONE.ogg");
-     mus_loop(...)` in DEVICE_CONTACT's Create — it runs from frame one.
-     A BROWSER CANNOT DO THAT: the opening is 240 frames of silence with no
-     input in it, so there is no gesture to unlock playback until the
-     visitor answers something. So the drone starts the moment sound is
-     granted (or, for a returning visitor who already said yes, at the first
-     keypress) and the scene is honest about it rather than silently muted. */
+     mus_loop(...)` in DEVICE_CONTACT's Create — it runs from frame one, and
+     so does this one: sound is ON by default and the question turns it off.
+     The only thing a browser adds is that playback cannot BEGIN without a
+     gesture, so a cold visit stays quiet until the first key or tap and
+     picks the drone up there. Nothing waits on an answer. */
   const drone = new Audio(`${ASSETS}audio_drone.ogg`);
   drone.loop = true;
   drone.volume = 0.55;
   const appearance = new Audio(`${ASSETS}AUDIO_APPEARANCE.wav`);
   appearance.volume = 0.5;
-  let soundOn = io.soundOn === true;
+  // ON unless it has been turned off. Only an explicit `false` silences it.
+  let soundOn = io.soundOn !== false;
   const startDrone = () => { if (soundOn) drone.play().catch(() => {}); };
+  // Try immediately: a RECONFIGURE arrives on the back of a click, so the
+  // page already has user activation and the drone can start on frame one
+  // the way DEVICE_CONTACT's Create does. A cold visit is blocked until the
+  // first key or tap, and the handlers below pick it up there.
+  startDrone();
+  // Exposed for debugging and for automated checks — whether the drone is
+  // actually running is not observable from the DOM otherwise. Nothing in
+  // here reads it back.
+  window.__gmAudio = { drone, appearance, get soundOn() { return soundOn; } };
   const play = (a) => { if (soundOn) { a.currentTime = 0; a.play().catch(() => {}); } };
 
   /* ---------------- input ---------------- */
@@ -438,12 +447,14 @@ export async function runIntro(canvas, io = {}) {
       ? 'UNDERSTOOD^3. ^5 %'
       : 'THEN LET THEM^3&FLICKER^3. ^5 %', 75, 40);
 
-    // Q2 — sound. Answering yes is the gesture that unlocks the drone.
+    // Q2 — sound. It is already playing; this is the switch that stops it.
     await say('^2 DO YOU WANT&SOUND? ^2 ', 75, 40);
     answers.soundOn = await ask();
     writer = null;
     soundOn = answers.soundOn;
-    if (soundOn) { startDrone(); io.onSound?.(true); }
+    io.onSound?.(soundOn);
+    if (soundOn) startDrone();
+    else drone.pause();
     await say(soundOn ? 'LISTEN CLOSELY^3. ^5 %' : 'VERY WELL^3.&SILENCE^3. ^5 %', 75, 40);
 
     // Q3 — the pointless one. DEVICE_FAILURE's own question.

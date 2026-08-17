@@ -324,7 +324,7 @@ async function runInterrogation(){
     // If an asset is missing the sequence cannot draw, and a visitor should
     // still reach the menu rather than sit on a black screen.
     console.error('the interrogation could not run:', err);
-    answers = { photosensitive: true, soundOn: false };
+    answers = { photosensitive: true, soundOn: store.soundOn };
   }
   abortIntro = null;
   introRunning = false;
@@ -336,11 +336,11 @@ async function runInterrogation(){
   enterMenu();
 }
 /* The button hands the abort to the running sequence, which fades out the
-   way it would have anyway; a never-started one just takes the defaults. */
+   way it would have anyway; a never-started one just takes the defaults —
+   still screens, and sound left as it was, which is on. */
 function skipIntro(){
   if(introRunning && abortIntro){ abortIntro(); return; }
   store.flickerOK = false;
-  store.soundOn = false;
   store.seenIntro = true;
   savePrefs(store);
   enterMenu();

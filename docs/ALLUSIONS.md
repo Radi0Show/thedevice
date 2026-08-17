@@ -89,9 +89,11 @@ consumes them and moves on.
 
 Two honest deviations, both forced:
 
-- **The drone cannot start at frame 0.** DEVICE_CONTACT loops it from its
-  Create, but the opening is 240 frames with no input in it, and a browser
-  will not play audio before a gesture. It starts when sound is granted.
+- **The drone may not start at frame 0.** DEVICE_CONTACT loops it from its
+  Create and so does this, with sound on by default and the question there
+  to turn it off — but a browser will not begin playback before a gesture,
+  so a cold visit stays quiet until the first key or tap and picks it up
+  there. Nothing waits on an answer.
 - **The words after "WE MAY BEGIN" are the site's own.** The game goes on to
   build a vessel; this asks the site's three questions in the same notation,
   at the same coordinates, in the same voice.

@@ -12,9 +12,16 @@ export function loadPrefs() {
     return {
       seenIntro: p.seenIntro === true,
       flickerOK: p.flickerOK === true,
-      soundOn: p.soundOn === true,
+      // SOUND IS ON UNTIL IT IS TURNED OFF. The drone is part of the scene,
+      // not an extra, so the sequence opens with it and the question exists
+      // to switch it off. Only an explicit `false` counts — which is the
+      // difference between "said no" and "has not been asked".
+      //
+      // FLICKER is the other way round on purpose: it defaults to still,
+      // because the cost of guessing wrong there is not a wasted second.
+      soundOn: p.soundOn !== false,
     };
-  } catch { return { seenIntro: false, flickerOK: false, soundOn: false }; }
+  } catch { return { seenIntro: false, flickerOK: false, soundOn: true }; }
 }
 
 export function savePrefs(p) {
