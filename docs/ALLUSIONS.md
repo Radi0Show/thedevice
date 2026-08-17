@@ -95,6 +95,15 @@ Two honest deviations, both forced:
 - **The words after "WE MAY BEGIN" are the site's own.** The game goes on to
   build a vessel; this asks the site's three questions in the same notation,
   at the same coordinates, in the same voice.
+- **One soul, and it descends.** The original never moves it: DEVICE_CONTACT
+  closes the soul away (`SOUL.t -= 2; SOUL.momentum = -0.5`) before the
+  questions, and DEVICE_CHOICE draws a separate cursor already sitting at
+  the option row — two objects that never share the screen. Asking the
+  site's questions inside the opening beat put both up at once, so the soul
+  descends and becomes the cursor instead, carried on DEVICE_CHOICE's own
+  easing (0.3 of the remaining distance a frame, snapping inside 2px). The
+  `sin(HSINER / 16) * 2` bob stops when it stops being the thing in the
+  middle.
 
 ## The ledger
 

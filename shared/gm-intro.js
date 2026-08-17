@@ -125,7 +125,25 @@ export async function runIntro(canvas, io = {}) {
   const obacks = [];
   let writer = null;
   let choice = null;
-  const soul = { on: false, t: -10, momentum: 0, m: 10, tmax: 10 }; // m = height/2
+  /**
+   * THE SOUL, and there is only ever one of it.
+   *
+   * The original does not do this: DEVICE_CONTACT closes the soul away
+   * (`SOUL.t -= 2; SOUL.momentum = -0.5`) before the questions start, and
+   * DEVICE_CHOICE then draws its OWN cursor already sitting at the option
+   * row — two separate objects that never share the screen. Running the
+   * site's questions inside the opening beat put both up at once, which is
+   * a heart too many.
+   *
+   * So the soul descends and becomes the cursor: same sprite, carried down
+   * on DEVICE_CHOICE's own easing (`HEARTDIFF = (IDEAL - HEART) * 0.3`,
+   * snapping inside 2px) to the row DEVICE_CHOICE would have drawn it on.
+   * `m` is sprite_height / 2.
+   */
+  const soul = {
+    on: false, t: -10, momentum: 0, m: 10, tmax: 10,
+    x: 150, y: 120, homeY: 120, hsiner: 0,
+  };
 
   const waiters = [];
   // EVERY wait resolves on abort, or [ SKIP ] would hang on whichever one
@@ -193,9 +211,11 @@ export async function runIntro(canvas, io = {}) {
       labels,
       x: [110, 190], y: 180,
       cur: -1,                     // CURX = -1: neither starts selected
-      heartX: 150, heartY: 180,    // IDEALX = 150 while nothing is chosen
       resolve: null,
     };
+    // The soul comes down to the option row and stays there — it is the
+    // cursor from here on.
+    soul.homeY = 180;
     return new Promise((res) => { choice.resolve = res; });
   }
 
@@ -214,11 +234,6 @@ export async function runIntro(canvas, io = {}) {
     }
     if ((k === 'z' || k === 'enter') && c.cur >= 0) commit();
 
-    // HEARTX += (IDEALX - HEARTX) * 0.3, snapping inside 2px.
-    const idealX = c.cur < 0 ? 150 : c.x[c.cur] - 25;
-    if (Math.abs(c.heartX - idealX) <= 2) c.heartX = idealX;
-    else c.heartX += (idealX - c.heartX) * 0.3;
-
     function commit() {
       const r = c.resolve;
       choice = null;
@@ -229,12 +244,7 @@ export async function runIntro(canvas, io = {}) {
   function drawChoice() {
     const c = choice;
     if (!c) return;
-    // DRAWHEART: `draw_sprite_ext(IMAGE_SOUL_BLUR, 0, HEARTX, HEARTY, 1, 1,
-    // 0, c_white, 0.6 * xfade)` — the cursor is always up, even before a
-    // side has been chosen, sitting at the midpoint between the two.
-    ctx.globalAlpha = 0.6;
-    ctx.drawImage(soulImage, Math.round(c.heartX), Math.round(c.heartY - 3));
-    ctx.globalAlpha = 1;
+    // No cursor is drawn here: the soul IS the cursor, and it draws itself.
     for (let i = 0; i < c.labels.length; i++) {
       drawText(ctx, font, c.labels[i], c.x[i], c.y,
         { color: c.cur === i ? '#ffff00' : '#ffffff' });
@@ -249,12 +259,26 @@ export async function runIntro(canvas, io = {}) {
     if (!soul.on) return;
     if (soul.momentum > 0 && soul.t < soul.tmax + 2) soul.t += soul.momentum;
     if (soul.momentum < 0) soul.t += soul.momentum;
+    soul.hsiner += 1;
+
+    // Where it wants to be: the middle of the screen until the first
+    // question, then the option row — and, once a side is chosen, beside it.
+    const idealX = choice && choice.cur >= 0 ? choice.x[choice.cur] - 25 : 150;
+    const idealY = soul.homeY;
+    // DEVICE_CHOICE's easing, on both axes: 0.3 of the remaining distance a
+    // frame, snapping once inside 2px so it settles instead of creeping.
+    soul.x = Math.abs(soul.x - idealX) <= 2 ? idealX : soul.x + (idealX - soul.x) * 0.3;
+    soul.y = Math.abs(soul.y - idealY) <= 2 ? idealY : soul.y + (idealY - soul.y) * 0.3;
   }
 
   function drawSoul() {
     if (!soul.on) return;
     const { t, m } = soul;
-    const x = 150, y = 120, w = 20;
+    // `SOUL.y = SOUL.ystart + sin(HSINER / 16) * 2` — DEVICE_CONTACT's own
+    // bob, and only while the soul is still the thing in the middle. A
+    // cursor sitting next to YES does not breathe.
+    const bob = soul.homeY === 120 ? Math.sin(soul.hsiner / 16) * 2 : 0;
+    const x = Math.round(soul.x), y = Math.round(soul.y + bob), w = 20;
     if (t <= 0) {
       const xs = Math.max(0, 1 + t / 10);
       ctx.drawImage(soulImage, 0, m, w, 1,
