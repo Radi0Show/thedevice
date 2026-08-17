@@ -90,11 +90,51 @@ ready:
    boss exists; when one becomes real, give it a named route first
    (`DEVICE_<NAME>/` as a slot page), then repeat this list.
 
-## 3. Release (thedevice.dev)
+## 2b. The extracted assets
+
+The interrogation draws with the game's own font, background and soul, and
+they are regenerated from YOUR copy of the game:
+
+```sh
+tools/extract-gonermaker.sh            # defaults to ~/knight-research/oracle
+```
+
+`docs/ALLUSIONS.md` lists every constant the scene runs on and where it was
+read. The visual assets are committed, the same call knight-sim makes for its
+sprites. **The audio is not** — `.gitignore` keeps `assets/gonermaker/*.ogg`
+and `*.wav` out, because the soundtrack is sold separately and knight-sim's
+extractor already draws that line in writing. Consequences, so nobody is
+surprised:
+
+- the deployed site runs the sequence **silently**, and answering YES to
+  "DO YOU WANT SOUND?" currently changes nothing on it
+- locally, after running the extractor, it has the drone
+- to ship it anyway, delete those two lines from `.gitignore` and commit the
+  files — that is the whole change, and it is yours to make, not mine
+
+## 3. Release
+
+**Live now:** <https://radi0show.github.io/thedevice/> — GitHub Pages, deploy
+from `main` at the repo root, no build step and no workflow. Push to `main`
+is the deploy.
+
+- **`_headers` does nothing on GitHub Pages.** It is a Cloudflare/Netlify
+  file and is kept for the eventual move; Pages sets its own caching.
+- **The OG/twitter URLs are absolute and currently point at
+  `radi0show.github.io/thedevice/`.** At the domain cutover, grep every
+  `.html` for that string and swap it for `thedevice.dev` — scrapers require
+  absolute URLs, so this cannot be made relative.
+- `404.html` is served for every unknown path at any depth, so it is
+  **deliberately self-contained** (inlined CSS and JS, and a home link
+  computed from `location`) — a relative stylesheet resolves against a
+  directory that does not exist, and a root-absolute one breaks under the
+  `/thedevice/` project subpath.
+
+### When it moves to thedevice.dev
 
 - **Host:** Cloudflare Pages, no build command, output directory = repo root.
   `404.html` is picked up automatically and serves DEVICE_FAILURE for every
-  unknown route (it uses root-absolute paths for exactly that reason).
+  unknown route.
 - **Headers:** `_headers` is already in place — vendored sim assets cache
   immutable (they only change by re-vendoring), HTML stays revalidated.
 - **OG images** live in `og/` and are referenced by **absolute**

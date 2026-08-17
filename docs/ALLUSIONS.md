@@ -46,6 +46,56 @@ If the dump ever needs regenerating, knight-sim's CLAUDE.md has the full
 UndertaleModCli recipe (macOS note: the data file is `game.ios`, not
 `data.win`, and the CLI runs under Rosetta from `~/tools/utmt-cli`).
 
+## The front page is not an allusion — it is a recreation
+
+The interrogation at `/` is Chapter 1's vessel-creation opening rebuilt from
+its own objects, not styled to resemble it. Chapter 1 externalises its
+strings, so the words come out of
+`chapter1_mac/lang/lang_en.json` rather than the GML:
+
+```sh
+python3 -c "
+import json; d = json.load(open('chapter1_mac/lang/lang_en.json'))
+print('\n'.join(repr(d[k]) for k in d if 'DEVICE_CONTACT_slash_Step_0' in k))"
+```
+
+Every constant `shared/gm-intro.js` runs on, and where it was read:
+
+| what | value | source |
+|---|---|---|
+| font | `fnt_main` ("8bitoperator JVE", ASCII 32–126) | `scr_84_get_font("main")` → `scr_84_init_localization`'s `font_map` |
+| typer | 666 = `scr_textsetup(font, c_white, x, y, 33, 0, 4, snd_nosound, 12, 20, 2)` | `scr_texttype` case 666 |
+| speed | one character every **4 frames** at 30 Hz | that `rate` argument, via `alarm[0] = rate` |
+| advance | **12px flat**, not the glyph's shift | obj_writer Draw: `wx += hspace` |
+| line height | 20px | `vspace` |
+| **sound** | **`snd_nosound` — the text types in SILENCE** | that `textsound` argument |
+| glow | main `1`, cardinals `0.3 + sin(siner/14) * 0.1`, diagonals `0.08 + sin(siner/14) * 0.04` | obj_writer Draw, `special == 2` |
+| pauses | `^1`→5 `^2`→10 `^3`→15 `^4`→20 `^5`→30 `^6`→40 `^7`→60 `^8`→90 `^9`→150 frames | obj_writer Alarm_0 |
+| music | `AUDIO_DRONE.ogg`, looped from Create | DEVICE_CONTACT Create |
+| veil | black rect at `FADEFACTOR` 0.4, over the background and under the text | DEVICE_CONTACT Draw |
+| soul | `IMAGE_SOUL_BLUR` at (150,120), `momentum` 0.5, the beam-open reveal | DEVICE_APPEARANCE Create + Draw |
+| background | `IMAGE_DEPTH` (160x120), four mirrored copies around (160,120), a new one every `20 / OBM` frames, newer ones further back | DEVICE_OBACK_4 + DEVICE_CONTACT's `OBMADE` block |
+| choices | options at x 110 / 190, y 180, selected `c_yellow`, cursor eased by 0.3, **`CURX = -1` so neither starts selected** | DEVICE_CHOICE TYPE 0 |
+| room | 320x240, integer-scaled (the game runs it at 2x) | the room's own size |
+
+Two of those are the ones worth defending if anybody "fixes" them later:
+the **silence** (a typing blip would be inventing a sound the scene does not
+have) and the **flat 12px advance** (proportional spacing is the single most
+visible way to get this text wrong).
+
+`\M0` / `\M1` / `\M2` in the real strings are not text effects — they set
+`global.flag[20]`, which DEVICE_CONTACT reads to fade the music. The engine
+consumes them and moves on.
+
+Two honest deviations, both forced:
+
+- **The drone cannot start at frame 0.** DEVICE_CONTACT loops it from its
+  Create, but the opening is 240 frames with no input in it, and a browser
+  will not play audio before a gesture. It starts when sound is granted.
+- **The words after "WE MAY BEGIN" are the site's own.** The game goes on to
+  build a vessel; this asks the site's three questions in the same notation,
+  at the same coordinates, in the same voice.
+
 ## The ledger
 
 ### Verbatim (kept rare, load-bearing only)
