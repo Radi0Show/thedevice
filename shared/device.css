@@ -1,0 +1,113 @@
+/* THE DEVICE — shared chrome.
+   ============================================================
+   PALETTE — sourced from the game's own UI, not designed:
+   void #000 · bone #fff · dim #5a5a5a · dimmer #2e2e2e
+   soul #ff0013 · choice-yellow #ffff00 · friend-pink #ff9bd5
+   ============================================================ */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { height: 100%; background: #000; }
+
+body {
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: bold;
+  color: #fff;
+  text-transform: uppercase;
+  overflow-x: hidden;
+  -webkit-font-smoothing: none;
+  cursor: default;
+}
+
+.voiceline {
+  line-height: 1.9;
+  font-size: 17px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dim    { color: #5a5a5a; }
+.dimmer { color: #2e2e2e; }
+
+a { color: #5a5a5a; }
+a:hover, a:focus-visible { color: #ffff00; outline: none; }
+
+/* the soul — an 8x8 heart drawn in box-shadow pixels */
+.heart {
+  display: inline-block; width: 2px; height: 2px;
+  margin-right: 14px; margin-left: 2px;
+  position: relative; top: -6px;
+  color: #ff0013;
+  box-shadow:
+    2px 0 0 currentColor, 4px 0 0 currentColor, 8px 0 0 currentColor, 10px 0 0 currentColor,
+    0 2px 0 currentColor, 2px 2px 0 currentColor, 4px 2px 0 currentColor, 6px 2px 0 currentColor,
+    8px 2px 0 currentColor, 10px 2px 0 currentColor, 12px 2px 0 currentColor,
+    0 4px 0 currentColor, 2px 4px 0 currentColor, 4px 4px 0 currentColor, 6px 4px 0 currentColor,
+    8px 4px 0 currentColor, 10px 4px 0 currentColor, 12px 4px 0 currentColor,
+    2px 6px 0 currentColor, 4px 6px 0 currentColor, 6px 6px 0 currentColor,
+    8px 6px 0 currentColor, 10px 6px 0 currentColor,
+    4px 8px 0 currentColor, 6px 8px 0 currentColor, 8px 8px 0 currentColor,
+    6px 10px 0 currentColor;
+  transform: scale(1.4);
+  transform-origin: left center;
+}
+.heart.hidden { visibility: hidden; }
+
+.blink { animation: blink 1.05s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.cornerlabel {
+  position: fixed; top: 14px; left: 16px;
+  font-size: 12px; color: #2e2e2e;
+  z-index: 5;
+}
+
+/* ---------- sub-pages (failure / contact / index) ---------- */
+.subview {
+  padding: 20vh 24px 10vh;
+  max-width: 640px; margin: 0 auto;
+}
+.subview .voiceline { margin-bottom: 6px; }
+
+.backline {
+  margin-top: 60px;
+  background: none; border: none; color: #5a5a5a;
+  font-family: inherit; font-weight: bold; text-transform: uppercase;
+  font-size: 14px; cursor: pointer; padding: 4px 0;
+  display: inline-block; text-decoration: none;
+}
+.backline:hover, .backline:focus-visible { color: #ffff00; outline: none; }
+
+.supportline {
+  margin-top: 44px; font-size: 13px; color: #5a5a5a; line-height: 2;
+}
+
+footer {
+  margin-top: 74px;
+  font-size: 11px; color: #2e2e2e;
+  line-height: 2;
+  text-align: center;
+  padding-bottom: 24px;
+}
+footer a { color: #2e2e2e; text-decoration: none; }
+footer a:hover, footer a:focus-visible { color: #5a5a5a; }
+
+/* ---------- FLICKER LAYER (opt-in only, from the interrogation) ----------
+   The game asks before anything moves — "FIRST. ARE YOU PHOTOSENSITIVE?"
+   is DEVICE_CONTACT's own opening question. Nothing here flickers until
+   that question has been answered NO. */
+body.flicker-ok::after {
+  content: "";
+  position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom, rgba(255,255,255,0.03) 0 1px, transparent 1px 3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blink { animation: none; }
+  body.flicker-ok::after { display: none; }
+}
+
+@media (max-width: 480px) {
+  .voiceline { font-size: 15px; }
+}

@@ -1,0 +1,14 @@
+# Cloudflare Pages / Netlify header rules.
+#
+# The vendored sim's assets only ever change by re-vendoring, so they can
+# cache hard; HTML must always revalidate or a launch-day fix never reaches
+# anyone who already visited.
+
+/DEVICE_KNIGHT/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/og/*
+  Cache-Control: public, max-age=86400
+
+/*
+  X-Content-Type-Options: nosniff

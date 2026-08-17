@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEVICE_FAILURE</title>
+<meta name="robots" content="noindex">
+<!-- THIS PAGE IS SELF-CONTAINED ON PURPOSE.
+     The host serves it for ANY unknown path, at any depth, with the URL
+     unchanged — so a relative stylesheet resolves against a directory that
+     does not exist, and a root-absolute one breaks the moment the site is
+     served from a project subpath (user.github.io/thedevice/) instead of its
+     own domain. Inlining is the only version that is correct in both places.
+     The canonical, linkable copy of this screen is /DEVICE_FAILURE/. -->
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ height:100%; background:#000; }
+  body{
+    font-family:'Courier New', Courier, monospace;
+    font-weight:bold; color:#fff; text-transform:uppercase;
+    -webkit-font-smoothing:none; cursor:default;
+    display:flex; flex-direction:column;
+  }
+  .cornerlabel{ position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; }
+  main{ flex:1; padding:20vh 24px 10vh; max-width:640px; margin:0 auto; width:100%; }
+  .voiceline{ line-height:1.9; font-size:17px; white-space:pre-wrap; word-break:break-word; }
+  .backline{
+    margin-top:60px; color:#5a5a5a; font-size:14px;
+    text-decoration:none; display:inline-block;
+  }
+  .backline:hover, .backline:focus-visible{ color:#ffff00; outline:none; }
+  footer{
+    padding:0 16px 24px; text-align:center;
+    font-size:11px; color:#2e2e2e; line-height:2;
+  }
+  footer a{ color:#2e2e2e; text-decoration:none; }
+  footer a:hover{ color:#5a5a5a; }
+  @media (max-width:480px){ .voiceline{ font-size:15px; } }
+</style>
+</head>
+<body>
+<div class="cornerlabel">DEVICE_FAILURE</div>
+
+<main>
+  <div id="line" class="voiceline" aria-live="polite">* THERE IS NOTHING HERE.
+* IT WAS AS IF IT WAS NEVER THERE AT ALL.</div>
+  <a class="backline" id="home" href="/">&larr; DEVICE_MENU</a>
+</main>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX<br>
+  DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<script>
+  // THE WAY HOME, from a page that does not know where it is.
+  // On a project site the root is the first path segment; on a custom domain
+  // it is "/". Computing it beats hardcoding either and breaking the other.
+  (function () {
+    var seg = location.pathname.split('/').filter(Boolean);
+    var onProjectSite = /\.github\.io$/.test(location.hostname) && seg.length > 0;
+    document.getElementById('home').href = onProjectSite ? '/' + seg[0] + '/' : '/';
+  }());
+
+  // The line arrives the way the rest of the site's lines do. Reduced motion
+  // gets it whole; the text is real content either way.
+  (function () {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var el = document.getElementById('line');
+    var first = '* THERE IS NOTHING HERE.';
+    var second = '\n* IT WAS AS IF IT WAS NEVER THERE AT ALL.';
+    el.textContent = '';
+    var i = 0;
+    var tick = setInterval(function () {
+      el.textContent = first.slice(0, ++i);
+      if (i >= first.length) {
+        clearInterval(tick);
+        setTimeout(function () { el.textContent += second; }, 900);
+      }
+    }, 45);
+  }());
+</script>
+</body>
+</html>

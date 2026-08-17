@@ -1,0 +1,20 @@
+# THE AUDIO IS NOT IN THIS REPOSITORY.
+#
+# The soundtrack is sold separately, so it is the one class of extracted
+# asset that does not get committed — the same line knight-sim draws. Each
+# player runs tools/extract-gonermaker.sh against their own copy of the game.
+# The interrogation is built to survive its absence: its typer is
+# `snd_nosound`, so the drone is the only sound the scene has to lose.
+assets/gonermaker/*.ogg
+assets/gonermaker/*.wav
+
+# The vendored simulator: a copy of another repository's build, dropped in by
+# tools/vendor-knight.sh at merge time. See INTEGRATION.md.
+DEVICE_KNIGHT/web/
+DEVICE_KNIGHT/sim/
+DEVICE_KNIGHT/render/
+DEVICE_KNIGHT/input/
+DEVICE_KNIGHT/assets/
+DEVICE_KNIGHT/BUILD
+
+.DS_Store

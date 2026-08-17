@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEVICE_CONTACT</title>
+<meta name="description" content="Credits, attribution, and disclaimer for The Device — a Deltarune fan project.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_CONTACT">
+<meta property="og:description" content="THIS PLACE WAS MADE BY A PERSON.">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_CONTACT/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/device.css">
+<style>
+  main { padding: 14vh 24px 6vh; max-width: 640px; margin: 0 auto; }
+  .block { margin-top: 30px; }
+  .todo { color: #2e2e2e; }
+  kbd {
+    font-family: inherit; border: 1px solid #2e2e2e;
+    padding: 0 .35em; font-size: 13px;
+  }
+</style>
+</head>
+<body>
+<!-- Credits are load-bearing, not a footnote: the attack data underneath
+     the simulator exists because people datamined and documented it. The
+     placeholder rows below hold their seats until the names to credit are
+     confirmed — do not ship the release build with a TO BE FILLED row. -->
+<div class="cornerlabel">DEVICE_CONTACT</div>
+
+<main>
+  <div class="voiceline">* THIS PLACE WAS MADE BY A PERSON.</div>
+
+  <div class="voiceline dim block">* DEVELOPER — RADI0.
+* BUG FIXING AND PLAYTESTING — <a href="https://wander22lstr.carrd.co/" rel="noopener">WANDER</a>.
+* RESEARCH TOOLING — <a href="https://github.com/UnderminersTeam/UndertaleModTool" rel="noopener">UNDERTALEMODTOOL</a> (UNDERMINERS TEAM).</div>
+
+  <div class="voiceline dim block">* ATTACK DATA AND SPRITES BUILT ON WORK BY:
+<span class="todo">  [ TO BE FILLED — CREDIT YOUR DATAMINERS HERE, BY NAME ]</span></div>
+
+  <div class="voiceline dim block">* IF SOMETHING LOOKS WRONG: PRESS <kbd>B</kbd> IN THE SIMULATOR.
+* IT COPIES A REPLAY TOKEN — YOUR EXACT RUN, INPUT FOR INPUT.
+* PASTE IT INTO A <a href="https://github.com/Radi0Show/knight-sim/issues/new?template=bug.yml" rel="noopener">GITHUB ISSUE</a> AND SAY WHAT YOU SAW.</div>
+
+  <div class="supportline">
+    * TIPS FUND THE NEXT DEVICE &mdash; <a href="#" onclick="return false;">[ KO-FI ]</a>
+    <span class="dimmer">(&larr; KO-FI URL GOES HERE)</span>
+  </div>
+
+  <div class="voiceline dim block">* A FAN PROJECT. UNAFFILIATED WITH TOBY FOX.
+* DELTARUNE &copy; TOBY FOX. <a href="https://deltarune.com" rel="noopener">BUY THE REAL GAME</a>.</div>
+
+  <a class="backline" href="../">&larr; DEVICE_MENU</a>
+</main>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX<br>
+  DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<script type="module">
+  import { applyPrefs } from '../shared/device.js';
+  applyPrefs();
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEVICE_FAILURE</title>
+<meta name="description" content="There is nothing here.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_FAILURE">
+<meta property="og:description" content="THERE IS NOTHING HERE.">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_FAILURE/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../shared/device.css">
+</head>
+<body>
+<div class="cornerlabel">DEVICE_FAILURE</div>
+
+<main class="subview">
+  <div id="line" class="voiceline" aria-live="polite">* THERE IS NOTHING HERE.
+* IT WAS AS IF IT WAS NEVER THERE AT ALL.</div>
+  <a class="backline" href="../">&larr; DEVICE_MENU</a>
+</main>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX<br>
+  DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<script type="module">
+  import { applyPrefs, reduceMotion, typeInto, beat } from '../shared/device.js';
+  applyPrefs();
+  // Two lines, a beat apart. Without JS (or with reduced motion) they are
+  // simply there — the text is real content either way.
+  const el = document.getElementById('line');
+  if (!reduceMotion) {
+    (async () => {
+      el.textContent = '';
+      await typeInto(el, '* THERE IS NOTHING HERE.');
+      await beat(900);
+      el.textContent += '\n* IT WAS AS IF IT WAS NEVER THERE AT ALL.';
+    })();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DEVICE_KNIGHT</title>
+<meta name="description" content="A frame-accurate browser recreation of the Roaring Knight fight from DELTARUNE Chapter 3. Free, non-commercial, keyboard-first.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_KNIGHT">
+<meta property="og:description" content="Fight the Roaring Knight in your browser. Frame-accurate, free, no download.">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_KNIGHT/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/knight.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="DEVICE_KNIGHT">
+<meta name="twitter:description" content="Fight the Roaring Knight in your browser.">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/knight.png">
+
+<!-- WHY <base>: the sim's sprite and audio loaders fetch '../assets/…'
+     DOCUMENT-relative (render/sprites.js, render/audio.js), so the document
+     must sit one level below the vendored repo root, exactly like the
+     upstream web/ page does. This base plants us there without moving the
+     file. Every href in THIS page therefore resolves from ./web/ — count
+     your ../ twice. Remove the base once the approved upstream fix (BASE →
+     import.meta.url) lands; see INTEGRATION.md § the 2-line sim change. -->
+<base href="./web/">
+
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<style>
+  /* The letterbox, verbatim from the sim's own web/index.html: the game is
+     640x480 centred in whatever it is given, and fitCanvas() in main.js
+     overrides both axes with an integer-multiple size after boot. */
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    color: #ccc;
+    font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  #game {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 4 / 3));
+    height: min(100vh, calc(100vw * 3 / 4));
+    background: #000;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+  }
+  #hud {
+    display: none;
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 4px 8px;
+    text-align: center;
+    background: rgba(0, 0, 0, .6);
+    opacity: .75;
+  }
+  body.hud #hud { display: block; }
+
+  /* Hub chrome lives in the letterbox margins: faint, functional, and never
+     between the player and the game. The sim listens on window, so focus on
+     these controls cannot steal its keys. */
+  .chrome {
+    position: fixed;
+    z-index: 10;
+    color: #4a4a4a;
+    font-size: 12px;
+    letter-spacing: .1em;
+    text-decoration: none;
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    padding: 6px 8px;
+  }
+  .chrome:hover, .chrome:focus-visible { color: #ffff00; outline: none; }
+  #back { top: 6px; left: 8px; }
+  #mute { top: 6px; right: 8px; }
+  #legal {
+    position: fixed;
+    bottom: 4px;
+    left: 0; right: 0;
+    text-align: center;
+    color: #2e2e2e;
+    font-size: 10px;
+    letter-spacing: .08em;
+    /* Above the not-connected overlay too: the legal line is on every page
+       of this site in every state. */
+    z-index: 25;
+    pointer-events: none;
+  }
+  #legal a { color: #4a4a4a; pointer-events: auto; text-decoration: none; }
+
+  /* Shown only when the vendored sim is absent — the pre-merge state. */
+  #notconnected {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    background: #000;
+    color: #fff;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.6rem;
+    text-align: center;
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 17px;
+    line-height: 1.9;
+  }
+  #notconnected .hint { color: #5a5a5a; font-size: 12px; text-transform: none; }
+  #notconnected a { color: #5a5a5a; text-decoration: none; }
+  #notconnected a:hover, #notconnected a:focus-visible { color: #ffff00; }
+</style>
+</head>
+<body>
+  <canvas id="game" width="640" height="480"></canvas>
+  <div id="hud">loading…</div>
+
+  <a class="chrome" id="back" href="../../">&#9664; DEVICE_MENU</a>
+  <button class="chrome" id="mute" aria-pressed="false" title="Mute all sound (M)">[ SOUND: ON ]</button>
+  <div id="legal">
+    FAN PROJECT · UNAFFILIATED WITH TOBY FOX · DELTARUNE © TOBY FOX ·
+    <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+  </div>
+
+  <div id="notconnected">
+    <p>* ARE YOU THERE?<br>* . . .<br>* DEVICE_KNIGHT IS NOT CONNECTED.</p>
+    <p class="hint">pre-release state · run tools/vendor-knight.sh from the site root,<br>
+       then reload — INTEGRATION.md has the full procedure</p>
+    <a href="../../">&larr; DEVICE_MENU</a>
+  </div>
+
+  <script type="module">
+    // BOOT. The sim's driver is untouched upstream code; this page only
+    // hosts it. A failed import means the vendored build is absent (the
+    // pre-merge state) — show the failure screen instead of a blank canvas.
+    const MUTE_KEY = 'thedevice.mute';
+    const muteBtn = document.getElementById('mute');
+
+    function paintMute(muted) {
+      muteBtn.textContent = muted ? '[ SOUND: OFF ]' : '[ SOUND: ON ]';
+      muteBtn.setAttribute('aria-pressed', String(muted));
+    }
+
+    try {
+      await import('./main.js'); // resolves via <base> to ./web/main.js
+      // main.js has run: window.__audio exists. The hub mute is the master
+      // switch (audio.enabled stops every loop on the way down); the sim's
+      // own Q key and volume sliders keep working underneath it. A muted
+      // session stays muted across reloads — people open games at work.
+      let muted = false;
+      try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch {}
+      const apply = () => {
+        window.__audio.enabled = !muted;
+        try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch {}
+        paintMute(muted);
+      };
+      apply();
+      muteBtn.onclick = () => { muted = !muted; apply(); };
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'KeyM' && !e.altKey && !e.ctrlKey && !e.metaKey) {
+          muted = !muted; apply();
+        }
+      });
+    } catch (err) {
+      console.error('sim not connected:', err);
+      document.getElementById('notconnected').style.display = 'flex';
+      muteBtn.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
