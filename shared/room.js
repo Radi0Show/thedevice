@@ -30,6 +30,7 @@ const SCALE = 2;                       // scr_darksize()
 
 // The gap in the background sprite, in room pixels.
 const SCREEN_X = 138, SCREEN_Y = 42, SCREEN_W = 384, SCREEN_H = 288;
+export const SCREEN = { x: SCREEN_X, y: SCREEN_Y, w: SCREEN_W, h: SCREEN_H };
 
 const BWSPEED = 3;                     // obj_mainchara Create
 const KRIS_W = 19 * SCALE, KRIS_H = 38 * SCALE;
@@ -126,21 +127,30 @@ export async function runRoom(canvas, opts = {}) {
      sequence, then the site. */
   let con = 'idle';
   let timer = 0;
+  // While the site has the screen it also has the keyboard: Kris holds
+  // still rather than walking around behind a menu he is operating.
+  let suspended = false;
   let plugged = false;
   let screenState = 'nocontroller';   // what the television is showing
   let staticTimer = 0;
   let onBooted = opts.onBooted ?? (() => {});
   let booted = false;
 
-  /** Is Kris standing at the console, facing it? */
+  /**
+   * Is Kris standing in front of the console, facing it?
+   *
+   * Measured against the console's own footprint — spr_gameshow_console is
+   * 99 wide at (202,322), so it covers x 202..400 once scaled — with a
+   * margin either side. Facing up is the part that carries meaning; the
+   * walk box is only 90 tall, so anywhere in it is "in front of".
+   */
   function atConsole() {
-    return Math.abs(kris.x - CONSOLE_SPOT_X) < 70
-      && Math.abs(kris.y - CONSOLE_SPOT_Y) < 40
-      && kris.facing === FACE_UP;
+    const cx = kris.x + KRIS_W / 2;
+    return cx > 170 && cx < 440 && kris.facing === FACE_UP;
   }
 
   function stepKris() {
-    if (kris.frozen) return;
+    if (kris.frozen || suspended) return;
     const pr = held.has('r') ? 1 : 0, pl = held.has('l') ? 1 : 0;
     const pd = held.has('d') ? 1 : 0, pu = held.has('u') ? 1 : 0;
 
@@ -210,6 +220,8 @@ export async function runRoom(canvas, opts = {}) {
     }
     if (con === 'logo' && timer >= 60 && !booted) {
       booted = true;
+      con = 'device';
+      screenState = 'device';
       onBooted();
     }
   }
@@ -245,6 +257,11 @@ export async function runRoom(canvas, opts = {}) {
       ctx.globalAlpha = 1;
     } else if (screenState === 'blue') {
       ctx.fillStyle = BOOT_BLUE;
+      ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
+    } else if (screenState === 'device') {
+      // The site itself is a DOM layer sitting in this rectangle; all the
+      // canvas owes it is a black bed and a colour for the glow.
+      ctx.fillStyle = '#000';
       ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
     } else if (screenState === 'logo') {
       ctx.fillStyle = BOOT_BLUE;
@@ -309,8 +326,25 @@ export async function runRoom(canvas, opts = {}) {
   }
   raf = requestAnimationFrame(frame);
 
-  // The television is already on and already complaining when you walk in.
-  play(nocontroller);
+  // A RETURNING VISITOR WALKS IN ON A SET THAT IS ALREADY ON.
+  // Making them plug the controller in again every visit would turn the
+  // ritual into a toll. The first time is the ritual; after that the
+  // television is simply on, and Kris is already holding the thing.
+  if (opts.alreadyBooted) {
+    plugged = true;
+    kris.holding = true;
+    kris.frozen = false;
+    kris.x = CONSOLE_SPOT_X;
+    kris.y = CONSOLE_SPOT_Y;
+    kris.facing = FACE_UP;
+    con = 'device';
+    screenState = 'device';
+    booted = true;
+    setTimeout(() => onBooted(), 0);
+  } else {
+    // The television is already on and already complaining when you walk in.
+    play(nocontroller);
+  }
 
   window.__room = {
     get kris() { return kris; },
@@ -318,6 +352,7 @@ export async function runRoom(canvas, opts = {}) {
     get screen() { return screenState; },
     get plugged() { return plugged; },
     atConsole,
+    suspend(v = true) { suspended = v; },
     press: (k, on = true) => { if (on) { held.add(k); pressed.add(k); } else held.delete(k); },
     stop() {
       cancelAnimationFrame(raf);

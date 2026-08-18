@@ -57,6 +57,23 @@
     font-size:17px; line-height:1.9; text-align:center;
   }
   #failed a { color:#5a5a5a; text-decoration:none; }
+  /* Sits exactly over the 384x288 gap in the background art. Sized in
+     screen pixels and scaled by the same whole number as the canvas, so
+     the picture lands in the frame however big the window is. */
+  #screen {
+    position:absolute; z-index:10; display:none;
+    transform-origin:top left; overflow:hidden;
+  }
+  #screen.on { display:block; }
+
+  /* ---------- THE FRIEND (rare; unexplained; never mentioned) ----------
+     It used to watch the menu. A dark room suits it better. */
+  #eyes{
+    position:fixed; bottom:14vh; right:9vw; z-index:40;
+    display:none; pointer-events:none;
+  }
+  #eyes span{ display:inline-block; width:7px; height:11px; background:#ff9bd5; }
+  #eyes span + span{ margin-left:12px; background:#ffff00; }
 </style>
 </head>
 <body>
@@ -73,6 +90,12 @@
   <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
 </footer>
 
+<!-- The site itself. It is positioned onto the television's hole and
+     scaled with the canvas, so it is literally the picture on the screen. -->
+<div id="screen"></div>
+
+<div id="eyes"><span></span><span></span></div>
+
 <div id="flash"></div>
 <div id="failed">
   <p>* THE ROOM DID NOT LOAD.</p>
@@ -80,36 +103,79 @@
 </div>
 
 <script type="module">
-  import { runRoom } from '../shared/room.js';
-  import { loadPrefs } from '../shared/device.js';
+  import { runRoom, SCREEN } from '../shared/room.js';
+  import { mountMenu } from '../shared/menu.js';
+  import { loadPrefs, savePrefs, sMove, sConfirm, sDeny } from '../shared/device.js';
 
   const canvas = document.getElementById('room');
+  const screenEl = document.getElementById('screen');
+
   function fit() {
     const dpr = window.devicePixelRatio || 1;
     const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);
     const s = f >= 1 ? Math.floor(f) : f;
-    canvas.style.width = `${(640 * s) / dpr}px`;
-    canvas.style.height = `${(480 * s) / dpr}px`;
+    const cssW = (640 * s) / dpr, cssH = (480 * s) / dpr;
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    // Follow the canvas: same scale, and the hole's own offset inside it.
+    const scale = cssW / 640;
+    const rect = canvas.getBoundingClientRect();
+    screenEl.style.left = `${rect.left + SCREEN.x * scale}px`;
+    screenEl.style.top = `${rect.top + SCREEN.y * scale}px`;
+    screenEl.style.width = `${SCREEN.w}px`;
+    screenEl.style.height = `${SCREEN.h}px`;
+    screenEl.style.transform = `scale(${scale})`;
   }
   addEventListener('resize', fit);
+  addEventListener('scroll', fit);
   fit();
 
-  // Coming here from the site means the interrogation has already run;
-  // arriving cold means it has not. Either way, plugging in leads there.
   const prefs = loadPrefs();
 
   try {
-    await runRoom(canvas, {
+    const room = await runRoom(canvas, {
       base: '../assets/room/',
       soundOn: prefs.soundOn,
+      // Once you have booted it once, the set is on when you walk in.
+      alreadyBooted: prefs.booted === true,
       onBooted: () => {
-        document.getElementById('flash').style.opacity = '1';
-        setTimeout(() => { location.href = '../?booted=1'; }, 500);
+        if (!prefs.booted) { prefs.booted = true; savePrefs(prefs); }
+        // THE SITE COMES UP IN THE TELEVISION — it does not replace it.
+        // Kris stays in the room, the glow stays on the floor, and the
+        // keyboard goes to the menu while it is up.
+        fit();
+        screenEl.classList.add('on');
+        room.suspend(true);
+        mountMenu(screenEl, {
+          base: '../',
+          sound: { move: sMove, confirm: sConfirm, deny: sDeny },
+        });
+        document.getElementById('keys').textContent =
+          '\u25C0 \u25B6 \u25B2 \u25BC CHOOSE · [ Z ] CONFIRM';
       },
     });
   } catch (err) {
     console.error('room failed to load:', err);
     document.getElementById('failed').style.display = 'flex';
+  }
+
+  /* ---------------- the friend (rare, gated, once) ---------------- */
+  if (prefs.flickerOK && !matchMedia('(prefers-reduced-motion: reduce)').matches
+      && Math.random() <= 0.02) {
+    setTimeout(() => {
+      const e = document.getElementById('eyes');
+      e.style.display = 'block';
+      setTimeout(() => { e.style.display = 'none'; }, 150);
+    }, 6000 + Math.random() * 14000);
+  }
+
+  /* ---------------- rare tab whisper ---------------- */
+  if (Math.random() <= 0.05) {
+    setTimeout(() => {
+      const old = document.title;
+      document.title = '*(do not trust the empty slots.)';
+      setTimeout(() => { document.title = old; }, 4000);
+    }, 20000);
   }
 </script>
 </body>

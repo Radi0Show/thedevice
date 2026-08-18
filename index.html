@@ -38,11 +38,7 @@
   #prelude p{ font-size:15px; }
   #prelude a{ color:#00e; }
 
-  /* ---------- VIEWS ---------- */
-  .view{ display:none; min-height:100vh; }
-  .view.active{ display:block; }
-
-  /* ---------- INTRO (the interrogation) ----------
+  /* ---------- THE INTERROGATION ----------
      A 320x240 room, exactly like the one the sequence runs in, scaled by a
      whole number of device pixels. `pixelated` at a fractional scale gives
      some source columns n device pixels and their neighbours n+1 — which is
@@ -55,8 +51,6 @@
     transform:translate(-50%,-50%);
     width:min(100vw, calc(100vh * 4 / 3));
     height:min(100vh, calc(100vw * 3 / 4));
-    image-rendering:pixelated;
-    image-rendering:crisp-edges;
     image-rendering:pixelated;
     background:#000;
   }
@@ -71,108 +65,10 @@
   #skipBtn:hover, #skipBtn:focus-visible{ color:#ffff00; outline:none; }
 
   /* The one piece of chrome the game has no equivalent for: people need to
-     know the keys before the first question. Bottom corner, dim, out of the
-     way of the 320x240 frame. */
+     know the keys before the first question. */
   #introKeys{
     position:fixed; bottom:12px; left:0; right:0; z-index:5;
     text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
-  }
-
-  /* ---------- MENU ---------- */
-  #menu{ padding:56px 22px 40px; max-width:640px; margin:0 auto; text-align:left; }
-
-  #menuTitle{ font-size:21px; margin-bottom:44px; min-height:28px; }
-
-  /* the one finished thing gets the one finished UI */
-  .slot-real{
-    border:3px solid #fff;
-    padding:18px 16px 16px;
-    margin-bottom:34px;
-    cursor:pointer;
-    position:relative;
-  }
-  .slot-real.sel{ border-color:#ffff00; }
-  .slot-real .slotname{ font-size:26px; }
-  .slot-real.sel .slotname{ color:#ffff00; }
-  .slot-real .slotmeta{ font-size:12px; color:#5a5a5a; margin-top:8px; }
-  .slot-real .slotgo{
-    font-size:13px; margin-top:14px; color:#ffff00;
-    display:none;
-  }
-  .slot-real.sel .slotgo{ display:block; }
-  .slot-real:focus{ outline:none; }
-
-  /* the temmie annotation. exactly one. do not add more. */
-  .scribble{
-    position:absolute;
-    right:-4px; top:-30px;
-    font-family:'Comic Sans MS', 'Comic Sans', cursive;
-    font-weight:bold; text-transform:none;
-    font-size:14px; color:#fff;
-    transform:rotate(-7deg);
-  }
-  .scribble::after{
-    content:"↓"; display:block; text-align:center;
-    transform:rotate(9deg); font-size:16px;
-  }
-
-  /* the unfinished things get unfinished UI. this is on purpose. */
-  .slot-empty{
-    font-size:17px;
-    color:#2e2e2e;
-    padding:9px 2px;
-    cursor:pointer;
-    border:none; background:none;
-    font-family:inherit; font-weight:bold; text-transform:uppercase;
-    display:block; width:100%; text-align:left;
-  }
-  .slot-empty.sel{ color:#ffff00; }
-  .slot-empty .heart{ transform:scale(1.0); }
-  .slot-empty:focus{ outline:none; }
-
-  #menuInfo{ margin-top:46px; font-size:12px; color:#5a5a5a; }
-
-  #menuNav{
-    margin-top:34px;
-    font-size:14px;
-    display:flex; gap:34px; flex-wrap:wrap;
-  }
-  #menuNav a, #menuNav button{
-    background:none; border:none; color:#5a5a5a;
-    font-family:inherit; font-weight:bold; text-transform:uppercase;
-    font-size:14px; cursor:pointer; padding:4px 0; text-decoration:none;
-  }
-  #menuNav a:hover, #menuNav a:focus-visible,
-  #menuNav button:hover, #menuNav button:focus-visible{ color:#ffff00; outline:none; }
-
-  footer .dot{ color:#0a0a0a; text-decoration:none; cursor:default; }
-
-  /* opt-in jitter, and only ever on the title line */
-  body.flicker-ok #menuTitle{ animation:jitter 9s steps(1) infinite; }
-  @keyframes jitter{
-    0%,97.4%,100%{ transform:translate(0,0); }
-    97.6%{ transform:translate(1px,-1px); }
-    97.8%{ transform:translate(-1px,1px); }
-  }
-
-  /* ---------- THE FRIEND (rare; unexplained; never mentioned) ---------- */
-  #eyes{
-    position:fixed; bottom:12vh; right:8vw; z-index:70;
-    display:none; pointer-events:none;
-  }
-  #eyes span{
-    display:inline-block; width:7px; height:11px;
-    background:#ff9bd5;
-  }
-  #eyes span + span{ margin-left:12px; background:#ffff00; }
-
-  @media (prefers-reduced-motion: reduce){
-    body.flicker-ok #menuTitle{ animation:none; }
-  }
-
-  @media (max-width:480px){
-    .slot-real .slotname{ font-size:22px; }
-    .choices{ gap:38px; }
   }
 </style>
 </head>
@@ -182,125 +78,47 @@
   <h1>Not Found</h1>
   <p>The requested device does not exist on this server.</p>
   <noscript>
-    <p style="margin-top:14px">Without JavaScript the menu cannot speak, but the rooms are still here:
+    <p style="margin-top:14px">Without JavaScript the sequence cannot speak, but the rooms are still here:
+    <a href="DEVICE_ROOM/">DEVICE_ROOM</a> ·
     <a href="DEVICE_KNIGHT/">DEVICE_KNIGHT</a> ·
     <a href="DEVICE_INDEX/">DEVICE_INDEX</a> ·
-    <a href="DEVICE_BOARD/">DEVICE_BOARD</a> ·
     <a href="DEVICE_CONTACT/">DEVICE_CONTACT</a></p>
   </noscript>
 </div>
 
-<!-- ======================= INTRO ======================= -->
-<div class="view" id="intro">
+<!-- ======================= THE INTERROGATION ======================= -->
+<div id="intro">
   <button id="skipBtn" type="button">[ SKIP ]</button>
   <canvas id="introCanvas" width="320" height="240"
           aria-label="An opening sequence asks three questions. Arrow keys choose, Z confirms. Skip is in the top corner."></canvas>
   <div id="introKeys">&#9664; &#9654; CHOOSE &middot; [ Z ] CONFIRM &middot; HOLD [ X ] TO HASTEN</div>
 </div>
 
-<!-- ======================= MENU ======================= -->
-<div class="view" id="menu">
-  <div class="cornerlabel">DEVICE_MENU</div>
-
-  <div id="menuTitle" class="voiceline"></div>
-
-  <div class="slot-real" id="slotKnight" tabindex="0" role="button" aria-label="Knight — the Roaring Knight, Chapter 3. Press Z to begin.">
-    <div class="scribble">this one works!!</div>
-    <div class="slotname"><span class="heart hidden" id="knightHeart"></span>KNIGHT</div>
-    <div class="slotmeta">THE ROARING KNIGHT &middot; CHAPTER 3</div>
-    <div class="slotgo">* PRESS [ Z ] TO BEGIN.</div>
-  </div>
-
-  <button class="slot-empty" data-slot="1" type="button"><span class="heart hidden"></span>02&nbsp;&nbsp;J&#9618;&#9618;&#9618;&#9618;</button>
-  <button class="slot-empty" data-slot="2" type="button"><span class="heart hidden"></span>03&nbsp;&nbsp;S&#9618;&#9618;&#9618;&#9618;&#9618;&#9618; &#9618;&#9618;&#9618;</button>
-  <button class="slot-empty" data-slot="3" type="button"><span class="heart hidden"></span>04&nbsp;&nbsp;&#9618;&#9618;&#9618;&#9618;&#9618;&#9618;&#9618;&#9618;</button>
-
-  <div id="menuInfo">FREE &middot; RUNS IN BROWSER &middot; ARROWS + Z &middot; NO DOWNLOAD</div>
-
-  <div id="menuNav">
-    <a href="DEVICE_INDEX/">DEVICE_INDEX</a>
-    <a href="DEVICE_ROOM/">DEVICE_ROOM</a>
-    <a href="DEVICE_BOARD/">DEVICE_BOARD</a>
-    <a href="DEVICE_CONTACT/">DEVICE_CONTACT</a>
-    <button type="button" id="navReconfig">[ RECONFIGURE ]</button>
-  </div>
-
-  <footer>
-    A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX<br>
-    DELTARUNE &copy; TOBY FOX &middot;
-    <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
-    <a href="#" class="dot" id="dotLink" aria-label="">.</a>
-  </footer>
-</div>
-
-<!-- ======================= FAILURE (in-page) ======================= -->
-<div class="view subview" id="failure">
-  <div class="cornerlabel">DEVICE_FAILURE</div>
-  <div id="failText" class="voiceline" aria-live="polite"></div>
-  <div class="supportline" id="failSupport" style="display:none">
-    * IF YOU WANT TO SEE IT BUILT &mdash; <a href="#" onclick="return false;">[ SUPPORT ]</a>
-    <span class="dimmer">(&larr; KO-FI URL GOES HERE)</span>
-  </div>
-  <button class="backline" type="button" data-back>&larr; DEVICE_MENU</button>
-</div>
-
-<!-- ======================= CONNECT ======================= -->
-<div class="view subview" id="connect">
-  <div id="connectText" class="voiceline" aria-live="polite"></div>
-</div>
-
-<div id="eyes"><span></span><span></span></div>
-
 <script type="module">
-import {
-  loadPrefs, savePrefs, applyPrefs, reduceMotion,
-  sTalk, sMove, sConfirm, sDeny,
-  typeInto, isTyping, skipType, beat,
-} from './shared/device.js';
+import { loadPrefs, savePrefs, applyPrefs, reduceMotion } from './shared/device.js';
 import { runIntro } from './shared/gm-intro.js';
 
 /* =====================================================================
-   The interrogation's lines are DEVICE_CONTACT's own shape: it asks
-   "FIRST. ARE YOU PHOTOSENSITIVE?" before anything on screen moves,
-   and it thanks you in a register that drops out of capitals.
-   Allusion sources are catalogued in docs/ALLUSIONS.md. Don't add more.
+   THE FRONT DOOR IS A SEQUENCE, AND IT LEADS SOMEWHERE.
+
+   The interrogation asks its three questions and then hands over to
+   DEVICE_ROOM — the room with the television in it. The site itself lives
+   in that television: you plug the controller in and it boots. So this
+   page no longer holds a menu; it holds the thing that comes before one.
    ===================================================================== */
 
 const store = loadPrefs();
 applyPrefs(store);
 
-/* ---------------- views ---------------- */
-const views = ['intro', 'menu', 'failure', 'connect'];
-let mode = 'prelude';
-/* Every view switch bumps `gen`. An async flow captures it at the start and
-   checks it after every await — so backing out of a view mid-typewriter
-   cancels the rest of that view's script (including CONNECT's redirect)
-   instead of letting a stale tail write over whatever came next. */
-let gen = 0;
-function show(id){
-  gen++;
-  views.forEach(v => document.getElementById(v).classList.toggle('active', v === id));
-  document.title = ({
-    intro:'DEVICE_MENU', menu:'DEVICE_MENU',
-    failure:'DEVICE_FAILURE', connect:'DEVICE_KNIGHT'
-  })[id];
-  mode = id;
-}
+const params = new URLSearchParams(location.search);
+const reconfigure = params.get('reconfigure') === '1';
 
-/* =====================================================================
-   INTRO — the interrogation, run on its own 320x240 canvas.
-
-   The sequence itself lives in shared/gm-intro.js: it owns a 30 Hz clock,
-   the game's font, its backgrounds and its drone. This end only starts it,
-   scales the frame to whole device pixels, and stores what it answers.
-   ===================================================================== */
 const introCanvas = document.getElementById('introCanvas');
-let introRunning = false;
 let abortIntro = null;
 
 /* An INTEGER scale, measured in DEVICE pixels — see the note in the style
-   block. Below 1x there is no whole multiple to land on, so it falls back to
-   filling: showing the whole frame slightly soft beats cropping it. */
+   block. Below 1x there is no whole multiple to land on, so it falls back
+   to filling: showing the whole frame slightly soft beats cropping it. */
 function fitIntro(){
   const dpr = window.devicePixelRatio || 1;
   const fit = Math.min((window.innerWidth * dpr) / 320, (window.innerHeight * dpr) / 240);
@@ -310,10 +128,12 @@ function fitIntro(){
 }
 window.addEventListener('resize', fitIntro);
 
+/** Everything here ends the same way: in the room. */
+function toRoom(){
+  location.href = 'DEVICE_ROOM/';
+}
+
 async function runInterrogation(){
-  if(introRunning) return;
-  introRunning = true;
-  show('intro');
   fitIntro();
   const io = {
     soundOn: store.soundOn,
@@ -324,180 +144,43 @@ async function runInterrogation(){
   try {
     answers = await runIntro(introCanvas, io);
   } catch (err) {
-    // If an asset is missing the sequence cannot draw, and a visitor should
-    // still reach the menu rather than sit on a black screen.
+    // If the sequence cannot draw, a visitor should still reach the room
+    // rather than sit on a black screen.
     console.error('the interrogation could not run:', err);
     answers = { photosensitive: true, soundOn: store.soundOn };
   }
-  abortIntro = null;
-  introRunning = false;
   store.flickerOK = !answers.photosensitive && !reduceMotion;
   store.soundOn = answers.soundOn;
   store.seenIntro = true;
   savePrefs(store);
   applyPrefs(store);
-  enterMenu();
+  toRoom();
 }
+
 /* The button hands the abort to the running sequence, which fades out the
-   way it would have anyway; a never-started one just takes the defaults —
-   still screens, and sound left as it was, which is on. */
-function skipIntro(){
-  if(introRunning && abortIntro){ abortIntro(); return; }
+   way it would have anyway; sound is left as it was, which is on. */
+document.getElementById('skipBtn').addEventListener('click', () => {
+  if (abortIntro) { abortIntro(); return; }
   store.flickerOK = false;
   store.seenIntro = true;
   savePrefs(store);
-  enterMenu();
-}
-
-/* =====================================================================
-   MENU
-   ===================================================================== */
-const slotKnight = document.getElementById('slotKnight');
-const emptySlots = [...document.querySelectorAll('.slot-empty')];
-const menuSlots = [slotKnight, ...emptySlots];  // index 0..3
-let menuSel = 0;
-
-async function enterMenu(){
-  show('menu');
-  const g = gen;
-  menuSel = 0; paintMenu();
-  await typeInto(document.getElementById('menuTitle'), '* SELECT A DEVICE.', 24);
-  if(gen !== g) return;
-  document.getElementById('menuTitle').innerHTML += '<span class="blink">_</span>';
-  maybeFriend();
-  maybeTitleWhisper();
-}
-
-function paintMenu(){
-  menuSlots.forEach((el,i)=>{
-    el.classList.toggle('sel', i === menuSel);
-    const h = el.querySelector('.heart');
-    if(h) h.classList.toggle('hidden', i !== menuSel);
-  });
-}
-
-function activateSlot(i){
-  if(i === 0){ goKnight(); }
-  else { goFailure(); }
-}
-
-async function goKnight(){
-  sConfirm();
-  show('connect');
-  const g = gen;
-  const t = document.getElementById('connectText');
-  await typeInto(t, '* CONNECTING TO DEVICE_KNIGHT .', 20);
-  if(!reduceMotion){
-    for(let d = 0; d < 2; d++){
-      await beat(420);
-      if(gen !== g) return;
-      t.textContent += ' .';
-      sTalk();
-    }
-  }
-  if(gen !== g) return;
-  window.location.href = 'DEVICE_KNIGHT/';
-}
-
-async function goFailure(){
-  sDeny();
-  show('failure');
-  const g = gen;
-  document.getElementById('failSupport').style.display = 'none';
-  const t = document.getElementById('failText');
-  await typeInto(t, '* THIS DEVICE HAS NOT BEEN BUILT.', 26);
-  await beat(500);
-  if(gen !== g) return;
-  t.textContent += '\n* COME BACK WHEN YOU ARE STRONGER.';
-  document.getElementById('failSupport').style.display = 'block';
-}
-
-async function goDot(){
-  /* the hidden link. reward for the curious; nothing for anyone else. */
-  show('failure');
-  const g = gen;
-  document.getElementById('failSupport').style.display = 'none';
-  const t = document.getElementById('failText');
-  await typeInto(t, '* THERE IS NOTHING HERE.', 26);
-  await beat(900);
-  if(gen !== g) return;
-  t.textContent += '\n* . . . YET.';
-}
-
-/* ---------------- the friend (rare, gated, once) ---------------- */
-let friendShown = false;
-function maybeFriend(){
-  if(friendShown || !store.flickerOK || reduceMotion) return;
-  if(Math.random() > 0.02) return;
-  friendShown = true;
-  setTimeout(()=>{
-    if(mode !== 'menu') return;
-    const e = document.getElementById('eyes');
-    e.style.display = 'block';
-    setTimeout(()=>{ e.style.display = 'none'; }, 150);
-  }, 6000 + Math.random()*14000);
-}
-
-/* ---------------- rare tab whisper ---------------- */
-function maybeTitleWhisper(){
-  if(Math.random() > 0.05) return;
-  setTimeout(()=>{
-    if(mode !== 'menu') return;
-    const old = document.title;
-    document.title = '*(do not trust the empty slots.)';
-    setTimeout(()=>{ if(mode==='menu') document.title = old; }, 4000);
-  }, 20000);
-}
-
-/* =====================================================================
-   INPUT — keyboard first, but everything tappable
-   ===================================================================== */
-document.addEventListener('keydown', (e)=>{
-  const k = e.key;
-
-  /* The interrogation reads its own keys — it is a 30 Hz scene with its own
-     clock, not a DOM view — so this handler stays out of its way. */
-  if(mode === 'intro') return;
-
-  if(mode === 'menu'){
-    if(k==='ArrowUp'){ menuSel = (menuSel+menuSlots.length-1)%menuSlots.length; paintMenu(); sMove(); e.preventDefault(); }
-    if(k==='ArrowDown'){ menuSel = (menuSel+1)%menuSlots.length; paintMenu(); sMove(); e.preventDefault(); }
-    if(k==='z'||k==='Z'||k==='Enter'){ activateSlot(menuSel); }
-    return;
-  }
-
-  /* subviews: X or Escape backs out */
-  if(k==='x'||k==='X'||k==='Escape'||k==='Backspace'){
-    if(mode==='failure'||mode==='connect'){ enterMenu(); }
-  }
+  toRoom();
 });
-
-/* tap/click — the canvas handles its own pointer input. */
-document.getElementById('skipBtn').addEventListener('click', skipIntro);
-
-slotKnight.addEventListener('click', ()=>{ menuSel = 0; paintMenu(); goKnight(); });
-slotKnight.addEventListener('focus', ()=>{ menuSel = 0; paintMenu(); });
-slotKnight.addEventListener('keydown', (e)=>{ if(e.key===' '){ e.preventDefault(); goKnight(); } });
-emptySlots.forEach((b,idx)=>{
-  b.addEventListener('click', ()=>{ menuSel = idx+1; paintMenu(); goFailure(); });
-  b.addEventListener('focus', ()=>{ menuSel = idx+1; paintMenu(); });
-});
-
-document.getElementById('navReconfig').addEventListener('click', ()=>{ runInterrogation(); });
-document.getElementById('dotLink').addEventListener('click', (e)=>{ e.preventDefault(); goDot(); });
-document.querySelectorAll('[data-back]').forEach(b=> b.addEventListener('click', enterMenu));
 
 /* =====================================================================
    BOOT — the "not found" page holds for a beat, then the void takes it.
+   A visitor who has already answered goes straight through to the room.
    ===================================================================== */
 console.log('%c* WHY ARE YOU LOOKING HERE?', 'color:#ff9bd5; font-family:monospace; font-size:14px;');
 console.log('%c* THE MENU PRECEDES THE DEVICE.', 'color:#5a5a5a; font-family:monospace;');
 
+const skipStraightThrough = store.seenIntro && !reconfigure;
+
 setTimeout(()=>{
   document.getElementById('prelude').style.display = 'none';
-  if(store.seenIntro) enterMenu();
+  if (skipStraightThrough) toRoom();
   else runInterrogation();
-}, reduceMotion ? 250 : (store.seenIntro ? 420 : 850));
+}, reduceMotion ? 250 : (skipStraightThrough ? 300 : 850));
 </script>
 <!--
   ENTRY 07.
