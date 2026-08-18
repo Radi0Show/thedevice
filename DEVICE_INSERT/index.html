@@ -55,7 +55,7 @@
 <div class="cornerlabel">DEVICE_INSERT</div>
 <a id="back" href="../">&#9664; THE DEVICE</a>
 
-<canvas id="crt" width="320" height="240"
+<canvas id="crt" width="640" height="480"
         aria-label="A television asking for a cartridge, with the site's settings on it."></canvas>
 
 <div id="keys">&#9650; &#9660; QUESTION &middot; &#9664; &#9654; ANSWER &middot; [ Z ] CONFIRM</div>
@@ -77,10 +77,10 @@
   const canvas = document.getElementById('crt');
   function fit() {
     const dpr = window.devicePixelRatio || 1;
-    const f = Math.min((innerWidth * dpr) / 320, (innerHeight * dpr) / 240);
+    const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);
     const s = f >= 1 ? Math.floor(f) : f;
-    canvas.style.width = `${(320 * s) / dpr}px`;
-    canvas.style.height = `${(240 * s) / dpr}px`;
+    canvas.style.width = `${(640 * s) / dpr}px`;
+    canvas.style.height = `${(480 * s) / dpr}px`;
   }
   addEventListener('resize', fit);
   fit();
@@ -107,6 +107,7 @@
   try {
     await runCrt(canvas, {
       fontBase: '../assets/gonermaker/',
+      shader: '../assets/crt/shd_crt2.frag',
       title: ['INSERT', 'THE KNIGHT'],
       questions,
       footer: '[ Z ] TO BEGIN',

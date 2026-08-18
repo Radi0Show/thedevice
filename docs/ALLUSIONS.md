@@ -257,19 +257,29 @@ copy and no position to match, because the game never puts the line up.
 cartridge this site is actually about, set in `fnt_main`, the font the rest
 of the site already speaks in.
 
-What *is* copied is the effect, from the object's own numbers:
+What *is* copied is the effect, and it is **the shader itself**, not a
+likeness of it. `assets/crt/shd_crt2.frag` is the chapter's own fragment
+shader extracted from the data file — everything from `#define PI` down is
+character for character the game's code, with GameMaker's desktop-GLSL
+preamble swapped for the two lines WebGL1 needs. It runs against the two
+uniforms the object feeds it:
 
-| what | value | source |
+| uniform | value | source |
 |---|---|---|
-| aberration | `0.34` | `obj_ch5_LW20W_crt` Step |
-| wobble | `spd = scr_wave(0, 0.75, 4, 0)`, accumulated into `time` every frame | Step + `scr_wave` |
-| `scr_wave(a,b,p,ph)` | `a + h + sin(((now/1000 + p*ph) / p) * 2pi) * h`, `h = (b-a)/2` | the script, verbatim |
+| `aberation_amount` | `0.34` | `obj_ch5_LW20W_crt` Step |
+| `TIME` | accumulates `scr_wave(0, 0.75, 4, 0)` every frame | Step + `scr_wave` |
+| `scr_wave(a,b,p,ph)` | `a + h + sin(((now/1000 + p*ph)/p) * 2pi) * h`, `h = (b-a)/2` | the script, verbatim |
 
-A canvas cannot run the chapter's GLSL, so the split is done by hand: the
-frame drawn three times, red pushed one way and blue the other by an offset
-that breathes on `time`, recombined additively. The three channel buffers
-are allocated once — the first version built two canvases per channel per
-frame, ninety allocations a second to draw the same three pictures.
+**Do not "simplify" this back into a canvas filter.** The first version of
+this screen split the colour channels by hand in 2D canvas, and it read as
+flat next to the real thing — because shd_crt2 is not an aberration effect,
+it is a whole television. In order: barrel warp (0.6), per-pixel noise
+(0.04), horizontal interference (0.25), a rolling band (0.4 at speed 0.5)
+that ALSO multiplies the aberration, a 3-tap Gaussian horizontal filter,
+Gaussian scanlines (0.4 at strength -8), an RGB aperture grille (0.6), a
+brightness lift, and a vignette (0.7/0.6). The picture is composed at
+640x480 because the shader's own `resolution` const is 640x480 and its
+emulated pixel grid has to land where it expects.
 
 The questions on it are the interrogation's own two, asked as settings
 rather than as questions, and they write to the same stored preferences.
