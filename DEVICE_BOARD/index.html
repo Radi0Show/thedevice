@@ -2,102 +2,181 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DEVICE_BOARD</title>
-<meta name="description" content="The board game from DELTARUNE Chapter 3, rebuilt from the room itself — walk Kris, and the whole screen shifts with him.">
+<meta name="description" content="The board — every device, built and unbuilt.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="THE DEVICE">
 <meta property="og:title" content="DEVICE_BOARD">
-<meta property="og:description" content="WALK. THE SCREEN MOVES WITH YOU.">
+<meta property="og:description" content="ONE DEVICE READY. THE REST ARE NOT NAMED YET.">
 <meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_BOARD/">
 <meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <style>
+  /* THE BLUE IS THE CONSOLE'S OWN.
+     obj_swordroute_consolestarter boots to #2F38B0 and prints NO CONTROLLER
+     on it in white. This screen is that screen, holding a list instead. */
+  :root { --boot-blue: #2F38B0; --blue-dim: #1F289F; }
+
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { height:100%; background:#000; overflow:hidden; }
+  html, body { height:100%; background: var(--boot-blue); }
   body {
     font-family:'Courier New', Courier, monospace;
     font-weight:bold; color:#fff; text-transform:uppercase;
     -webkit-font-smoothing:none; cursor:default;
+    display:flex; flex-direction:column; align-items:center;
+    padding:8vh 20px 0;
+    min-height:100dvh;
   }
-  /* 640x480, scaled by a WHOLE number of device pixels — a fractional
-     factor gives some source columns n device pixels and their neighbours
-     n+1, which is exactly how a 16px sprite ends up lopsided. */
-  #board {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    width:min(100vw, calc(100vh * 4 / 3));
-    height:min(100vh, calc(100vw * 3 / 4));
-    image-rendering:pixelated;
-    background:#000;
+
+  .cornerlabel {
+    position:fixed; top:14px; left:16px;
+    font-size:12px; color:rgba(255,255,255,.35); letter-spacing:.1em;
   }
-  .cornerlabel { position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; z-index:5; }
   #back {
-    position:fixed; top:12px; right:16px; z-index:5;
-    font-size:12px; color:#5a5a5a; text-decoration:none; letter-spacing:.1em;
+    position:fixed; top:12px; right:16px;
+    font-size:12px; color:rgba(255,255,255,.35);
+    text-decoration:none; letter-spacing:.1em;
   }
   #back:hover, #back:focus-visible { color:#ffff00; outline:none; }
-  #keys {
-    position:fixed; bottom:26px; left:0; right:0; z-index:5;
-    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
+
+  h1 { font-size:15px; letter-spacing:.14em; margin-bottom:6px; }
+  .sub { font-size:11px; color:rgba(255,255,255,.5); letter-spacing:.08em; margin-bottom:38px; }
+
+  ul { list-style:none; width:100%; max-width:430px; }
+  li { margin-bottom:6px; }
+
+  .row {
+    display:flex; align-items:center; gap:12px;
+    width:100%; text-align:left;
+    background:none; border:none; cursor:pointer;
+    font-family:inherit; font-weight:bold; text-transform:uppercase;
+    color:#fff; font-size:15px; letter-spacing:.06em;
+    padding:9px 10px; outline:none;
+    text-decoration:none;
   }
+  /* The cursor is a caret in the gutter, the way the console's own prompts
+     mark a line. Selection is yellow, as everywhere else on the site. */
+  .row::before { content:"\00a0"; width:14px; display:inline-block; }
+  .row.sel { color:#ffff00; }
+  .row.sel::before { content:"\25B8"; }
+
+  /* The unbuilt ones are dimmer, and unreadable. */
+  .row.locked { color:rgba(255,255,255,.42); cursor:default; }
+  .row.locked.sel { color:#ffff00; }
+  .row .glyphs { display:inline-flex; align-items:center; }
+  .row .glyphs svg { display:block; }
+
+  .status { margin-left:auto; font-size:10px; letter-spacing:.1em; opacity:.75; }
+
+  .note {
+    margin-top:34px; font-size:11px; line-height:2;
+    white-space:pre-line;   /* the note is written as two starred lines */
+    color:rgba(255,255,255,.45); letter-spacing:.06em;
+    max-width:430px; text-align:left; min-height:44px;
+  }
+
   footer {
-    position:fixed; bottom:6px; left:0; right:0; z-index:5;
-    text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
+    margin-top:auto; padding:26px 0 14px;
+    font-size:10px; color:rgba(255,255,255,.3);
+    letter-spacing:.08em; text-align:center; line-height:2;
   }
-  footer a { color:#2e2e2e; text-decoration:none; }
-  #failed {
-    display:none; position:fixed; inset:0; z-index:20; background:#000;
-    flex-direction:column; align-items:center; justify-content:center; gap:1.5rem;
-    font-size:17px; line-height:1.9; text-align:center;
-  }
-  #failed a { color:#5a5a5a; text-decoration:none; }
-  #failed a:hover { color:#ffff00; }
+  footer a { color:rgba(255,255,255,.45); text-decoration:none; }
+  footer a:hover { color:#ffff00; }
+
+  @media (max-width:480px){ .row { font-size:13px; } }
 </style>
 </head>
 <body>
 <div class="cornerlabel">DEVICE_BOARD</div>
-<a id="back" href="../">&#9664; DEVICE_MENU</a>
+<a id="back" href="../">&#9664; THE DEVICE</a>
 
-<canvas id="board" width="640" height="480"
-        aria-label="The board game room. Arrow keys or WASD walk Kris; the screen shifts a whole pane at a time."></canvas>
+<h1>DEVICE BOARD</h1>
+<div class="sub">ONE READY &middot; FIVE NOT NAMED</div>
 
-<div id="keys">&#9664; &#9654; &#9650; &#9660; / WASD &middot; WALK TO THE EDGE AND THE SCREEN MOVES</div>
+<ul id="list"></ul>
+
+<div class="note" id="note"></div>
 
 <footer>
-  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX<br>
+  DELTARUNE &copy; TOBY FOX &middot;
   <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
 </footer>
 
-<div id="failed">
-  <p>* THE BOARD DID NOT LOAD.</p>
-  <a href="../">&larr; DEVICE_MENU</a>
-</div>
-
 <script type="module">
-  import { runBoard } from '../shared/board.js';
-  const canvas = document.getElementById('board');
+import { wingdings } from '../shared/wingdings.js';
 
-  // Integer scaling, measured in DEVICE pixels — see the note in the style
-  // block. Below 1x there is no whole multiple to land on, so it falls back
-  // to filling rather than cropping the screen.
-  function fit() {
-    const dpr = window.devicePixelRatio || 1;
-    const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);
-    const s = f >= 1 ? Math.floor(f) : f;
-    canvas.style.width = `${(640 * s) / dpr}px`;
-    canvas.style.height = `${(480 * s) / dpr}px`;
-  }
-  addEventListener('resize', fit);
-  fit();
+/* The board. One device is built; the rest are listed in the script you
+   cannot read, which says they exist without promising when. */
+const DEVICES = [
+  { name: 'DEVICE_KNIGHT', href: '../DEVICE_KNIGHT/', ready: true,
+    status: 'READY', note: '* THE ROARING KNIGHT. CHAPTER 3.\n* PRESS [ Z ] TO BEGIN.' },
+  { name: 'DEVICE_JEVIL',   ready: false },
+  { name: 'DEVICE_SPAMTON', ready: false },
+  { name: 'DEVICE_MANTLE',  ready: false },
+  { name: 'DEVICE_GERSON',  ready: false },
+  { name: 'DEVICE_PINK',    ready: false },
+];
 
-  try {
-    await runBoard(canvas, '../assets/board/');
-  } catch (err) {
-    console.error('board failed to load:', err);
-    document.getElementById('failed').style.display = 'flex';
+const NOT_BUILT = '* THIS DEVICE HAS NOT BEEN BUILT.\n* IT IS NOT NAMED YET.';
+
+const list = document.getElementById('list');
+const note = document.getElementById('note');
+const rows = [];
+
+DEVICES.forEach((d, i) => {
+  const li = document.createElement('li');
+  const row = document.createElement(d.ready ? 'a' : 'button');
+  row.className = 'row' + (d.ready ? '' : ' locked');
+  if (d.ready) row.href = d.href; else row.type = 'button';
+
+  if (d.ready) {
+    const label = document.createElement('span');
+    label.textContent = d.name;
+    row.append(label);
+  } else {
+    // Unreadable, but the real name is still in the DOM for a screen
+    // reader, find-in-page and anyone who copies the line.
+    const g = wingdings(d.name, 3);
+    g.className = 'glyphs';
+    row.append(g);
   }
+
+  const status = document.createElement('span');
+  status.className = 'status';
+  status.textContent = d.ready ? d.status : '';
+  row.append(status);
+
+  row.addEventListener('mouseenter', () => select(i));
+  row.addEventListener('focus', () => select(i));
+  row.addEventListener('click', (e) => { if (!d.ready) e.preventDefault(); });
+  li.append(row);
+  list.append(li);
+  rows.push(row);
+});
+
+let sel = 0;
+function select(i) {
+  sel = i;
+  rows.forEach((r, n) => r.classList.toggle('sel', n === sel));
+  note.textContent = DEVICES[sel].ready ? DEVICES[sel].note : NOT_BUILT;
+}
+
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'arrowdown' || k === 's') { e.preventDefault(); select((sel + 1) % rows.length); rows[sel].focus(); }
+  if (k === 'arrowup' || k === 'w') { e.preventDefault(); select((sel + rows.length - 1) % rows.length); rows[sel].focus(); }
+  if (k === 'z' || k === 'enter') {
+    const d = DEVICES[sel];
+    if (d.ready) { e.preventDefault(); location.href = d.href; }
+  }
+  if (k === 'x' || k === 'escape') { e.preventDefault(); location.href = '../'; }
+});
+
+select(0);
 </script>
 </body>
 </html>

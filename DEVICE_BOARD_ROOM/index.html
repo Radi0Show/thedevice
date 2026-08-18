@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DEVICE_BOARD_ROOM</title>
+<meta name="description" content="The board game from DELTARUNE Chapter 3, rebuilt from the room itself — walk Kris, and the whole screen shifts with him.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_BOARD">
+<meta property="og:description" content="WALK. THE SCREEN MOVES WITH YOU.">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_BOARD_ROOM/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#000; overflow:hidden; }
+  body {
+    font-family:'Courier New', Courier, monospace;
+    font-weight:bold; color:#fff; text-transform:uppercase;
+    -webkit-font-smoothing:none; cursor:default;
+  }
+  /* 640x480, scaled by a WHOLE number of device pixels — a fractional
+     factor gives some source columns n device pixels and their neighbours
+     n+1, which is exactly how a 16px sprite ends up lopsided. */
+  #board {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(100vw, calc(100vh * 4 / 3));
+    height:min(100vh, calc(100vw * 3 / 4));
+    image-rendering:pixelated;
+    background:#000;
+  }
+  .cornerlabel { position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; z-index:5; }
+  #back {
+    position:fixed; top:12px; right:16px; z-index:5;
+    font-size:12px; color:#5a5a5a; text-decoration:none; letter-spacing:.1em;
+  }
+  #back:hover, #back:focus-visible { color:#ffff00; outline:none; }
+  #keys {
+    position:fixed; bottom:26px; left:0; right:0; z-index:5;
+    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
+  }
+  footer {
+    position:fixed; bottom:6px; left:0; right:0; z-index:5;
+    text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
+  }
+  footer a { color:#2e2e2e; text-decoration:none; }
+  #failed {
+    display:none; position:fixed; inset:0; z-index:20; background:#000;
+    flex-direction:column; align-items:center; justify-content:center; gap:1.5rem;
+    font-size:17px; line-height:1.9; text-align:center;
+  }
+  #failed a { color:#5a5a5a; text-decoration:none; }
+  #failed a:hover { color:#ffff00; }
+</style>
+</head>
+<body>
+<div class="cornerlabel">DEVICE_BOARD_ROOM</div>
+<a id="back" href="../">&#9664; DEVICE_MENU</a>
+
+<canvas id="board" width="640" height="480"
+        aria-label="The board game room. Arrow keys or WASD walk Kris; the screen shifts a whole pane at a time."></canvas>
+
+<div id="keys">&#9664; &#9654; &#9650; &#9660; / WASD &middot; WALK TO THE EDGE AND THE SCREEN MOVES</div>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<div id="failed">
+  <p>* THE BOARD DID NOT LOAD.</p>
+  <a href="../">&larr; DEVICE_MENU</a>
+</div>
+
+<script type="module">
+  import { runBoard } from '../shared/board.js';
+  const canvas = document.getElementById('board');
+
+  // Integer scaling, measured in DEVICE pixels — see the note in the style
+  // block. Below 1x there is no whole multiple to land on, so it falls back
+  // to filling rather than cropping the screen.
+  function fit() {
+    const dpr = window.devicePixelRatio || 1;
+    const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);
+    const s = f >= 1 ? Math.floor(f) : f;
+    canvas.style.width = `${(640 * s) / dpr}px`;
+    canvas.style.height = `${(480 * s) / dpr}px`;
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  try {
+    await runBoard(canvas, '../assets/board/');
+  } catch (err) {
+    console.error('board failed to load:', err);
+    document.getElementById('failed').style.display = 'flex';
+  }
+</script>
+</body>
+</html>

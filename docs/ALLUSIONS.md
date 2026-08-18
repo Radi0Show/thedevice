@@ -153,9 +153,9 @@ vocabulary for FUTURE surfaces (a delete-your-save-data control wants
 `TRULY ERASE IT?`; a gauntlet mode wants `SHALL WE HASTEN?`). Spending them
 now, on nothing, is the overfitting this file exists to prevent.
 
-## DEVICE_BOARD — the room, not a likeness
+## DEVICE_BOARD_ROOM — the room, not a likeness
 
-`/DEVICE_BOARD/` is `room_board_preshadowmantle` from Chapter 3 — the board
+`/DEVICE_BOARD_ROOM/` is `room_board_preshadowmantle` from Chapter 3 — the board
 stage Kris plays for a rank (`scr_get_rank_letter`: Z, C, B, A, S, T) — put
 back together from the room itself rather than rebuilt by eye. The room's
 tiles, its walls and Kris's starting cell are dumped straight out of the
@@ -283,3 +283,34 @@ emulated pixel grid has to land where it expects.
 
 The questions on it are the interrogation's own two, asked as settings
 rather than as questions, and they write to the same stored preferences.
+
+
+## DEVICE_BOARD — the list, and the names you cannot read
+
+`/DEVICE_BOARD/` is the console's own boot screen holding a list. The blue
+is `#2F38B0`, straight out of `obj_swordroute_consolestarter`, and the white
+on it is the same white it prints NO CONTROLLER in.
+
+One device is named. The other five — JEVIL, SPAMTON, MANTLE, GERSON, PINK —
+are listed in a script you cannot read, because a slot that says
+"JEVIL, COMING SOON" is a roadmap, and a roadmap is a promise about a date.
+An unreadable name says the thing exists without saying when.
+
+**The script is drawn here, not borrowed.** Wingdings is a Microsoft font:
+it cannot be embedded, it is missing on most phones and every Linux box, and
+a missing symbol font falls back to *legible letters* — which would leak
+exactly what the cipher hides. The game has no wingdings font either (no
+`fnt_` and no sprite by that name in chapters 1, 3 or 5), so there was
+nothing to extract. `shared/wingdings.js` draws 5x7 cells to match the
+site's other pixel glyphs, one symbol per letter, as SVG rects — identical
+on every machine, crisp at any size.
+
+It is a fixed substitution, so the same letter always gives the same symbol.
+The shared `DEVICE_` prefix reads as a shared prefix, the names are
+comparable, and anyone who wants to sit down and decode them can. That is
+the right amount of secret.
+
+The real names stay in the DOM behind each row, visually hidden, so
+find-in-page, copy, and a screen reader all still get them. The cipher is
+for the eye; it is not a way of withholding the page from someone who needs
+it read aloud.
