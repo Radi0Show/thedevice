@@ -31,8 +31,23 @@ const VIEW_W = 640, VIEW_H = 480;
 const MS_PER_FRAME = 1000 / 30;
 const SCALE = 2;                       // scr_darksize()
 
-// The gap in the background sprite, in room pixels.
-const SCREEN_X = 138, SCREEN_Y = 42, SCREEN_W = 384, SCREEN_H = 288;
+// THE BACKGROUND HAS AN ORIGIN, AND IT IS NOT (0,0).
+//
+// `spr_gameshow_swordroutebg` carries ox=5, oy=5. GameMaker positions every
+// draw relative to the origin, so `scr_dark_marker(0, 0, ...)` puts the
+// sprite's top-left at (-10,-10) once the dark world's scale of 2 is in.
+// Drawing it at a flat (0,0) — which is what this did at first — slid the
+// whole room ten pixels down and right, and the giveaway was the TV glow:
+// spr_gameshow_swordroute_tvglow has origin (0,0) and its trapezoid is cut
+// to the screen exactly, so the light landed ten pixels off the hole it was
+// supposed to be spilling out of.
+const BG_ORIGIN_X = 5, BG_ORIGIN_Y = 5;
+const BG_OFFSET_X = -BG_ORIGIN_X * 2, BG_OFFSET_Y = -BG_ORIGIN_Y * 2;
+
+// The gap in that sprite, in room pixels, with the origin accounted for:
+// sprite (69,21)-(260,164) -> (128,32) 384x288. The glow's top edge spans
+// exactly 128..512, which is how this was confirmed.
+const SCREEN_X = 128, SCREEN_Y = 32, SCREEN_W = 384, SCREEN_H = 288;
 export const SCREEN = { x: SCREEN_X, y: SCREEN_Y, w: SCREEN_W, h: SCREEN_H };
 
 const BWSPEED = 3;                     // obj_mainchara Create
@@ -498,6 +513,19 @@ export async function runRoom(canvas, opts = {}) {
       ctx.textAlign = 'center';
       ctx.fillText('THE DEVICE', SCREEN_X + SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2);
     }
+    // THE TUBE'S FALLOFF. A flat fill reads as a printed panel; a screen is
+    // brighter down the middle and loses its corners. This sits over
+    // whatever the set happens to be showing, because it belongs to the
+    // glass rather than to the picture.
+    const vg = ctx.createRadialGradient(
+      SCREEN_X + SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2, SCREEN_W * 0.18,
+      SCREEN_X + SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2, SCREEN_W * 0.72);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(0.62, 'rgba(0,0,16,0.20)');
+    vg.addColorStop(1, 'rgba(0,0,12,0.52)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
+
     ctx.restore();
   }
 
@@ -508,7 +536,7 @@ export async function runRoom(canvas, opts = {}) {
     // The picture goes down first; the room is drawn over it and its own
     // frame does the occluding.
     drawScreen();
-    ctx.drawImage(bg, 0, 0, bg.width * SCALE, bg.height * SCALE);
+    ctx.drawImage(bg, BG_OFFSET_X, BG_OFFSET_Y, bg.width * SCALE, bg.height * SCALE);
 
     // obj_gameshow_swordroute: the glow the television throws on the room,
     // additive, tinted by whatever the screen is showing.

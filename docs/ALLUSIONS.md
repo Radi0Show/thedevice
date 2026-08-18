@@ -355,3 +355,35 @@ is never seen.
 
 The sprites are the game's own — `spr_zapper_tvturnoff1` (140x238, the bar)
 and `spr_zapper_tvturnoff2` (390x390, the dot).
+
+## The origin, and the light that gave it away
+
+`spr_gameshow_swordroutebg` carries **ox=5, oy=5**. GameMaker positions every
+draw relative to the origin, so `scr_dark_marker(0, 0, ...)` puts its
+top-left at **(-10,-10)** once the dark world's scale of 2 is applied.
+Drawing it at a flat (0,0) slid the entire room ten pixels down and right.
+
+Nothing about the room looked wrong on its own — the giveaway was the light.
+`spr_gameshow_swordroute_tvglow` has origin (0,0) and its trapezoid is cut to
+the screen exactly: its top row spans sprite x 64..255, which is room
+x 128..512. With the background misplaced, the hole sat at 138..522 and the
+light spilled from ten pixels beside the screen it was supposed to be
+leaving. Correcting the origin puts both at 128..512 and the glow lands.
+
+| sprite | origin | consequence |
+|---|---|---|
+| `spr_gameshow_swordroutebg` | **(5,5)** | drawn at (-10,-10); the screen hole is (128,32) 384x288 |
+| `spr_gameshow_swordroute_tvglow` | (0,0) | drawn at (0,320); its top edge spans 128..512 |
+| `spr_gameshow_console` | (0,0) | drawn at (202,322) |
+| `spr_zapper_tvturnoff1` | (70,119) | centred — 140x238, so exactly its middle |
+| `spr_zapper_tvturnoff2` | (198,193) | centred |
+
+This is knight-sim's own lesson arriving on schedule: its `manifest.json`
+exists because "GameMaker positions every draw relative to the origin, so
+without it the art sits offset from the physics". The PNG cannot tell you
+where it goes. Extract origins with the sprite.
+
+**The vignette** over the screen is not from the game — no sprite or shader
+draws one on this television. It is here because a flat fill reads as a
+printed panel rather than a lit tube, and it sits over whatever the set is
+showing, since it belongs to the glass and not to the picture.
