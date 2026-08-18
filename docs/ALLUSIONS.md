@@ -152,3 +152,53 @@ POWER.`, `SHALL WE HASTEN?`, `YOU WON'T WIN LIKE THIS.`). These are the
 vocabulary for FUTURE surfaces (a delete-your-save-data control wants
 `TRULY ERASE IT?`; a gauntlet mode wants `SHALL WE HASTEN?`). Spending them
 now, on nothing, is the overfitting this file exists to prevent.
+
+## DEVICE_BOARD — the room, not a likeness
+
+`/DEVICE_BOARD/` is `room_board_preshadowmantle` from Chapter 3 — the board
+stage Kris plays for a rank (`scr_get_rank_letter`: Z, C, B, A, S, T) — put
+back together from the room itself rather than rebuilt by eye. The room's
+tiles, its walls and Kris's starting cell are dumped straight out of the
+data file:
+
+```sh
+ROOM_NAME=room_board_preshadowmantle UndertaleModCli load <game.ios> \
+    -s tools/patches/dump_room.csx -o /tmp/x.ios            # tiles + tileset
+ROOM_NAME=room_board_preshadowmantle UndertaleModCli load <game.ios> \
+    -s tools/patches/dump_room_instances.csx -o /tmp/x.ios  # walls, Kris, triggers
+```
+
+| what | value | source |
+|---|---|---|
+| room | 2460x960, a 77x30 grid of 32px tiles from `bg_board_adventure_tileset` | the room |
+| screen | **384x256, fixed at (128,64)** | `obj_board_camera` Create — `gamescreenWidth` / `gamescreenHeight` |
+| world offset | `moveX = 128 - roomStartingX`, `moveY = 64 - roomStartingY` → (0, -256) here | `obj_board_camera` Create |
+| Kris | 16x16 sprite at the instance's scale 2 = 32x32, starting at room (304,496) | `obj_mainchara_board` + the instance |
+| speed | `wspeed = 4` | `obj_mainchara_board` Create |
+| bounds | x 128..480, y 64..288 — the pane inset by Kris's own 32px | `obj_mainchara_board` Step, lines 1-4 |
+| walls | 21 `obj_board_solid`, 32x32 cells scaled per instance | the room |
+| walk cycle | two frames, `image_index += 0.125` while `walkbuffer > 3`; `walkbuffer = 6` **only when x or y actually changed** | `obj_mainchara_board` Step |
+| shift | 24px/frame horizontally, 16 vertically — 16 frames either way | `obj_board_camera` Step |
+
+**THE CAMERA NEVER MOVES.** This is the thing to understand before touching
+any of it: the screen is a fixed window and Kris is clamped inside it. When
+he crosses an edge, `obj_board_camera` translates *the entire world* — the
+tile layers by `layer_x`/`layer_y`, and every `obj_board_parent` instance,
+Kris included — one whole screen over. Everything in the room moves with the
+screen; the screen stays put.
+
+**And Kris gets two pixels back.** The shift moves every board instance by
+the full movespeed and then nudges KRIS ALONE by 2 the other way, every
+frame. Over 16 frames he travels 352 instead of 384 — from one bound to
+exactly the other (480 - 352 = 128) — so he walks in at the edge of the new
+screen. Leaving it out was not a cosmetic error: he overshot the opposite
+bound, tripped the edge test again, and the screen shifted back and forth
+forever. It is four lines and the whole transition depends on them.
+
+The edge only opens onto somewhere real: the shift is refused if a solid
+sits one cell beyond the boundary, which is why the room's outer walls are
+walls and not exits.
+
+Not included, and honestly labelled: the board's sword, its enemies, the
+rank tally and the surrounding game-show set. The room, its walls, its
+sprites and the way it moves are the whole of what this is.
