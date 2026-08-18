@@ -87,6 +87,12 @@ export async function runRoom(canvas, opts = {}) {
   // fnt_8bit — "AdventureBoard", the board's own face, monospaced at 16.
   const boardFont = await loadFont(opts.mantleBase ?? 'assets/mantle/', 'fnt_8bit');
 
+  // obj_tvturnoff_manager's two pieces: the bar that collapses and the dot
+  // that pops. Missing assets must not stop the room loading, so the
+  // transition degrades to a plain navigation.
+  const tvBar = await loadImage(`${opts.tvBase ?? 'assets/tv/'}bar.png`).catch(() => null);
+  const tvDot = await loadImage(`${opts.tvBase ?? 'assets/tv/'}dot.png`).catch(() => null);
+
   const [bg, consoleImg, tvglow, krisHold, ...rest] = await Promise.all([
     loadImage(`${base}bg.png`),
     loadImage(`${base}console.png`),
@@ -103,6 +109,12 @@ export async function runRoom(canvas, opts = {}) {
   const nocontroller = new Audio(`${base}nocontroller.wav`);
   const tvstatic = new Audio(`${base}tvstatic.wav`);
   nocontroller.volume = 0.4; tvstatic.volume = 0.35;
+  // obj_tvturnoff_manager's two cues. Played in reverse order, because the
+  // picture is.
+  const tvBase = opts.tvBase ?? 'assets/tv/';
+  const sndTvOff = new Audio(`${tvBase}tvturnoff.wav`);
+  const sndTvOff2 = new Audio(`${tvBase}tvturnoff2.wav`);
+  sndTvOff.volume = 0.5; sndTvOff2.volume = 0.5;
   const play = (a) => { if (soundOn) { a.currentTime = 0; a.play().catch(() => {}); } };
   const stop = (a) => { a.pause(); a.currentTime = 0; };
 
@@ -124,7 +136,7 @@ export async function runRoom(canvas, opts = {}) {
       if (k === 'd') deviceSel = (deviceSel + 1) % DEVICES.length;
       if (k === 'z') {
         const d = DEVICES[deviceSel];
-        if (d.ready) opts.onLaunch ? opts.onLaunch(d.href) : (location.href = d.href);
+        if (d.ready) startLaunch(d.href);
         else notBuilt = 90;   // three seconds of saying so
       }
       return;
@@ -207,6 +219,80 @@ export async function runRoom(canvas, opts = {}) {
   let deviceSel = 0;
   let plugged = false;
   let notBuilt = 0;          // frames left on the "not built" line
+
+  /* ---------------- THE SET TURNS ON, AND TAKES YOU WITH IT ----------------
+   *
+   * obj_tvturnoff_manager, backwards. Its Draw runs three phases:
+   *
+   *   con 0   5 frames  a white bar at scale (6, 10) fades in
+   *   con 1   8 frames  yscale eases 10 -> 0.05: the picture collapses to a
+   *                     line. snd_tvturnoff on frame 4.
+   *   con 2  30 frames  xscale eases -> 0 while a dot pops to 0.4 over 5
+   *                     frames and shrinks away again. snd_tvturnoff2.
+   *
+   * Run in reverse that is a set coming ON: a dot, a line thrown out of it,
+   * the line opening into a full white field — and the navigation happens
+   * under the white, so the page change is never seen. The sounds play in
+   * reverse order for the same reason the picture does.
+   */
+  let launch = null;
+
+  function startLaunch(href) {
+    if (launch) return;
+    launch = { href, t: 0, gone: false };
+    play(sndTvOff2);
+  }
+
+  const LAUNCH_DOT = 10;      // the dot swelling out of nothing
+  const LAUNCH_LINE = 12;     // the line thrown wide
+  const LAUNCH_OPEN = 10;     // the field opening vertically
+  const LAUNCH_TOTAL = LAUNCH_DOT + LAUNCH_LINE + LAUNCH_OPEN + 6;
+
+  function stepLaunch() {
+    if (!launch) return;
+    launch.t += 1;
+    if (launch.t === LAUNCH_DOT) play(sndTvOff);
+    // The white is total by now, so the page can change underneath it.
+    if (launch.t >= LAUNCH_TOTAL && !launch.gone) {
+      launch.gone = true;
+      if (opts.onLaunch) opts.onLaunch(launch.href);
+      else location.href = launch.href;
+    }
+  }
+
+  /** The reversed animation, drawn over the whole view. */
+  function drawLaunch() {
+    if (!launch) return;
+    const t = launch.t;
+    const cx = VIEW_W / 2, cy = VIEW_H / 2;
+    const ease = (a, b, k) => a + (b - a) * Math.min(1, Math.max(0, k));
+
+    // Phase 1 — the dot pops out of nothing and fades back down.
+    if (tvDot && t < LAUNCH_DOT + LAUNCH_LINE) {
+      const k = t / LAUNCH_DOT;
+      const sc = k <= 1 ? ease(0, 0.4, k) : ease(0.4, 0, (t - LAUNCH_DOT) / LAUNCH_LINE);
+      if (sc > 0) {
+        ctx.drawImage(tvDot, cx - (tvDot.width * sc) / 2, cy - (tvDot.height * sc) / 2,
+          tvDot.width * sc, tvDot.height * sc);
+      }
+    }
+
+    // Phase 2 — the line is thrown wide; phase 3 — it opens into a field.
+    if (tvBar && t >= LAUNCH_DOT) {
+      const wk = Math.min(1, (t - LAUNCH_DOT) / LAUNCH_LINE);
+      const hk = Math.max(0, (t - LAUNCH_DOT - LAUNCH_LINE) / LAUNCH_OPEN);
+      const xs = ease(0, 6, wk);
+      const ys = ease(0.05, 10, hk);
+      const w = tvBar.width * xs, h = tvBar.height * ys;
+      ctx.drawImage(tvBar, cx - w / 2, cy - h / 2, w, h);
+    }
+
+    // …and once it is wide open, plain white, so nothing shows through.
+    if (t >= LAUNCH_DOT + LAUNCH_LINE + LAUNCH_OPEN) {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+    }
+  }
   let screenState = 'nocontroller';   // what the television is showing
   let staticTimer = 0;
   let onBooted = opts.onBooted ?? (() => {});
@@ -446,6 +532,8 @@ export async function runRoom(canvas, opts = {}) {
         { color: '#ffff00' });
     }
 
+    drawLaunch();
+
     // The prompt, only where it means something.
     if (con === 'idle' && atConsole()) {
       ctx.fillStyle = '#ffff00';
@@ -465,6 +553,8 @@ export async function runRoom(canvas, opts = {}) {
       acc -= MS_PER_FRAME;
       stepKris();
       stepConsole();
+      stepLaunch();
+      if (notBuilt > 0) notBuilt -= 1;
       pressed.clear();
     }
     draw();
@@ -499,6 +589,8 @@ export async function runRoom(canvas, opts = {}) {
     get plugged() { return plugged; },
     atConsole,
     get deviceSel() { return deviceSel; },
+    get launch() { return launch; },
+    startLaunch,
     suspend(v = true) { suspended = v; },
     press: (k, on = true) => { if (on) { held.add(k); pressed.add(k); } else held.delete(k); },
     stop() {

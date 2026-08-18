@@ -366,3 +366,23 @@ read out of the room:
   in front of anything — it collides with the console while his feet are
   still a body-length away. Overworld characters resolve at the base, and so
   does this one.
+
+## Going in — obj_tvturnoff_manager, backwards
+
+Choosing DEVICE_KNIGHT plays the set turning ON, which is the game's own
+turn-OFF run in reverse. Its Draw has three phases:
+
+| phase | frames | what | cue |
+|---|---|---|---|
+| con 0 | 5 | a white bar at scale (6, 10) fades in | — |
+| con 1 | 8 | `_yscale1` eases 10 → 0.05: the picture collapses to a line | `snd_tvturnoff` on frame 4 |
+| con 2 | 30 | `_xscale1` eases → 0 while `spr_zapper_tvturnoff2` pops to 0.4 over 5 frames and shrinks away | `snd_tvturnoff2` |
+
+Reversed, that reads as a dot swelling out of nothing, throwing itself wide
+into a line, and the line opening into a full white field. The two cues play
+in reverse order for the same reason the picture does. The navigation fires
+only once the field is total, so the page change happens under the white and
+is never seen.
+
+The sprites are the game's own — `spr_zapper_tvturnoff1` (140x238, the bar)
+and `spr_zapper_tvturnoff2` (390x390, the dot).
