@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DEVICE_ROOM</title>
+<meta name="description" content="The room the game is played in. Walk to the console and plug in the controller.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_ROOM">
+<meta property="og:description" content="NO CONTROLLER.">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_ROOM/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#000; overflow:hidden; }
+  body {
+    font-family:'Courier New', Courier, monospace;
+    font-weight:bold; color:#fff; text-transform:uppercase;
+    -webkit-font-smoothing:none; cursor:default;
+  }
+  #room {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(100vw, calc(100vh * 4 / 3));
+    height:min(100vh, calc(100vw * 3 / 4));
+    image-rendering:pixelated;
+    background:#000;
+    transition:opacity .5s linear;
+  }
+  .cornerlabel { position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; z-index:5; }
+  #skip {
+    position:fixed; top:12px; right:16px; z-index:5;
+    font-size:12px; color:#5a5a5a; text-decoration:none; letter-spacing:.1em;
+  }
+  #skip:hover, #skip:focus-visible { color:#ffff00; outline:none; }
+  #keys {
+    position:fixed; bottom:26px; left:0; right:0; z-index:5;
+    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
+  }
+  footer {
+    position:fixed; bottom:6px; left:0; right:0; z-index:5;
+    text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
+  }
+  footer a { color:#2e2e2e; text-decoration:none; }
+  /* The hand-off: the room whites out into the site the way the console
+     hands over to what it booted. */
+  #flash {
+    position:fixed; inset:0; background:#fff; opacity:0; z-index:50;
+    pointer-events:none; transition:opacity .45s linear;
+  }
+  #failed {
+    display:none; position:fixed; inset:0; z-index:60; background:#000;
+    flex-direction:column; align-items:center; justify-content:center; gap:1.4rem;
+    font-size:17px; line-height:1.9; text-align:center;
+  }
+  #failed a { color:#5a5a5a; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="cornerlabel">DEVICE_ROOM</div>
+<a id="skip" href="../">SKIP &#9654;</a>
+
+<canvas id="room" width="640" height="480"
+        aria-label="A room with a television. Walk Kris to the console with the arrow keys and press Z to plug in the controller."></canvas>
+
+<div id="keys">&#9664; &#9654; &#9650; &#9660; / WASD WALK &middot; HOLD [ X ] RUN &middot; [ Z ] INTERACT</div>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<div id="flash"></div>
+<div id="failed">
+  <p>* THE ROOM DID NOT LOAD.</p>
+  <a href="../">&larr; THE DEVICE</a>
+</div>
+
+<script type="module">
+  import { runRoom } from '../shared/room.js';
+  import { loadPrefs } from '../shared/device.js';
+
+  const canvas = document.getElementById('room');
+  function fit() {
+    const dpr = window.devicePixelRatio || 1;
+    const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);
+    const s = f >= 1 ? Math.floor(f) : f;
+    canvas.style.width = `${(640 * s) / dpr}px`;
+    canvas.style.height = `${(480 * s) / dpr}px`;
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  // Coming here from the site means the interrogation has already run;
+  // arriving cold means it has not. Either way, plugging in leads there.
+  const prefs = loadPrefs();
+
+  try {
+    await runRoom(canvas, {
+      base: '../assets/room/',
+      soundOn: prefs.soundOn,
+      onBooted: () => {
+        document.getElementById('flash').style.opacity = '1';
+        setTimeout(() => { location.href = '../?booted=1'; }, 500);
+      },
+    });
+  } catch (err) {
+    console.error('room failed to load:', err);
+    document.getElementById('failed').style.display = 'flex';
+  }
+</script>
+</body>
+</html>

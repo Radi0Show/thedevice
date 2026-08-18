@@ -202,3 +202,35 @@ walls and not exits.
 Not included, and honestly labelled: the board's sword, its enemies, the
 rank tally and the surrounding game-show set. The room, its walls, its
 sprites and the way it moves are the whole of what this is.
+
+## DEVICE_ROOM — the room the game is played in
+
+`/DEVICE_ROOM/` is `room_board_sword_intro`: the television, the console on
+the floor, and Kris with a controller in his hands. In Chapter 3 the board
+game is what is ON that screen; here what boots is this website.
+
+| what | value | source |
+|---|---|---|
+| the room | `spr_gameshow_swordroutebg` at (0,0) | `obj_gameshow_swordroute` Create |
+| the screen | a 192x144 **hole** in that sprite → 384x288 at (138,42) once drawn at dark-world scale | measured from the sprite's alpha |
+| console | `spr_gameshow_console` at (202,322) | same Create |
+| TV glow | `spr_gameshow_swordroute_tvglow` at (0,320), additive, tinted by the screen | `obj_gameshow_swordroute` Draw |
+| Kris | enters at x 576, walks to (300,298) and faces up; `spr_krisu_holdcontroller` once he is holding it | `obj_swordroute_consolestarter` Create + Step |
+| walk | `bwspeed = 3`, running +2 / +4 / +5 at runtimer 0 / 10 / 60 in the dark world | `obj_mainchara` Create + Step |
+| scale | everything at 2 | `scr_darksize()` |
+| boot | blue `#2F38B0`, then **"NO CONTROLLER"** over `snd_nes_nocontroller`; `snd_tv_static` and `spr_static_effect` when it cuts out | `obj_swordroute_consolestarter` Create/Step/Draw |
+
+The console really does check for a controller — `scr_keyitemcheck(16)` — and
+shows "NO CONTROLLER" when you have not got one. That check is the hinge the
+whole page hangs on: the television is already on and already complaining
+when you walk in, and plugging in is what answers it.
+
+**The walk box is invented, and it is the only invented thing here.** The
+room contains no solids — eight instances, not one a wall — because in the
+game you never walk in it: the console starter drives Kris to the console on
+a timer. Free movement is this site's addition, so its floor is a rectangle
+fitted to the lit area of the background art. Everything else is read.
+
+Shortened honestly: the real sequence waits on dialogue, a choice and a
+logo animation this room does not have, so the beats between static and boot
+are tighter than the original's.
