@@ -44,10 +44,15 @@ const ENTRY_X = 576;
 
 // The blue the console boots to, straight out of the Step event.
 const BOOT_BLUE = '#2F38B0';
-// The board screen's own fill: `draw_sprite_ext(spr_pxwhite, 0,0,0, 640,480,
-// 0, #3F48CC, 1)` in obj_board_b2s_icedoor's Draw — the blue behind
-// "AREN'T YOU FORGETTING SOMETHING IMPORTANT?".
-const BOARD_BLUE = '#3F48CC';
+// THE BOARD'S BLUE.
+//
+// obj_board_b2s_icedoor fills with `#3F48CC` — `draw_sprite_ext(spr_pxwhite,
+// 0,0,0, 640,480, 0, #3F48CC, 1)`, the blue behind "AREN'T YOU FORGETTING
+// SOMETHING IMPORTANT?". Flat and at full strength on a bright canvas it
+// came out more electric than the screen in the game does, so this is the
+// console's own boot blue instead: darker, still the game's, and the same
+// value the set shows on its way up. One constant if it wants tuning again.
+const BOARD_BLUE = '#2F38B0';
 
 /**
  * THE DEVICES.
