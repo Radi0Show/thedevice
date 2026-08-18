@@ -114,11 +114,11 @@ import { wingdings } from '../shared/wingdings.js';
 const DEVICES = [
   { name: 'DEVICE_KNIGHT', href: '../DEVICE_KNIGHT/', ready: true,
     status: 'READY', note: '* THE ROARING KNIGHT. CHAPTER 3.' },
-  { name: 'DEVICE_JEVIL',   ready: false },
-  { name: 'DEVICE_SPAMTON', ready: false },
-  { name: 'DEVICE_MANTLE',  ready: false },
-  { name: 'DEVICE_GERSON',  ready: false },
-  { name: 'DEVICE_PINK',    ready: false },
+  { name: 'DEVICE_JOKER',  ready: false },
+  { name: 'DEVICE_EMAIL',  ready: false },
+  { name: 'DEVICE_MANTLE', ready: false },
+  { name: 'DEVICE_HAMMER', ready: false },
+  { name: 'DEVICE_FIGURE', ready: false },
 ];
 
 const NOT_BUILT = '* THIS DEVICE HAS NOT BEEN BUILT.\n* IT IS NOT NAMED YET.';
@@ -140,7 +140,7 @@ DEVICES.forEach((d, i) => {
   } else {
     // Unreadable, but the real name is still in the DOM for a screen
     // reader, find-in-page and anyone who copies the line.
-    const g = wingdings(d.name, 3);
+    const g = wingdings(d.name, 2);
     g.className = 'glyphs';
     row.append(g);
   }

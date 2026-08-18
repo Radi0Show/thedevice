@@ -58,11 +58,11 @@ const BOARD_BLUE = '#3F48CC';
  */
 const DEVICES = [
   { name: 'DEVICE_KNIGHT', href: '../DEVICE_KNIGHT/', ready: true },
-  { name: 'DEVICE_JEVIL', ready: false },
-  { name: 'DEVICE_SPAMTON', ready: false },
+  { name: 'DEVICE_JOKER', ready: false },
+  { name: 'DEVICE_EMAIL', ready: false },
   { name: 'DEVICE_MANTLE', ready: false },
-  { name: 'DEVICE_GERSON', ready: false },
-  { name: 'DEVICE_PINK', ready: false },
+  { name: 'DEVICE_HAMMER', ready: false },
+  { name: 'DEVICE_FIGURE', ready: false },
 ];
 
 const FACE_DOWN = 0, FACE_RIGHT = 1, FACE_UP = 2, FACE_LEFT = 3;
@@ -150,16 +150,49 @@ export async function runRoom(canvas, opts = {}) {
     holding: false,
   };
 
-  // THE WALK BOX IS MINE, and it is the one invented thing in this file.
+  // THE WALK BOX IS MINE, and so is the furniture's collision.
   //
   // room_board_sword_intro contains no solids at all — eight instances, not
   // one of them a wall — because in the game you never walk here: the
   // console starter drives Kris to the console on a timer and the room is a
   // cutscene. Free movement is this site's addition, so the floor it walks
-  // on had to be described, and this is a rectangle fitted to the lit floor
-  // in the background art rather than anything read out of the room.
-  const WALK = { x1: 110, x2: 620, y1: 250, y2: 340 };   // x2 clears the game's own entry at 576
-  const meets = (x, y) => x < WALK.x1 || x + KRIS_W > WALK.x2 || y < WALK.y1 || y > WALK.y2;
+  // on and the things standing on it had to be described. The rectangles
+  // below are fitted to the art, not read out of the room.
+  const WALK = { x1: 110, x2: 620, y1: 250, y2: 340 };
+
+  /**
+   * The console, as a thing you cannot walk through.
+   *
+   * spr_gameshow_console is 99x45 drawn at 2 from (202,322), so it covers
+   * x 202..400. Only its base blocks: a solid box the full height of the
+   * sprite would also swallow the spot the game itself walks Kris to.
+   */
+  const SOLIDS = [
+    { x: 206, y: 380, w: 190, h: 34 },     // the console on the floor
+  ];
+
+  /**
+   * Kris collides on his FEET, not his whole body.
+   *
+   * He is 38x76 with his head in the upper two thirds, and a box that size
+   * cannot stand in front of anything — it would collide with the console
+   * while his feet were still a body-length away from it. Overworld
+   * characters resolve on a small box at the base, and so does this one.
+   */
+  const FEET = { inset: 8, height: 12 };
+  const feetBox = (x, y) => ({
+    x: x + FEET.inset,
+    y: y + KRIS_H - FEET.height,
+    w: KRIS_W - FEET.inset * 2,
+    h: FEET.height,
+  });
+
+  const meets = (x, y) => {
+    const f = feetBox(x, y);
+    if (x < WALK.x1 || x + KRIS_W > WALK.x2 || y < WALK.y1 || y > WALK.y2) return true;
+    return SOLIDS.some((s) =>
+      f.x < s.x + s.w && f.x + f.w > s.x && f.y < s.y + s.h && f.y + f.h > s.y);
+  };
 
   /* ---------------- the console, and the boot ----------------
      con mirrors obj_swordroute_consolestarter's own: idle, then the
@@ -310,7 +343,7 @@ export async function runRoom(canvas, opts = {}) {
 
       const cx = SCREEN_X + SCREEN_W / 2;
       const ADV = 16;            // fnt_8bit is monospaced at 16
-      const GLYPH_SCALE = 2;     // 7x9 at 2 = 14x18, inside the 16x20 cell
+      const GLYPH_SCALE = 1;     // real Wingdings, 16x16, the font's own cell
       const FONT_H = 20;         // fnt_8bit's glyph box
       const lineH = 34;
 

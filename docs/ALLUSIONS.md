@@ -327,21 +327,42 @@ television is showing, with Kris in front of it holding the controller.
 | the blue | `#3F48CC` | `obj_board_b2s_icedoor` Draw — `draw_sprite_ext(spr_pxwhite, 0,0,0, 640,480, 0, #3F48CC, 1)`, the fill behind "AREN'T YOU FORGETTING SOMETHING IMPORTANT?" |
 | the font | `fnt_8bit`, display name **"AdventureBoard"** — monospaced, 16px cell, 20px tall | `scr_84_get_font("8bit")` → `scr_84_init_localization`'s font map |
 
-The cipher is a **7x9** grid drawn at scale 2 — 14x18, inside the font's
-16x20 cell. It started as 5x7 binary literals, and five columns is not
-enough room for a symbol to be a *shape*: everything came out a thin rune
-and the list read as texture rather than writing. Seven by nine holds a
-filled disc, an arrow with a head on it, a ring with a hole. The glyphs are
-written as ASCII pictures in `shared/wingdings.js` so you can see what you
-are editing.
+The cipher is **real Wingdings**, not a likeness of it. The font turned out
+to be installed on the machine this was built on, so every letter and the
+underscore was rendered at 128px, box-downsampled into a 16x16 cell and
+thresholded at 0.36 coverage. The shapes in `shared/wingdings.js` are
+Microsoft's — you can recognise them: J K L are the three faces, N the
+skull, S the filled drop, T the snowflake, U V W X the crosses, Y the
+hexagram, Z the star and crescent. An earlier pass invented symbols that
+merely looked occult, which is a different thing from being Wingdings.
 
-The cursor is a 6px square centred on the 20px glyph box, in one column set
-off the widest name, so it runs straight down the list instead of stepping
-in and out with each name's width. The two kinds of glyph sit on one optical
-line: the shorter cipher box takes the difference as a nudge rather than
-riding high.
+They are **baked in as bitmaps on purpose**: Wingdings cannot be embedded
+and is absent from most phones and every Linux box, where a missing symbol
+font falls back to plain legible letters — leaking the exact thing the
+cipher hides, on the machines least likely to have it.
+
+16x16 is fnt_8bit's own cell, so a name in cipher and a name in the board
+font sit on the same grid. The cursor is a 6px square centred on the glyph
+box, in one column set off the widest name.
 
 **Nothing is written under the list.** It used to say PRESS Z, which is an
 instruction on a screen whose whole job is to be a list of names. Only the
 NOT BUILT flash remains, and only while you are pressing at something that
 isn't there.
+
+
+## The room has furniture now
+
+`room_board_sword_intro` has no solids — eight instances, not one a wall —
+because the game never lets you walk there. Free movement is this site's
+addition, so its collision is too, and it is fitted to the art rather than
+read out of the room:
+
+- the console's **base** blocks, not its whole sprite. A box the full height
+  of `spr_gameshow_console` would swallow the very spot the game itself
+  walks Kris to.
+- Kris resolves on a box at his **feet**, not his whole body. He is 38x76
+  with his head in the upper two thirds, and a body-sized box cannot stand
+  in front of anything — it collides with the console while his feet are
+  still a body-length away. Overworld characters resolve at the base, and so
+  does this one.
