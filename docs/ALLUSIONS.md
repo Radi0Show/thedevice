@@ -235,7 +235,7 @@ Shortened honestly: the real sequence waits on dialogue, a choice and a
 logo animation this room does not have, so the beats between static and boot
 are tighter than the original's.
 
-## DEVICE_INSERT — a cut string, finished
+## THE FRONT DOOR — a cut string, finished
 
 Chapter 5's weird route ends on a television, `obj_ch5_LW20W_crt`, which
 puts the whole picture through a chromatic-aberration shader. Its Create
@@ -253,7 +253,7 @@ screen.
 
 That matters for what "the same font" can mean here. There is no font to
 copy and no position to match, because the game never puts the line up.
-`/DEVICE_INSERT/` finishes the joke instead — the television asks for the
+`/` finishes the joke instead — the television asks for the
 cartridge this site is actually about, set in `fnt_main`, the font the rest
 of the site already speaks in.
 

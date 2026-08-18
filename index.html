@@ -1,31 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--
-  ENTRY 00.
-
-  THE MENU PRECEDES THE DEVICE.
-  THE DEVICE PRECEDES THE DARKNESS.
-
-  (three of the slots are lies.)
--->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>404</title>
-<meta name="description" content="Browser recreations of the DELTARUNE secret bosses. A fan project.">
+<meta name="description" content="INSERT THE KNIGHT — a cut string from Chapter 5's weird route, finished.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="THE DEVICE">
 <meta property="og:title" content="THE DEVICE">
-<meta property="og:description" content="Browser recreations of the DELTARUNE secret bosses. One is ready. The others have not arrived.">
+<meta property="og:description" content="INSERT / THE KNIGHT">
 <meta property="og:url" content="https://radi0show.github.io/thedevice/">
 <meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="THE DEVICE">
-<meta name="twitter:description" content="Browser recreations of the DELTARUNE secret bosses.">
 <meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="shared/device.css">
 <style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#000; overflow:hidden; }
+  body {
+    font-family:'Courier New', Courier, monospace;
+    font-weight:bold; color:#fff; text-transform:uppercase;
+    -webkit-font-smoothing:none; cursor:default;
+  }
+  #crt {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(100vw, calc(100vh * 4 / 3));
+    height:min(100vh, calc(100vw * 3 / 4));
+    image-rendering:pixelated; background:#000;
+  }
+  .cornerlabel { position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; z-index:5; }
+  #back {
+    position:fixed; top:12px; right:16px; z-index:5;
+    font-size:12px; color:#5a5a5a; text-decoration:none; letter-spacing:.1em;
+  }
+  #back:hover, #back:focus-visible { color:#ffff00; outline:none; }
+  #keys {
+    position:fixed; bottom:26px; left:0; right:0; z-index:5;
+    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
+  }
+  footer {
+    position:fixed; bottom:6px; left:0; right:0; z-index:5;
+    text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
+  }
+  footer a { color:#2e2e2e; text-decoration:none; }
+  #failed {
+    display:none; position:fixed; inset:0; z-index:60; background:#000;
+    flex-direction:column; align-items:center; justify-content:center; gap:1.4rem;
+    font-size:17px; text-align:center;
+  }
+  #failed a { color:#5a5a5a; text-decoration:none; }
   /* ---------- PRELUDE: the page you weren't supposed to find ---------- */
   #prelude{
     position:fixed; inset:0; z-index:100;
@@ -37,158 +60,121 @@
   #prelude h1{ font-size:22px; font-weight:bold; margin-bottom:10px; }
   #prelude p{ font-size:15px; }
   #prelude a{ color:#00e; }
-
-  /* ---------- THE INTERROGATION ----------
-     A 320x240 room, exactly like the one the sequence runs in, scaled by a
-     whole number of device pixels. `pixelated` at a fractional scale gives
-     some source columns n device pixels and their neighbours n+1 — which is
-     precisely how a 1px font stem ends up fat on one letter and thin on the
-     next. The scale is computed in JS; this is the pre-script fallback. */
-  #intro{ position:fixed; inset:0; background:#000; }
-
-  #introCanvas{
-    position:absolute; top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    width:min(100vw, calc(100vh * 4 / 3));
-    height:min(100vh, calc(100vw * 3 / 4));
-    image-rendering:pixelated;
-    background:#000;
-  }
-
-  #skipBtn{
-    position:fixed; top:14px; right:16px; z-index:5;
-    font-size:13px; color:#5a5a5a;
-    background:none; border:none;
-    font-family:inherit; font-weight:bold; text-transform:uppercase;
-    cursor:pointer; padding:6px;
-  }
-  #skipBtn:hover, #skipBtn:focus-visible{ color:#ffff00; outline:none; }
-
-  /* The one piece of chrome the game has no equivalent for: people need to
-     know the keys before the first question. */
-  #introKeys{
-    position:fixed; bottom:12px; left:0; right:0; z-index:5;
-    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
-  }
 </style>
 </head>
 <body>
+<!--
+  ENTRY 00.
 
+  THE MENU PRECEDES THE DEVICE.
+  THE DEVICE PRECEDES THE DARKNESS.
+
+  (three of the slots are lies.)
+-->
 <div id="prelude">
   <h1>Not Found</h1>
   <p>The requested device does not exist on this server.</p>
   <noscript>
-    <p style="margin-top:14px">Without JavaScript the sequence cannot speak, but the rooms are still here:
-    <a href="DEVICE_ROOM/">DEVICE_ROOM</a> ·
-    <a href="DEVICE_KNIGHT/">DEVICE_KNIGHT</a> ·
-    <a href="DEVICE_INDEX/">DEVICE_INDEX</a> ·
+    <p style="margin-top:14px">Without JavaScript the set will not come on, but the rooms are here:
+    <a href="DEVICE_ROOM/">DEVICE_ROOM</a> &middot;
+    <a href="DEVICE_KNIGHT/">DEVICE_KNIGHT</a> &middot;
+    <a href="DEVICE_INDEX/">DEVICE_INDEX</a> &middot;
     <a href="DEVICE_CONTACT/">DEVICE_CONTACT</a></p>
   </noscript>
 </div>
 
-<!-- ======================= THE INTERROGATION ======================= -->
-<div id="intro">
-  <button id="skipBtn" type="button">[ SKIP ]</button>
-  <canvas id="introCanvas" width="320" height="240"
-          aria-label="An opening sequence asks three questions. Arrow keys choose, Z confirms. Skip is in the top corner."></canvas>
-  <div id="introKeys">&#9664; &#9654; CHOOSE &middot; [ Z ] CONFIRM &middot; HOLD [ X ] TO HASTEN</div>
+<div class="cornerlabel">THE DEVICE</div>
+
+
+<canvas id="crt" width="640" height="480"
+        aria-label="A television asking for a cartridge, with the site's settings on it."></canvas>
+
+<div id="keys">&#9650; &#9660; QUESTION &middot; &#9664; &#9654; ANSWER &middot; [ Z ] CONFIRM</div>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<div id="failed">
+  <p>* THE SCREEN DID NOT LOAD.</p>
+  <a href="../">&larr; THE DEVICE</a>
 </div>
 
 <script type="module">
-import { loadPrefs, savePrefs, applyPrefs, reduceMotion } from './shared/device.js';
-import { runIntro } from './shared/gm-intro.js';
+  import { runCrt } from './shared/crt.js';
+  import { loadPrefs, savePrefs, applyPrefs } from './shared/device.js';
 
-/* =====================================================================
-   THE FRONT DOOR IS A SEQUENCE, AND IT LEADS SOMEWHERE.
+  const canvas = document.getElementById('crt');
+  /* FILL THE DISPLAY, BARS ON THE SHORT AXIS — what the game does in
+     fullscreen. The frame keeps its 4:3 and grows until one axis runs out,
+     so a widescreen gets black down either side and nothing is cropped.
 
-   The interrogation asks its three questions and then hands over to
-   DEVICE_ROOM — the room with the television in it. The site itself lives
-   in that television: you plug the controller in and it boots. So this
-   page no longer holds a menu; it holds the thing that comes before one.
-   ===================================================================== */
-
-const store = loadPrefs();
-applyPrefs(store);
-
-const params = new URLSearchParams(location.search);
-const reconfigure = params.get('reconfigure') === '1';
-
-const introCanvas = document.getElementById('introCanvas');
-let abortIntro = null;
-
-/* An INTEGER scale, measured in DEVICE pixels — see the note in the style
-   block. Below 1x there is no whole multiple to land on, so it falls back
-   to filling: showing the whole frame slightly soft beats cropping it. */
-function fitIntro(){
-  const dpr = window.devicePixelRatio || 1;
-  const fit = Math.min((window.innerWidth * dpr) / 320, (window.innerHeight * dpr) / 240);
-  const scale = fit >= 1 ? Math.floor(fit) : fit;
-  introCanvas.style.width = `${(320 * scale) / dpr}px`;
-  introCanvas.style.height = `${(240 * scale) / dpr}px`;
-}
-window.addEventListener('resize', fitIntro);
-
-/** Everything here ends the same way: in the room. */
-function toRoom(){
-  location.href = 'DEVICE_ROOM/';
-}
-
-async function runInterrogation(){
-  fitIntro();
-  const io = {
-    soundOn: store.soundOn,
-    onSound: (on) => { store.soundOn = on; savePrefs(store); },
-  };
-  abortIntro = () => io.abort?.();
-  let answers;
-  try {
-    answers = await runIntro(introCanvas, io);
-  } catch (err) {
-    // If the sequence cannot draw, a visitor should still reach the room
-    // rather than sit on a black screen.
-    console.error('the interrogation could not run:', err);
-    answers = { photosensitive: true, soundOn: store.soundOn };
+     This deliberately gives up whole-pixel scaling. At a fractional factor
+     `image-rendering: pixelated` hands some source columns n device pixels
+     and their neighbours n + 1, so a one-pixel stem is fat on one letter
+     and thin on the next. The real game makes the same trade at the same
+     place: filling the screen wins over an exact pixel grid. */
+  function fit() {
+    const f = Math.min(innerWidth / 640, innerHeight / 480);
+    canvas.style.width = `${640 * f}px`;
+    canvas.style.height = `${480 * f}px`;
   }
-  store.flickerOK = !answers.photosensitive && !reduceMotion;
-  store.soundOn = answers.soundOn;
-  store.seenIntro = true;
-  savePrefs(store);
-  applyPrefs(store);
-  toRoom();
-}
+  addEventListener('resize', fit);
+  fit();
 
-/* The button hands the abort to the running sequence, which fades out the
-   way it would have anyway; sound is left as it was, which is on. */
-document.getElementById('skipBtn').addEventListener('click', () => {
-  if (abortIntro) { abortIntro(); return; }
-  store.flickerOK = false;
-  store.seenIntro = true;
-  savePrefs(store);
-  toRoom();
-});
+  const prefs = loadPrefs();
 
-/* =====================================================================
-   BOOT — the "not found" page holds for a beat, then the void takes it.
-   A visitor who has already answered goes straight through to the room.
-   ===================================================================== */
-console.log('%c* WHY ARE YOU LOOKING HERE?', 'color:#ff9bd5; font-family:monospace; font-size:14px;');
-console.log('%c* THE MENU PRECEDES THE DEVICE.', 'color:#5a5a5a; font-family:monospace;');
+  /* THE SET COMES ON, AND THEN YOU WALK IN.
+     Answering here is what the interrogation used to do — the same two
+     questions, the same stored preferences — so it hands straight over to
+     the room rather than to the fight. */
+  function go() {
+    prefs.seenIntro = true;
+    savePrefs(prefs);
+    location.href = 'DEVICE_ROOM/';
+  }
 
-const skipStraightThrough = store.seenIntro && !reconfigure;
+  // The same two answers the interrogation takes, asked here as settings
+  // rather than as questions — same options, same yellow, same order.
+  const questions = [
+    {
+      label: 'ARE YOU PHOTOSENSITIVE?',
+      options: ['YES', 'NO'],
+      value: prefs.flickerOK ? 1 : 0,
+      onChange: (v) => { prefs.flickerOK = v === 1; savePrefs(prefs); applyPrefs(prefs); },
+    },
+    {
+      label: 'DO YOU WANT SOUND?',
+      options: ['YES', 'NO'],
+      value: prefs.soundOn ? 0 : 1,
+      onChange: (v) => { prefs.soundOn = v === 0; savePrefs(prefs); },
+    },
+  ];
 
-setTimeout(()=>{
-  document.getElementById('prelude').style.display = 'none';
-  if (skipStraightThrough) toRoom();
-  else runInterrogation();
-}, reduceMotion ? 250 : (skipStraightThrough ? 300 : 850));
+  setTimeout(() => {
+    const p = document.getElementById('prelude');
+    if (p) p.style.display = 'none';
+  }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 250 : 850);
+
+  window.addEventListener('keydown', (e) => {
+    // X backs out of nothing here, but Z at any point is "get on with it".
+    if (e.key.toLowerCase() === 'x') { e.preventDefault(); go(); }
+  });
+
+  try {
+    await runCrt(canvas, {
+      fontBase: 'assets/gonermaker/',
+      shader: 'assets/crt/shd_crt2.frag',
+      title: ['INSERT', 'THE KNIGHT'],
+      questions,
+      footer: '[ Z ]',
+      onConfirm: () => { go(); },
+    });
+  } catch (err) {
+    console.error('crt failed:', err);
+    document.getElementById('failed').style.display = 'flex';
+  }
 </script>
-<!--
-  ENTRY 07.
-
-  IF YOU ARE READING THE SOURCE,
-  YOU ARE THE KIND OF PERSON THIS WAS BUILT FOR.
-
-  CREDIT YOUR DATAMINERS. BUY THE REAL GAME.
--->
 </body>
 </html>

@@ -30,7 +30,10 @@ import { loadFont, drawCharSpecial2, drawText, textWidth } from './gm-font.js';
 
 const VIEW_W = 320, VIEW_H = 240;
 const MS_PER_FRAME = 1000 / 30;
-const ASSETS = 'assets/gonermaker/';
+// Where the sequence's assets live, RELATIVE TO THE PAGE. The host passes
+// its own prefix, because this page has moved once already and a hardcoded
+// path resolves against whatever directory the document happens to sit in.
+const DEFAULT_ASSETS = 'assets/gonermaker/';
 
 /** obj_writer's Alarm_0: `^N` adds this many frames to the next character. */
 const PAUSE = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 30, 6: 40, 7: 60, 8: 90, 9: 150 };
@@ -65,6 +68,7 @@ export async function runIntro(canvas, io = {}) {
   canvas.height = VIEW_H;
   ctx.imageSmoothingEnabled = false;
 
+  const ASSETS = io.base ?? DEFAULT_ASSETS;
   const [font, bgImage, soulImage] = await Promise.all([
     loadFont(ASSETS),
     loadImage(`${ASSETS}IMAGE_DEPTH.png`),

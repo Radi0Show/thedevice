@@ -8,10 +8,16 @@ ledger of every borrowed line and the rule against adding more.
 
 **Live:** <https://radi0show.github.io/thedevice/>
 
-The opening is a recreation of Chapter 1's vessel-creation sequence, rebuilt
-from its own objects — `fnt_main`, typer 666, `IMAGE_DEPTH`, the soul, the
-30 Hz clock. `docs/ALLUSIONS.md` cites every constant to the event it was
-read from.
+**The chain:** `/` is Chapter 5's weird-route television running its own
+`shd_crt2` shader, asking for the cartridge and taking your two settings →
+`/DEVICE_ROOM/`, Chapter 3's `room_board_sword_intro`, where Kris plugs the
+controller in → the board comes up **in the screen** → choosing a device
+plays `obj_tvturnoff_manager` backwards and drops you into it.
+
+`/DEVICE_GONERMAKER/` is the Chapter 1 vessel-creation recreation — the same
+two questions, in the sequence's own voice. It is off the main path now that
+the television asks them. `docs/ALLUSIONS.md` cites every constant to the
+event it was read from.
 
 Static files only — no build step, no backend. Serve the repo root:
 
