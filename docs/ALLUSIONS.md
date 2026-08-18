@@ -314,3 +314,21 @@ The real names stay in the DOM behind each row, visually hidden, so
 find-in-page, copy, and a screen reader all still get them. The cipher is
 for the eye; it is not a way of withholding the page from someone who needs
 it read aloud.
+
+
+## The board is on the television
+
+The selector lives in the screen of `room_board_sword_intro`, painted by the
+room's own renderer rather than laid over it — so it is the picture the
+television is showing, with Kris in front of it holding the controller.
+
+| what | value | source |
+|---|---|---|
+| the blue | `#3F48CC` | `obj_board_b2s_icedoor` Draw — `draw_sprite_ext(spr_pxwhite, 0,0,0, 640,480, 0, #3F48CC, 1)`, the fill behind "AREN'T YOU FORGETTING SOMETHING IMPORTANT?" |
+| the font | `fnt_8bit`, display name **"AdventureBoard"** — monospaced, 16px cell, 20px tall | `scr_84_get_font("8bit")` → `scr_84_init_localization`'s font map |
+
+The cipher draws at scale 3, which puts a 15x21 glyph in the same 16x20 cell
+the font uses. At 2 it read as a lighter, thinner typeface than the name
+above it and the list looked like two screens spliced together. The cursor
+sits in one column set off the widest line, so it runs straight down instead
+of stepping in and out with each name's width.

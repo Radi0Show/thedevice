@@ -101,3 +101,38 @@ export function wingdings(text, scale = 3, label = null) {
   wrap.append(hidden, svg);
   return wrap;
 }
+
+
+/**
+ * The same glyphs, drawn straight onto a canvas.
+ *
+ * The board lives inside the room's television, which is painted by the
+ * room's own renderer — so the cipher needs a canvas path as well as the
+ * SVG one. `advance` is passed in rather than assumed, because on the board
+ * it has to line up with fnt_8bit's fixed 16px cell.
+ */
+export function drawWingdings(ctx, text, x, y, { scale = 2, advance = 16, color = '#ffffff' } = {}) {
+  ctx.fillStyle = color;
+  let pen = x;
+  for (const ch of String(text).toUpperCase()) {
+    const rows = GLYPHS[ch] ?? GLYPHS[' '];
+    for (let ry = 0; ry < ROWS; ry++) {
+      let run = -1;
+      for (let rx = 0; rx <= COLS; rx++) {
+        const on = rx < COLS && (rows[ry] >> (COLS - 1 - rx)) & 1;
+        if (on && run < 0) run = rx;
+        if (!on && run >= 0) {
+          ctx.fillRect(pen + run * scale, y + ry * scale, (rx - run) * scale, scale);
+          run = -1;
+        }
+      }
+    }
+    pen += advance;
+  }
+  return pen - x;
+}
+
+/** What `drawWingdings` will occupy, for centring. */
+export function wingdingsWidth(text, advance = 16) {
+  return [...String(text)].length * advance;
+}

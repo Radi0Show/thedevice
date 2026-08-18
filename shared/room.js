@@ -24,6 +24,9 @@
 // and the room is drawn over the top, so the frame of the TV occludes it
 // exactly the way the art intends.
 
+import { loadFont, drawText, textWidth } from './gm-font.js';
+import { drawWingdings, wingdingsWidth } from './wingdings.js';
+
 const VIEW_W = 640, VIEW_H = 480;
 const MS_PER_FRAME = 1000 / 30;
 const SCALE = 2;                       // scr_darksize()
@@ -41,6 +44,26 @@ const ENTRY_X = 576;
 
 // The blue the console boots to, straight out of the Step event.
 const BOOT_BLUE = '#2F38B0';
+// The board screen's own fill: `draw_sprite_ext(spr_pxwhite, 0,0,0, 640,480,
+// 0, #3F48CC, 1)` in obj_board_b2s_icedoor's Draw — the blue behind
+// "AREN'T YOU FORGETTING SOMETHING IMPORTANT?".
+const BOARD_BLUE = '#3F48CC';
+
+/**
+ * THE DEVICES.
+ *
+ * One is built and named. The rest are listed in the cipher — an empty slot
+ * that reads "JEVIL, COMING SOON" is a roadmap, and a roadmap is a promise
+ * about a date. See shared/wingdings.js.
+ */
+const DEVICES = [
+  { name: 'DEVICE_KNIGHT', href: '../DEVICE_KNIGHT/', ready: true },
+  { name: 'DEVICE_JEVIL', ready: false },
+  { name: 'DEVICE_SPAMTON', ready: false },
+  { name: 'DEVICE_MANTLE', ready: false },
+  { name: 'DEVICE_GERSON', ready: false },
+  { name: 'DEVICE_PINK', ready: false },
+];
 
 const FACE_DOWN = 0, FACE_RIGHT = 1, FACE_UP = 2, FACE_LEFT = 3;
 const FACE_KEY = ['d', 'r', 'u', 'l'];
@@ -60,6 +83,9 @@ export async function runRoom(canvas, opts = {}) {
   canvas.width = VIEW_W;
   canvas.height = VIEW_H;
   ctx.imageSmoothingEnabled = false;
+
+  // fnt_8bit — "AdventureBoard", the board's own face, monospaced at 16.
+  const boardFont = await loadFont(opts.mantleBase ?? 'assets/mantle/', 'fnt_8bit');
 
   const [bg, consoleImg, tvglow, krisHold, ...rest] = await Promise.all([
     loadImage(`${base}bg.png`),
@@ -91,6 +117,19 @@ export async function runRoom(canvas, opts = {}) {
     const k = KEYMAP[e.key.toLowerCase()];
     if (!k) return;
     e.preventDefault();
+
+    // THE BOARD HAS THE KEYS ONCE IT IS UP.
+    if (screenState === 'device') {
+      if (k === 'u') deviceSel = (deviceSel + DEVICES.length - 1) % DEVICES.length;
+      if (k === 'd') deviceSel = (deviceSel + 1) % DEVICES.length;
+      if (k === 'z') {
+        const d = DEVICES[deviceSel];
+        if (d.ready) opts.onLaunch ? opts.onLaunch(d.href) : (location.href = d.href);
+        else notBuilt = 90;   // three seconds of saying so
+      }
+      return;
+    }
+
     if (!held.has(k)) pressed.add(k);
     held.add(k);
   };
@@ -130,7 +169,11 @@ export async function runRoom(canvas, opts = {}) {
   // While the site has the screen it also has the keyboard: Kris holds
   // still rather than walking around behind a menu he is operating.
   let suspended = false;
+  // Which device the board is pointed at. The board takes the keys while it
+  // is up, which is also why Kris stops walking.
+  let deviceSel = 0;
   let plugged = false;
+  let notBuilt = 0;          // frames left on the "not built" line
   let screenState = 'nocontroller';   // what the television is showing
   let staticTimer = 0;
   let onBooted = opts.onBooted ?? (() => {});
@@ -259,10 +302,42 @@ export async function runRoom(canvas, opts = {}) {
       ctx.fillStyle = BOOT_BLUE;
       ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
     } else if (screenState === 'device') {
-      // The site itself is a DOM layer sitting in this rectangle; all the
-      // canvas owes it is a black bed and a colour for the glow.
-      ctx.fillStyle = '#000';
+      // THE BOARD, on the television. The board screen's own blue, the
+      // board's own font, and one line per device — the built one legible,
+      // the rest in the cipher.
+      ctx.fillStyle = BOARD_BLUE;
       ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
+
+      const cx = SCREEN_X + SCREEN_W / 2;
+      const ADV = 16;            // fnt_8bit is monospaced at 16
+      const lineH = 30;
+      const top = SCREEN_Y + 52;
+
+      // The cipher is drawn at 3, which puts a 15x21 glyph in the same 16x20
+      // cell fnt_8bit uses — at 2 it read as a lighter, thinner typeface than
+      // the name above it and the list looked like two different screens.
+      const GLYPH_SCALE = 3;
+
+      const widthOf = (d) => (d.ready ? textWidth(boardFont, d.name)
+                                      : wingdingsWidth(d.name, ADV));
+      // One marker column, set off the widest line, so the cursor runs
+      // straight down the list instead of stepping in and out with each name.
+      const maxW = Math.max(...DEVICES.map(widthOf));
+      const markerX = Math.round(cx - maxW / 2) - 18;
+
+      DEVICES.forEach((d, i) => {
+        const y = top + i * lineH;
+        const chosen = i === deviceSel;
+        const colour = chosen ? '#ffff00'
+          : (d.ready ? '#ffffff' : 'rgba(255,255,255,0.62)');
+        const x = Math.round(cx - widthOf(d) / 2);
+        if (d.ready) drawText(ctx, boardFont, d.name, x, y, { color: colour });
+        else drawWingdings(ctx, d.name, x, y, { scale: GLYPH_SCALE, advance: ADV, color: colour });
+        if (chosen) {
+          ctx.fillStyle = '#ffff00';
+          ctx.fillRect(markerX, y + 8, 7, 7);
+        }
+      });
     } else if (screenState === 'logo') {
       ctx.fillStyle = BOOT_BLUE;
       ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
@@ -299,6 +374,17 @@ export async function runRoom(canvas, opts = {}) {
       ? krisHold
       : walk[FACE_KEY[kris.facing]][Math.floor(kris.imageIndex) % 4];
     ctx.drawImage(sprite, Math.round(kris.x), Math.round(kris.y), KRIS_W, KRIS_H);
+
+    // What the board says about the line you are on.
+    if (screenState === 'device') {
+      const d = DEVICES[deviceSel];
+      const line = notBuilt > 0 ? 'NOT BUILT'
+        : (d.ready ? 'PRESS Z' : 'NOT NAMED YET');
+      const w = textWidth(boardFont, line);
+      drawText(ctx, boardFont, line,
+        Math.round(SCREEN_X + SCREEN_W / 2 - w / 2), SCREEN_Y + SCREEN_H - 40,
+        { color: notBuilt > 0 ? '#ffff00' : 'rgba(255,255,255,0.5)' });
+    }
 
     // The prompt, only where it means something.
     if (con === 'idle' && atConsole()) {
@@ -352,6 +438,7 @@ export async function runRoom(canvas, opts = {}) {
     get screen() { return screenState; },
     get plugged() { return plugged; },
     atConsole,
+    get deviceSel() { return deviceSel; },
     suspend(v = true) { suspended = v; },
     press: (k, on = true) => { if (on) { held.add(k); pressed.add(k); } else held.delete(k); },
     stop() {
