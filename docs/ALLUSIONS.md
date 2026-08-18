@@ -234,3 +234,42 @@ fitted to the lit area of the background art. Everything else is read.
 Shortened honestly: the real sequence waits on dialogue, a choice and a
 logo animation this room does not have, so the beats between static and boot
 are tighter than the original's.
+
+## DEVICE_INSERT — a cut string, finished
+
+Chapter 5's weird route ends on a television, `obj_ch5_LW20W_crt`, which
+puts the whole picture through a chromatic-aberration shader. Its Create
+also builds a string:
+
+```gml
+_insert_text = stringsetloc("INSERT\nCHAPTER 7 SIDE B", ...)
+```
+
+**Nothing ever draws it.** A grep across all 11,850 code entries in the
+chapter finds exactly one occurrence — that assignment. It is a write-only
+variable, the same shape as `splitbox`, `slice_delay` and `linex` in
+knight-sim's notes: content that exists as a string and never reaches a
+screen.
+
+That matters for what "the same font" can mean here. There is no font to
+copy and no position to match, because the game never puts the line up.
+`/DEVICE_INSERT/` finishes the joke instead — the television asks for the
+cartridge this site is actually about, set in `fnt_main`, the font the rest
+of the site already speaks in.
+
+What *is* copied is the effect, from the object's own numbers:
+
+| what | value | source |
+|---|---|---|
+| aberration | `0.34` | `obj_ch5_LW20W_crt` Step |
+| wobble | `spd = scr_wave(0, 0.75, 4, 0)`, accumulated into `time` every frame | Step + `scr_wave` |
+| `scr_wave(a,b,p,ph)` | `a + h + sin(((now/1000 + p*ph) / p) * 2pi) * h`, `h = (b-a)/2` | the script, verbatim |
+
+A canvas cannot run the chapter's GLSL, so the split is done by hand: the
+frame drawn three times, red pushed one way and blue the other by an offset
+that breathes on `time`, recombined additively. The three channel buffers
+are allocated once — the first version built two canvases per channel per
+frame, ninety allocations a second to draw the same three pictures.
+
+The questions on it are the interrogation's own two, asked as settings
+rather than as questions, and they write to the same stored preferences.

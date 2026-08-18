@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEVICE_INSERT</title>
+<meta name="description" content="INSERT THE KNIGHT — a cut string from Chapter 5's weird route, finished.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="THE DEVICE">
+<meta property="og:title" content="DEVICE_INSERT">
+<meta property="og:description" content="INSERT / THE KNIGHT">
+<meta property="og:url" content="https://radi0show.github.io/thedevice/DEVICE_INSERT/">
+<meta property="og:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/device.png">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:#000; overflow:hidden; }
+  body {
+    font-family:'Courier New', Courier, monospace;
+    font-weight:bold; color:#fff; text-transform:uppercase;
+    -webkit-font-smoothing:none; cursor:default;
+  }
+  #crt {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:min(100vw, calc(100vh * 4 / 3));
+    height:min(100vh, calc(100vw * 3 / 4));
+    image-rendering:pixelated; background:#000;
+  }
+  .cornerlabel { position:fixed; top:14px; left:16px; font-size:12px; color:#2e2e2e; z-index:5; }
+  #back {
+    position:fixed; top:12px; right:16px; z-index:5;
+    font-size:12px; color:#5a5a5a; text-decoration:none; letter-spacing:.1em;
+  }
+  #back:hover, #back:focus-visible { color:#ffff00; outline:none; }
+  #keys {
+    position:fixed; bottom:26px; left:0; right:0; z-index:5;
+    text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
+  }
+  footer {
+    position:fixed; bottom:6px; left:0; right:0; z-index:5;
+    text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
+  }
+  footer a { color:#2e2e2e; text-decoration:none; }
+  #failed {
+    display:none; position:fixed; inset:0; z-index:60; background:#000;
+    flex-direction:column; align-items:center; justify-content:center; gap:1.4rem;
+    font-size:17px; text-align:center;
+  }
+  #failed a { color:#5a5a5a; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="cornerlabel">DEVICE_INSERT</div>
+<a id="back" href="../">&#9664; THE DEVICE</a>
+
+<canvas id="crt" width="320" height="240"
+        aria-label="A television asking for a cartridge, with the site's settings on it."></canvas>
+
+<div id="keys">&#9650; &#9660; QUESTION &middot; &#9664; &#9654; ANSWER &middot; [ Z ] CONFIRM</div>
+
+<footer>
+  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
+  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
+</footer>
+
+<div id="failed">
+  <p>* THE SCREEN DID NOT LOAD.</p>
+  <a href="../">&larr; THE DEVICE</a>
+</div>
+
+<script type="module">
+  import { runCrt } from '../shared/crt.js';
+  import { loadPrefs, savePrefs, applyPrefs } from '../shared/device.js';
+
+  const canvas = document.getElementById('crt');
+  function fit() {
+    const dpr = window.devicePixelRatio || 1;
+    const f = Math.min((innerWidth * dpr) / 320, (innerHeight * dpr) / 240);
+    const s = f >= 1 ? Math.floor(f) : f;
+    canvas.style.width = `${(320 * s) / dpr}px`;
+    canvas.style.height = `${(240 * s) / dpr}px`;
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  const prefs = loadPrefs();
+
+  // The same two answers the interrogation takes, asked here as settings
+  // rather than as questions — same options, same yellow, same order.
+  const questions = [
+    {
+      label: 'ARE YOU PHOTOSENSITIVE?',
+      options: ['YES', 'NO'],
+      value: prefs.flickerOK ? 1 : 0,
+      onChange: (v) => { prefs.flickerOK = v === 1; savePrefs(prefs); applyPrefs(prefs); },
+    },
+    {
+      label: 'DO YOU WANT SOUND?',
+      options: ['YES', 'NO'],
+      value: prefs.soundOn ? 0 : 1,
+      onChange: (v) => { prefs.soundOn = v === 0; savePrefs(prefs); },
+    },
+  ];
+
+  try {
+    await runCrt(canvas, {
+      fontBase: '../assets/gonermaker/',
+      title: ['INSERT', 'THE KNIGHT'],
+      questions,
+      footer: '[ Z ] TO BEGIN',
+      onConfirm: () => { location.href = '../DEVICE_KNIGHT/'; },
+    });
+  } catch (err) {
+    console.error('crt failed:', err);
+    document.getElementById('failed').style.display = 'flex';
+  }
+</script>
+</body>
+</html>
