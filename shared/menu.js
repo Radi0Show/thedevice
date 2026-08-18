@@ -101,7 +101,7 @@ const MARKUP = `
   <div class="scribble">this one works!!</div>
   <div class="slotname">KNIGHT</div>
   <div class="slotmeta">THE ROARING KNIGHT · CHAPTER 3</div>
-  <div class="slotgo">* PRESS [ Z ] TO BEGIN.</div>
+  <div class="slotgo">* THE ROARING KNIGHT.</div>
 </div>
 
 <button class="slot-empty" data-slot="1" type="button">02&nbsp;&nbsp;J&#9618;&#9618;&#9618;&#9618;</button>

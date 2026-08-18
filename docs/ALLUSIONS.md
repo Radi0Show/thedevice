@@ -327,8 +327,21 @@ television is showing, with Kris in front of it holding the controller.
 | the blue | `#3F48CC` | `obj_board_b2s_icedoor` Draw — `draw_sprite_ext(spr_pxwhite, 0,0,0, 640,480, 0, #3F48CC, 1)`, the fill behind "AREN'T YOU FORGETTING SOMETHING IMPORTANT?" |
 | the font | `fnt_8bit`, display name **"AdventureBoard"** — monospaced, 16px cell, 20px tall | `scr_84_get_font("8bit")` → `scr_84_init_localization`'s font map |
 
-The cipher draws at scale 3, which puts a 15x21 glyph in the same 16x20 cell
-the font uses. At 2 it read as a lighter, thinner typeface than the name
-above it and the list looked like two screens spliced together. The cursor
-sits in one column set off the widest line, so it runs straight down instead
-of stepping in and out with each name's width.
+The cipher is a **7x9** grid drawn at scale 2 — 14x18, inside the font's
+16x20 cell. It started as 5x7 binary literals, and five columns is not
+enough room for a symbol to be a *shape*: everything came out a thin rune
+and the list read as texture rather than writing. Seven by nine holds a
+filled disc, an arrow with a head on it, a ring with a hole. The glyphs are
+written as ASCII pictures in `shared/wingdings.js` so you can see what you
+are editing.
+
+The cursor is a 6px square centred on the 20px glyph box, in one column set
+off the widest name, so it runs straight down the list instead of stepping
+in and out with each name's width. The two kinds of glyph sit on one optical
+line: the shorter cipher box takes the difference as a nudge rather than
+riding high.
+
+**Nothing is written under the list.** It used to say PRESS Z, which is an
+instruction on a screen whose whole job is to be a list of names. Only the
+NOT BUILT flash remains, and only while you are pressing at something that
+isn't there.

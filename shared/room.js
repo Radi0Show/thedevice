@@ -25,7 +25,7 @@
 // exactly the way the art intends.
 
 import { loadFont, drawText, textWidth } from './gm-font.js';
-import { drawWingdings, wingdingsWidth } from './wingdings.js';
+import { drawWingdings, wingdingsWidth, wingdingsHeight } from './wingdings.js';
 
 const VIEW_W = 640, VIEW_H = 480;
 const MS_PER_FRAME = 1000 / 30;
@@ -310,34 +310,62 @@ export async function runRoom(canvas, opts = {}) {
 
       const cx = SCREEN_X + SCREEN_W / 2;
       const ADV = 16;            // fnt_8bit is monospaced at 16
-      const lineH = 30;
-      const top = SCREEN_Y + 52;
-
-      // The cipher is drawn at 3, which puts a 15x21 glyph in the same 16x20
-      // cell fnt_8bit uses — at 2 it read as a lighter, thinner typeface than
-      // the name above it and the list looked like two different screens.
-      const GLYPH_SCALE = 3;
+      const GLYPH_SCALE = 2;     // 7x9 at 2 = 14x18, inside the 16x20 cell
+      const FONT_H = 20;         // fnt_8bit's glyph box
+      const lineH = 34;
 
       const widthOf = (d) => (d.ready ? textWidth(boardFont, d.name)
                                       : wingdingsWidth(d.name, ADV));
-      // One marker column, set off the widest line, so the cursor runs
-      // straight down the list instead of stepping in and out with each name.
       const maxW = Math.max(...DEVICES.map(widthOf));
-      const markerX = Math.round(cx - maxW / 2) - 18;
+
+      // SCROLL ONLY IF THE LIST OUTGROWS THE SCREEN. Six names fit today;
+      // this keeps the selected line on screen if more are ever added,
+      // rather than quietly running off the bottom of the television.
+      const listH = DEVICES.length * lineH;
+      const pad = 26;
+      const room = SCREEN_H - pad * 2;
+      let scroll = 0;
+      if (listH > room) {
+        const want = deviceSel * lineH + lineH / 2 - room / 2;
+        scroll = Math.max(0, Math.min(listH - room, want));
+      }
+      const top = SCREEN_Y + (listH > room ? pad : Math.round((SCREEN_H - listH) / 2)) - scroll;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
+      ctx.clip();
 
       DEVICES.forEach((d, i) => {
         const y = top + i * lineH;
+        if (y + lineH < SCREEN_Y || y > SCREEN_Y + SCREEN_H) return;
         const chosen = i === deviceSel;
         const colour = chosen ? '#ffff00'
-          : (d.ready ? '#ffffff' : 'rgba(255,255,255,0.62)');
+          : (d.ready ? '#ffffff' : 'rgba(255,255,255,0.66)');
         const x = Math.round(cx - widthOf(d) / 2);
-        if (d.ready) drawText(ctx, boardFont, d.name, x, y, { color: colour });
-        else drawWingdings(ctx, d.name, x, y, { scale: GLYPH_SCALE, advance: ADV, color: colour });
+
+        // Both kinds of glyph sit on the same optical line: the font's box
+        // is 20 tall and the cipher's is 18, so the shorter one takes the
+        // difference as a one-pixel nudge instead of riding high.
+        if (d.ready) {
+          drawText(ctx, boardFont, d.name, x, y, { color: colour });
+        } else {
+          const dy = Math.round((FONT_H - wingdingsHeight(GLYPH_SCALE)) / 2);
+          drawWingdings(ctx, d.name, x, y + dy,
+            { scale: GLYPH_SCALE, advance: ADV, color: colour });
+        }
+
+        // THE CURSOR SITS ON THE LINE'S MIDDLE. It is a 6px square centred
+        // on the 20px glyph box, in one column off the widest name, so it
+        // runs straight down instead of stepping in and out.
         if (chosen) {
+          const size = 6;
           ctx.fillStyle = '#ffff00';
-          ctx.fillRect(markerX, y + 8, 7, 7);
+          ctx.fillRect(Math.round(cx - maxW / 2) - 20,
+                       Math.round(y + (FONT_H - size) / 2), size, size);
         }
       });
+      ctx.restore();
     } else if (screenState === 'logo') {
       ctx.fillStyle = BOOT_BLUE;
       ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
@@ -375,15 +403,14 @@ export async function runRoom(canvas, opts = {}) {
       : walk[FACE_KEY[kris.facing]][Math.floor(kris.imageIndex) % 4];
     ctx.drawImage(sprite, Math.round(kris.x), Math.round(kris.y), KRIS_W, KRIS_H);
 
-    // What the board says about the line you are on.
-    if (screenState === 'device') {
-      const d = DEVICES[deviceSel];
-      const line = notBuilt > 0 ? 'NOT BUILT'
-        : (d.ready ? 'PRESS Z' : 'NOT NAMED YET');
+    // NOTHING IS WRITTEN UNDER THE LIST. It used to say PRESS Z, which is
+    // an instruction on a screen that is meant to be a list of names.
+    if (screenState === 'device' && notBuilt > 0) {
+      const line = 'NOT BUILT';
       const w = textWidth(boardFont, line);
       drawText(ctx, boardFont, line,
-        Math.round(SCREEN_X + SCREEN_W / 2 - w / 2), SCREEN_Y + SCREEN_H - 40,
-        { color: notBuilt > 0 ? '#ffff00' : 'rgba(255,255,255,0.5)' });
+        Math.round(SCREEN_X + SCREEN_W / 2 - w / 2), SCREEN_Y + SCREEN_H - 34,
+        { color: '#ffff00' });
     }
 
     // The prompt, only where it means something.

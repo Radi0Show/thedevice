@@ -1,68 +1,348 @@
 // THE UNREADABLE NAMES.
 //
 // The devices that do not exist yet are listed in a script you cannot read.
-// That is the point: an empty slot that announces "JEVIL, COMING SOON" is a
-// roadmap, and a roadmap is a promise. A name in a language you can't read
-// says something is there without saying when.
+// That is the point: a slot that announces "JEVIL, COMING SOON" is a
+// roadmap, and a roadmap is a promise about a date. A name in a language
+// you can't read says the thing exists without saying when.
 //
 // WHY THIS IS HAND-DRAWN. Wingdings is a Microsoft font: it cannot be
-// embedded, it is absent on most phones and every Linux box, and a missing
-// symbol font falls back to plain legible letters — which would leak the
-// exact thing the cipher is hiding. The game has no wingdings font of its
-// own either (no fnt_ or sprite by that name in chapters 1, 3 or 5), so
-// there is nothing to extract. These are drawn here: 5x7 cells to match the
-// site's other pixel glyphs, one symbol per letter, rendered as SVG rects
-// so they stay crisp at any scale and identical on every machine.
+// embedded, it is missing on most phones and every Linux box, and a missing
+// symbol font falls back to plain legible letters — leaking the exact thing
+// the cipher hides, on the machines least likely to have it. The game has no
+// wingdings font of its own either (no fnt_ and no sprite by that name in
+// chapters 1, 3 or 5), so there was nothing to extract.
+//
+// THE GRID IS 7x9, AND THE GLYPHS ARE WRITTEN AS PICTURES. An earlier set
+// was 5x7 binary literals, and five columns is not enough room for a symbol
+// to be a shape — everything came out as a thin rune and the whole list read
+// as texture rather than writing. Seven by nine holds a filled circle, an
+// arrow with a head on it, a ring with a hole. Drawing them as ASCII means
+// you can see what you are editing, which is the only way this stays
+// maintainable.
 //
 // The mapping is a fixed substitution — the same letter always gives the
-// same symbol — so the names are consistent, comparable, and decodable by
-// anyone who cares to sit down with them. That is the correct amount of
-// secret.
+// same symbol — so the shared DEVICE_ prefix reads as a shared prefix, the
+// names are comparable, and anyone stubborn enough can decode them. That is
+// the right amount of secret.
 
-const GLYPHS = {
-  A: [0b00100, 0b00100, 0b01110, 0b01110, 0b11111, 0b11111, 0b00000], // ascending mark
-  B: [0b11111, 0b10001, 0b10101, 0b10101, 0b10001, 0b11111, 0b00000], // boxed eye
-  C: [0b01110, 0b11000, 0b11000, 0b11000, 0b11000, 0b01110, 0b00000], // half disc
-  D: [0b00100, 0b00100, 0b11111, 0b11111, 0b00100, 0b00100, 0b00000], // cross
-  E: [0b10001, 0b01010, 0b00100, 0b00100, 0b01010, 0b10001, 0b00000], // saltire
-  F: [0b01110, 0b10001, 0b10101, 0b10101, 0b10001, 0b01110, 0b00000], // ringed dot
-  G: [0b11111, 0b00000, 0b11111, 0b00000, 0b11111, 0b00000, 0b00000], // three bars
-  H: [0b10101, 0b10101, 0b10101, 0b10101, 0b10101, 0b10101, 0b00000], // palisade
-  I: [0b00100, 0b01110, 0b11111, 0b11111, 0b01110, 0b00100, 0b00000], // diamond
-  J: [0b00100, 0b01110, 0b10101, 0b00100, 0b00100, 0b00100, 0b00000], // rising arrow
-  K: [0b00100, 0b00100, 0b00100, 0b10101, 0b01110, 0b00100, 0b00000], // falling arrow
-  L: [0b00100, 0b01100, 0b11111, 0b11111, 0b01100, 0b00100, 0b00000], // leftward
-  M: [0b00100, 0b00110, 0b11111, 0b11111, 0b00110, 0b00100, 0b00000], // rightward
-  N: [0b01110, 0b01110, 0b00000, 0b00000, 0b01110, 0b01110, 0b00000], // two weights
-  O: [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110, 0b00000], // ring
-  P: [0b11111, 0b00100, 0b00100, 0b00100, 0b00100, 0b11111, 0b00000], // pillar
-  Q: [0b11111, 0b01110, 0b00100, 0b00100, 0b01110, 0b11111, 0b00000], // hourglass
-  R: [0b10000, 0b11000, 0b01110, 0b00111, 0b00011, 0b00001, 0b00000], // fall line
-  S: [0b01100, 0b10010, 0b00100, 0b01000, 0b10010, 0b01100, 0b00000], // wave
-  T: [0b11111, 0b10001, 0b10001, 0b10001, 0b10001, 0b11111, 0b00000], // vessel
-  U: [0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b11111, 0b00000], // filled
-  V: [0b10001, 0b10001, 0b01010, 0b01010, 0b00100, 0b00100, 0b00000], // chevron down
-  W: [0b00100, 0b00100, 0b01010, 0b01010, 0b10001, 0b10001, 0b00000], // chevron up
-  X: [0b10101, 0b01110, 0b11111, 0b11111, 0b01110, 0b10101, 0b00000], // star
-  Y: [0b10001, 0b01010, 0b00100, 0b00100, 0b00100, 0b00100, 0b00000], // fork
-  Z: [0b11111, 0b00010, 0b00100, 0b01000, 0b10000, 0b11111, 0b00000], // switchback
-  '_': [0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b00000, 0b11111],
-  ' ': [0, 0, 0, 0, 0, 0, 0],
+const ART = {
+  A: `..###..
+.#####.
+#######
+#######
+#######
+#######
+#######
+.#####.
+..###..`,                       // disc
+  B: `#######
+#######
+##...##
+##...##
+##...##
+##...##
+##...##
+#######
+#######`,                       // pierced block
+  C: `...#...
+.#.#.#.
+..###..
+.#####.
+###.###
+.#####.
+..###..
+.#.#.#.
+...#...`,                       // spark
+  D: `..###..
+..###..
+..###..
+#######
+#######
+#######
+..###..
+..###..
+..###..`,                       // cross
+  E: `##...##
+###.###
+.#####.
+..###..
+..###..
+..###..
+.#####.
+###.###
+##...##`,                       // saltire
+  F: `...#...
+..###..
+..###..
+.#####.
+.#####.
+#######
+#######
+#######
+.......`,                       // pylon
+  G: `.......
+#######
+#######
+#######
+.#####.
+.#####.
+..###..
+..###..
+...#...`,                       // funnel
+  H: `...#...
+..###..
+.#####.
+#######
+#######
+#######
+.#####.
+..###..
+...#...`,                       // rhombus
+  I: `..###..
+.#...#.
+#.....#
+#..#..#
+#.###.#
+#..#..#
+#.....#
+.#...#.
+..###..`,                       // eye
+  J: `...#...
+..###..
+.#####.
+#######
+..###..
+..###..
+..###..
+..###..
+..###..`,                       // rising
+  K: `..###..
+..###..
+..###..
+..###..
+..###..
+#######
+.#####.
+..###..
+...#...`,                       // falling
+  L: `.......
+...#...
+..##...
+.#####.
+#######
+.#####.
+..##...
+...#...
+.......`,                       // west
+  M: `.......
+...#...
+...##..
+.#####.
+#######
+.#####.
+...##..
+...#...
+.......`,                       // east
+  N: `#######
+#######
+.#####.
+..###..
+...#...
+..###..
+.#####.
+#######
+#######`,                       // glass
+  O: `..###..
+.#####.
+###.###
+##...##
+##...##
+##...##
+###.###
+.#####.
+..###..`,                       // ring
+  P: `###....
+#####..
+#######
+#####..
+###....
+##.....
+##.....
+##.....
+##.....`,                       // banner
+  Q: `#######
+#.....#
+#.###.#
+#.#.#.#
+#.#.#.#
+#.#.#.#
+#.###.#
+#.....#
+#######`,                       // nested box
+  R: `....###
+...###.
+..###..
+.###...
+#######
+..###..
+.###...
+###....
+##.....`,                       // bolt
+  S: `.......
+.##....
+####.##
+##.####
+....##.
+.......
+.##....
+####.##
+##.####`,                       // double wave
+  T: `##...##
+##...##
+##...##
+##...##
+.##.##.
+.#####.
+..###..
+...#...
+..###..`,                       // vessel
+  U: `#######
+#######
+#######
+#######
+#######
+#######
+#######
+#######
+#######`,                       // solid
+  V: `##...##
+##...##
+.##.##.
+.##.##.
+..###..
+..###..
+...#...
+.......
+.......`,                       // chevron down
+  W: `.......
+.......
+...#...
+..###..
+..###..
+.##.##.
+.##.##.
+##...##
+##...##`,                       // chevron up
+  X: `#..#..#
+##.#.##
+.#####.
+..###..
+#######
+..###..
+.#####.
+##.#.##
+#..#..#`,                       // asterisk
+  Y: `##...##
+.##.##.
+..###..
+...#...
+...#...
+...#...
+...#...
+...#...
+...#...`,                       // fork
+  Z: `#######
+#######
+....##.
+...##..
+..##...
+.##....
+##.....
+#######
+#######`,                       // switchback
+  '_': `.......
+.......
+.......
+.......
+.......
+.......
+.......
+#######
+#######`,
+  ' ': `.......
+.......
+.......
+.......
+.......
+.......
+.......
+.......
+.......`,
 };
 
-const COLS = 5, ROWS = 7, ADVANCE = 7;
+const COLS = 7, ROWS = 9;
+/** fnt_8bit's cell is 16 wide; a 7-wide glyph at scale 2 leaves 2px of air. */
+export const DEFAULT_ADVANCE = 16;
+export const GLYPH_COLS = COLS, GLYPH_ROWS = ROWS;
+
+/** Art -> rows of booleans, once. */
+const GLYPHS = Object.fromEntries(Object.entries(ART).map(([k, art]) => [
+  k, art.trim().split('\n').map((line) => {
+    const row = [];
+    for (let x = 0; x < COLS; x++) row.push(line[x] === '#');
+    return row;
+  }),
+]));
+
+/** Horizontal runs per row — fewer rects to draw, and fewer SVG nodes. */
+function runs(rows) {
+  const out = [];
+  rows.forEach((row, y) => {
+    let start = -1;
+    for (let x = 0; x <= COLS; x++) {
+      const on = x < COLS && row[x];
+      if (on && start < 0) start = x;
+      if (!on && start >= 0) { out.push([start, y, x - start]); start = -1; }
+    }
+  });
+  return out;
+}
+
+const RUNS = Object.fromEntries(Object.entries(GLYPHS).map(([k, r]) => [k, runs(r)]));
+
+export function wingdingsWidth(text, advance = DEFAULT_ADVANCE) {
+  return [...String(text)].length * advance;
+}
+
+/** What a line of this occupies vertically, for centring against the font. */
+export function wingdingsHeight(scale = 2) {
+  return ROWS * scale;
+}
+
+/** Draw straight onto a canvas — the board is painted, not laid out in DOM. */
+export function drawWingdings(ctx, text, x, y, { scale = 2, advance = DEFAULT_ADVANCE, color = '#ffffff' } = {}) {
+  ctx.fillStyle = color;
+  let pen = x;
+  for (const ch of String(text).toUpperCase()) {
+    for (const [rx, ry, len] of (RUNS[ch] ?? RUNS[' '])) {
+      ctx.fillRect(pen + rx * scale, y + ry * scale, len * scale, scale);
+    }
+    pen += advance;
+  }
+  return pen - x;
+}
 
 /**
- * Render `text` as the unreadable script.
+ * The SVG form, for pages that lay the names out in DOM.
  *
- * The real text goes in as a visually hidden span, so find-in-page, copy
- * and a screen reader all still get the actual name — the cipher is for the
- * eye, not a way of withholding the page from anybody who needs it read
- * aloud.
+ * The real text goes in as a visually hidden span, so find-in-page, copy and
+ * a screen reader all still get the actual name — the cipher is for the eye,
+ * not a way of withholding the page from anyone who needs it read aloud.
  */
 export function wingdings(text, scale = 3, label = null) {
-  const chars = [...text.toUpperCase()];
-  const width = chars.length * ADVANCE - 2;
+  const chars = [...String(text).toUpperCase()];
+  const advance = COLS + 1;
+  const width = chars.length * advance - 1;
   const ns = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(ns, 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${ROWS}`);
@@ -73,23 +353,13 @@ export function wingdings(text, scale = 3, label = null) {
   svg.setAttribute('aria-hidden', 'true');
 
   chars.forEach((ch, i) => {
-    const rows = GLYPHS[ch] ?? GLYPHS[' '];
-    const x0 = i * ADVANCE;
-    for (let y = 0; y < ROWS; y++) {
-      let run = -1;
-      for (let x = 0; x <= COLS; x++) {
-        const on = x < COLS && (rows[y] >> (COLS - 1 - x)) & 1;
-        if (on && run < 0) run = x;
-        if (!on && run >= 0) {
-          const r = document.createElementNS(ns, 'rect');
-          r.setAttribute('x', x0 + run);
-          r.setAttribute('y', y);
-          r.setAttribute('width', x - run);
-          r.setAttribute('height', 1);
-          svg.append(r);
-          run = -1;
-        }
-      }
+    for (const [rx, ry, len] of (RUNS[ch] ?? RUNS[' '])) {
+      const r = document.createElementNS(ns, 'rect');
+      r.setAttribute('x', i * advance + rx);
+      r.setAttribute('y', ry);
+      r.setAttribute('width', len);
+      r.setAttribute('height', 1);
+      svg.append(r);
     }
   });
 
@@ -100,39 +370,4 @@ export function wingdings(text, scale = 3, label = null) {
     'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap';
   wrap.append(hidden, svg);
   return wrap;
-}
-
-
-/**
- * The same glyphs, drawn straight onto a canvas.
- *
- * The board lives inside the room's television, which is painted by the
- * room's own renderer — so the cipher needs a canvas path as well as the
- * SVG one. `advance` is passed in rather than assumed, because on the board
- * it has to line up with fnt_8bit's fixed 16px cell.
- */
-export function drawWingdings(ctx, text, x, y, { scale = 2, advance = 16, color = '#ffffff' } = {}) {
-  ctx.fillStyle = color;
-  let pen = x;
-  for (const ch of String(text).toUpperCase()) {
-    const rows = GLYPHS[ch] ?? GLYPHS[' '];
-    for (let ry = 0; ry < ROWS; ry++) {
-      let run = -1;
-      for (let rx = 0; rx <= COLS; rx++) {
-        const on = rx < COLS && (rows[ry] >> (COLS - 1 - rx)) & 1;
-        if (on && run < 0) run = rx;
-        if (!on && run >= 0) {
-          ctx.fillRect(pen + run * scale, y + ry * scale, (rx - run) * scale, scale);
-          run = -1;
-        }
-      }
-    }
-    pen += advance;
-  }
-  return pen - x;
-}
-
-/** What `drawWingdings` will occupy, for centring. */
-export function wingdingsWidth(text, advance = 16) {
-  return [...String(text)].length * advance;
 }
