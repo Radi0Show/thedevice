@@ -406,12 +406,9 @@ export async function runRoom(canvas, opts = {}) {
       timer = 0;
       screenState = 'blue';
     }
-    if (con === 'blue' && timer >= 30) {
-      con = 'logo';
-      timer = 0;
-      screenState = 'logo';
-    }
-    if (con === 'logo' && timer >= 60 && !booted) {
+    // (the "THE DEVICE" logo beat is gone by request — the blue field
+    // hands straight to the selector)
+    if (con === 'blue' && timer >= 30 && !booted) {
       booted = true;
       con = 'device';
       screenState = 'device';
@@ -516,13 +513,6 @@ export async function runRoom(canvas, opts = {}) {
         }
       });
       ctx.restore();
-    } else if (screenState === 'logo') {
-      ctx.fillStyle = BOOT_BLUE;
-      ctx.fillRect(SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 26px "Courier New", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('THE DEVICE', SCREEN_X + SCREEN_W / 2, SCREEN_Y + SCREEN_H / 2);
     }
     // THE TUBE'S FALLOFF. A flat fill reads as a printed panel; a screen is
     // brighter down the middle and loses its corners. This sits over
