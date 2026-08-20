@@ -1,0 +1,1780 @@
+{
+"spr_board_b2crabdirt": {
+"w": 16,
+"h": 16,
+"ox": 8,
+"oy": 8,
+"frames": 3
+},
+"spr_board_grabbablegrass": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_treespawner": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_static_effect": {
+"w": 128,
+"h": 128,
+"ox": 0,
+"oy": 0,
+"frames": 8
+},
+"spr_bluebird_shadow": {
+"w": 24,
+"h": 5,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_krisd": {
+"w": 19,
+"h": 38,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_b2entrance_animatecamera": {
+"w": 24,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 9
+},
+"spr_board_investigatable": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_warpdoor": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_blue_bird_hurt": {
+"w": 24,
+"h": 16,
+"ox": 4,
+"oy": 0,
+"frames": 2
+},
+"spr_solid_board": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_key": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 7
+},
+"spr_pxwhite": {
+"w": 1,
+"h": 1,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_watersign": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_enemy_spawner": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 21
+},
+"spr_board_grayarrowblock": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_susie_walk_down": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bigdoor": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_cactus": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_pointsGet": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_ladder": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_blocky": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_lancercactus": {
+"w": 27,
+"h": 31,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_camerashifter": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_flower": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bluefish_u": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_tile_adventure": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2entrance_animateonsen": {
+"w": 14,
+"h": 12,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_photoblock": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_chest": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b1powerpond": {
+"w": 32,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2dungeonswitch": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_lizard_l": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_blue_bird": {
+"w": 24,
+"h": 16,
+"ox": 4,
+"oy": 0,
+"frames": 2
+},
+"spr_board_sword_fakeentrance": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_breakableblock": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_tile_points": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_lancer_dt": {
+"w": 36,
+"h": 35,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_watertile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_event": {
+"w": 20,
+"h": 20,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_mazewall": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_sphinx_tenna": {
+"w": 64,
+"h": 58,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_enemy_pricklycactus": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_shadowgunner_spawn": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_flower_telegraph_alt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_flower_alt_closed": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_susiedig_groundspots": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_solid_32": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_ui_icekey": {
+"w": 8,
+"h": 8,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b3s_stanchion": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_tile_node": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_boardcontroller": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2_photopodium": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_lizard_l_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_ch3_boardchar": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_camera_bg": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b3b_elevatorbg": {
+"w": 98,
+"h": 82,
+"ox": 1,
+"oy": 1,
+"frames": 1
+},
+"spr_board_deer_r_black": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bubble": {
+"w": 16,
+"h": 16,
+"ox": 8,
+"oy": 8,
+"frames": 1
+},
+"spr_board_tornflower": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_fire": {
+"w": 14,
+"h": 14,
+"ox": 7,
+"oy": 7,
+"frames": 3
+},
+"spr_musical_notes": {
+"w": 24,
+"h": 24,
+"ox": 12,
+"oy": 12,
+"frames": 1
+},
+"spr_board_breakpoof": {
+"w": 32,
+"h": 32,
+"ox": 8,
+"oy": 8,
+"frames": 4
+},
+"spr_board_enemydefeatsplash": {
+"w": 16,
+"h": 16,
+"ox": 8,
+"oy": 8,
+"frames": 3
+},
+"spr_board_downstairs": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_ch3_dw_b3bs_console": {
+"w": 38,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_check_warp": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_cactus_flirt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_dead": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_shadow_mantle_idle": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 6
+},
+"spr_board_snowflake": {
+"w": 5,
+"h": 5,
+"ox": 2,
+"oy": 2,
+"frames": 2
+},
+"spr_b3gameshow_tvfuzz": {
+"w": 24,
+"h": 15,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_smallbullet": {
+"w": 8,
+"h": 8,
+"ox": 4,
+"oy": 4,
+"frames": 2
+},
+"spr_board_penaltyshot": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_b3bs_searchzapper": {
+"w": 59,
+"h": 74,
+"ox": -3,
+"oy": 7,
+"frames": 4
+},
+"spr_board_oasis1": {
+"w": 64,
+"h": 64,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_gameshow_swordroute_tvglow": {
+"w": 320,
+"h": 80,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_whitepx": {
+"w": 1,
+"h": 1,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2cameraglow": {
+"w": 24,
+"h": 18,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_icespell_hexagon": {
+"w": 22,
+"h": 22,
+"ox": 11,
+"oy": 11,
+"frames": 1
+},
+"spr_board_mazewater": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_enemy_placeholder": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_spear": {
+"w": 16,
+"h": 16,
+"ox": 8,
+"oy": 8,
+"frames": 1
+},
+"spr_board_ralsei_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_ui_sword": {
+"w": 8,
+"h": 8,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_sphinx_base": {
+"w": 55,
+"h": 57,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr___eyes": {
+"w": 14,
+"h": 10,
+"ox": 7,
+"oy": 5,
+"frames": 1
+},
+"spr_board_boatsolid": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_boulder": {
+"w": 16,
+"h": 16,
+"ox": 8,
+"oy": 8,
+"frames": 1
+},
+"spr_magicalglass": {
+"w": 20,
+"h": 20,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_flower_telegraph": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b2cactus": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_pixel_white": {
+"w": 4,
+"h": 4,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_hitbox_10px_center": {
+"w": 10,
+"h": 10,
+"ox": 5,
+"oy": 5,
+"frames": 1
+},
+"spr_board_triggerarea": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 9
+},
+"spr_board_monster": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_cloud_projectile": {
+"w": 6,
+"h": 15,
+"ox": 3,
+"oy": 7,
+"frames": 2
+},
+"spr___laugh": {
+"w": 16,
+"h": 15,
+"ox": 0,
+"oy": 0,
+"frames": 10
+},
+"spr_board_shallowwater": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_healthbar": {
+"w": 46,
+"h": 15,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_lw_police_keys": {
+"w": 13,
+"h": 12,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_block_fluffyboy": {
+"w": 16,
+"h": 19,
+"ox": 0,
+"oy": 3,
+"frames": 4
+},
+"spr_board_b2_atlantis": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_b3bs_chasekey": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_maildoor": {
+"w": 32,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_lancerswitch": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_dw_puzzlecloset_mysterytile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_binoculars": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_inventory": {
+"w": 24,
+"h": 128,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_shadow_spotlight": {
+"w": 64,
+"h": 64,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_monster_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_tree": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b2_cautiontape": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_b3bs_switchtile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_shell": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_tile_quiz": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_bluefish_l": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_warpentrance": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_debug_stealth": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_swordswitch": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_score": {
+"w": 51,
+"h": 15,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_erasericon": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_npc_pippins": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_gameshow_swordroutebg": {
+"w": 330,
+"h": 250,
+"ox": 5,
+"oy": 5,
+"frames": 1
+},
+"spr_board_b2_bridgeoverlay": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_freeroamTrigger": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_enemy_flower": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_screenColorChanger": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_cat_silent": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_hazard": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_pleasurePain": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2s_icedoor_outside": {
+"w": 48,
+"h": 31,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_hookshot_hook": {
+"w": 8,
+"h": 6,
+"ox": 4,
+"oy": 1,
+"frames": 1
+},
+"spr_board_lancermoat": {
+"w": 112,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_antlion_blue": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 6
+},
+"spr_board_shadowgunner": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_b2_badbridge": {
+"w": 224,
+"h": 128,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_jar": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_tree_grayscale": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_enemy_flower_bullet": {
+"w": 12,
+"h": 12,
+"ox": 6,
+"oy": 6,
+"frames": 1
+},
+"spr_board_throw_reticle": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_lawnmower": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_flowers": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_dungeon3_switch": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_npc_tenna_back": {
+"w": 18,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_waterfall": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_b3_tenna_blossom": {
+"w": 26,
+"h": 15,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_rabbick_bushhole": {
+"w": 37,
+"h": 41,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_fern": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_enemy_shadowman_hit": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_lanino_sad": {
+"w": 16,
+"h": 32,
+"ox": 0,
+"oy": 16,
+"frames": 1
+},
+"spr_board_weedmow": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 5
+},
+"spr_board_solidenemy": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_tree_cold": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_belltile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bluefish_r": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bridge_1x": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_deer_downsprite": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b2drawbridge": {
+"w": 16,
+"h": 32,
+"ox": 0,
+"oy": 16,
+"frames": 4
+},
+"spr_board_quizchaser_graylegs": {
+"w": 24,
+"h": 32,
+"ox": 12,
+"oy": 29,
+"frames": 2
+},
+"spr_40x40": {
+"w": 40,
+"h": 40,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_flower_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_sword": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_smallpond": {
+"w": 64,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_photoparent": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2s_icedoor": {
+"w": 48,
+"h": 31,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_bluefish_d": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_lizard_r": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_treeEnemy": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_solidcorner": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_raft": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_tile_dodge": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_treasuremarker": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_bridge": {
+"w": 32,
+"h": 38,
+"ox": 0,
+"oy": 6,
+"frames": 1
+},
+"spr_board_node": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_flower_alt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_dugtile": {
+"w": 4,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_bouncy": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_lizard_r_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_smokepuff": {
+"w": 32,
+"h": 32,
+"ox": 8,
+"oy": 8,
+"frames": 9
+},
+"spr_board_miniboss_wall_top": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_warptile": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_camerablocker": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_movingEnemy": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_dock": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_candy": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_interactiveSpace": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 21
+},
+"spr_board_oasis_border": {
+"w": 64,
+"h": 64,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_cat_singing": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_startransition": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_event": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_bomb_generic": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_monster_outline_docile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_strike_up": {
+"w": 16,
+"h": 32,
+"ox": 0,
+"oy": 16,
+"frames": 3
+},
+"spr_board_cactus_cold": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_strike_left": {
+"w": 32,
+"h": 16,
+"ox": 16,
+"oy": 0,
+"frames": 3
+},
+"spr_board_kris_walk_left": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_monster_angery_outline_docile": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_strike_right": {
+"w": 32,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_kris_walk_up": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_strike_down": {
+"w": 16,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_board_kris_walk_down": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_kris_walk_right": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_susie_hurt": {
+"w": 17,
+"h": 16,
+"ox": 1,
+"oy": 0,
+"frames": 1
+},
+"spr_board_tree_withered": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_ralsei_walk_down": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_ralsei_walk_left": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_ralsei_walk_up": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_susie_walk_up": {
+"w": 17,
+"h": 16,
+"ox": 1,
+"oy": 0,
+"frames": 2
+},
+"spr_board_ralsei_walk_right": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b1tree_left": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_board_susie_walk_left": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_susie_walk_right": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_cactus_spines": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"obj_board_squaretransition_heart": {
+"w": 18,
+"h": 10,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_custommenu_arrow_nooutline": {
+"w": 12,
+"h": 8,
+"ox": 6,
+"oy": 4,
+"frames": 1
+},
+"spr_whitepixel": {
+"w": 1,
+"h": 1,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_treasurebox": {
+"w": 20,
+"h": 20,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_doorAny": {
+"w": 40,
+"h": 40,
+"ox": 0,
+"oy": 0,
+"frames": 7
+},
+"spr_shadow_mantle_side_r": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_shadow_mantle_fire2": {
+"w": 14,
+"h": 14,
+"ox": 7,
+"oy": 7,
+"frames": 3
+},
+"spr_board_cat_singing_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_side_l": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 3
+},
+"spr_shadow_mantle_fire": {
+"w": 9,
+"h": 9,
+"ox": 4,
+"oy": 4,
+"frames": 3
+},
+"spr_shadow_mantle_bomb": {
+"w": 8,
+"h": 13,
+"ox": 4,
+"oy": 9,
+"frames": 2
+},
+"spr_shadow_mantle_cloud": {
+"w": 18,
+"h": 16,
+"ox": 7,
+"oy": 6,
+"frames": 3
+},
+"spr_swordroute_shadowmantle_krishitflash": {
+"w": 29,
+"h": 47,
+"ox": 5,
+"oy": 5,
+"frames": 1
+},
+"spr_board_imonfire": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_new_tiles_glow1": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr_shadow_mantle_release_abbreviated": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 5
+},
+"spr_shadow_mantle_cloud_white": {
+"w": 18,
+"h": 16,
+"ox": 7,
+"oy": 6,
+"frames": 3
+},
+"spr_shadow_mantle_laugh": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_dash": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_release": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 10
+},
+"spr_shadow_mantle_new_tiles": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 12
+},
+"spr_shadow_mantle": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_shadow_mantle_onfire": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_shadow_mantle_new_tiles_glow2": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr___hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr___": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 4
+},
+"spr___no": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_b3s_sewer": {
+"w": 32,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_b2entrances": {
+"w": 32,
+"h": 48,
+"ox": 0,
+"oy": 16,
+"frames": 3
+},
+"spr_board_b2cave": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_bigdoorstatic": {
+"w": 32,
+"h": 32,
+"ox": 0,
+"oy": 0,
+"frames": 1
+},
+"spr_board_silverfish_d": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_u_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_r": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_l": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_u": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_l_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_d_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+},
+"spr_board_silverfish_r_hurt": {
+"w": 16,
+"h": 16,
+"ox": 0,
+"oy": 0,
+"frames": 2
+}
+}

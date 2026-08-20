@@ -99,8 +99,9 @@ DEVICE_ROOM**, same browser page, no iframe. The sim is built for it:
 fetch is base-relative, audio is injectable (`opts.audio`), and
 `opts.onComplete` hands control back. At merge time:
 
-1. Vendor `sim/ assets/` from ~/eram-sim (its index.html is bug-test
-   scaffolding — do not copy it).
+1. ~~Vendor `sim/ assets/` from ~/eram-sim~~ **DONE** —
+   `tools/vendor-eram.sh` (its index.html is bug-test scaffolding and
+   stays home; the vendored commit is stamped in `DEVICE_MANTLE/BUILD`).
 2. On DEVICE_MANTLE select: play the reverse tvturnoff as usual, then
 
    ```js
