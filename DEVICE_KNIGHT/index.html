@@ -119,8 +119,10 @@
   <canvas id="game" width="640" height="480"></canvas>
   <div id="hud">loading…</div>
 
-  <a class="chrome" id="back" href="../">&#9664; DEVICE_MENU</a>
-  <button class="chrome" id="mute" aria-pressed="false" title="Mute all sound (M)">[ SOUND: ON ]</button>
+  <!-- The DEVICE_MENU back link and the hub SOUND button are gone by
+       request. The sim's own settings still control volume; removing the
+       hub mute layer also removes its localStorage state, which could
+       leave a visitor silently muted forever with no button to unmute. -->
   <div id="legal">
     FAN PROJECT · UNAFFILIATED WITH TOBY FOX · DELTARUNE © TOBY FOX ·
     <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
@@ -134,38 +136,16 @@
     // BOOT. The sim's driver is untouched upstream code; this page only
     // hosts it. A failed import means the vendored build is absent (the
     // pre-merge state) — show the failure screen instead of a blank canvas.
-    const MUTE_KEY = 'thedevice.mute';
-    const muteBtn = document.getElementById('mute');
-
-    function paintMute(muted) {
-      muteBtn.textContent = muted ? '[ SOUND: OFF ]' : '[ SOUND: ON ]';
-      muteBtn.setAttribute('aria-pressed', String(muted));
-    }
-
+    // The hub mute layer is gone with its button: window.__audio stays
+    // enabled and the sim's own settings own the volume. Any stale
+    // thedevice.mute flag from the old button is cleared so nobody stays
+    // silently muted.
+    try { localStorage.removeItem('thedevice.mute'); } catch {}
     try {
       await import('./web/main.js');
-      // main.js has run: window.__audio exists. The hub mute is the master
-      // switch (audio.enabled stops every loop on the way down); the sim's
-      // own Q key and volume sliders keep working underneath it. A muted
-      // session stays muted across reloads — people open games at work.
-      let muted = false;
-      try { muted = localStorage.getItem(MUTE_KEY) === '1'; } catch {}
-      const apply = () => {
-        window.__audio.enabled = !muted;
-        try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch {}
-        paintMute(muted);
-      };
-      apply();
-      muteBtn.onclick = () => { muted = !muted; apply(); };
-      window.addEventListener('keydown', (e) => {
-        if (e.code === 'KeyM' && !e.altKey && !e.ctrlKey && !e.metaKey) {
-          muted = !muted; apply();
-        }
-      });
     } catch (err) {
       console.error('sim not connected:', err);
       document.getElementById('notconnected').style.display = 'flex';
-      muteBtn.style.display = 'none';
     }
   </script>
 </body>
