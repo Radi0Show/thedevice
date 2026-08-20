@@ -8,9 +8,13 @@ the existing frames, so every pose and frame stays pixel-identical in
 silhouette — only the colours move.
 
 Regions, derived per frame rather than hardcoded:
-  - the FACE is every #75fbed pixel (absent on the up-facing frames);
+  - the FACE is every #75fbed pixel (absent on the back-facing frames);
   - the HAIR is the dark navy in the head band — rows up to just below the
-    lowest face row (up-frames: the top 40% of the sprite's bounding box);
+    lowest face row. The back-facing frames (up walk + hold) have no face,
+    so they take the boundary MEASURED from the face-bearing frames — all
+    of which agree — rather than a guessed fraction: the old 40% band cut
+    the hair tips dark and left the armour-back near-black while the front
+    and sides tint that band brown. Back and front match now.
   - everything else navy (outline, pants, boots) goes near-black;
   - the armour blues and the scarf become the sweater's greys and stripe.
 
@@ -40,19 +44,23 @@ PALETTE = {
 }
 
 
-def convert(path):
+def face_bottom(path):
+    im = Image.open(path).convert('RGBA')
+    w, h = im.size
+    px = im.load()
+    rows = [y for y in range(h) for x in range(w) if px[x, y][3] > 0 and px[x, y][:3] == FACE]
+    return max(rows) + 1 if rows else None
+
+
+def convert(path, shared_hair_bottom):
     im = Image.open(path).convert('RGBA')
     w, h = im.size
     px = im.load()
 
-    # the head band: down/left/right frames carry the face; up frames don't
-    face_rows = [y for y in range(h) for x in range(w) if px[x, y][:3] == FACE and px[x, y][3] > 0]
-    opaque_rows = [y for y in range(h) for x in range(w) if px[x, y][3] > 0]
-    top = min(opaque_rows)
-    if face_rows:
-        hair_bottom = max(face_rows) + 1
-    else:
-        hair_bottom = top + int((max(opaque_rows) - top) * 0.40)
+    # the head band: down/left/right frames carry the face; the back-facing
+    # frames take the boundary the face-bearing frames agreed on
+    own = face_bottom(path)
+    hair_bottom = own if own is not None else shared_hair_bottom
 
     out = Image.new('RGBA', (w, h))
     po = out.load()
@@ -84,8 +92,15 @@ def main():
     frames = sorted(glob.glob(os.path.join(ROOM, 'kris_*.png')))
     if not frames:
         raise SystemExit('no kris_*.png frames found')
+    # pass 1: the shared hair boundary, measured from every frame with a face
+    bottoms = sorted({b for f in frames if (b := face_bottom(f)) is not None})
+    if not bottoms:
+        raise SystemExit('no face-bearing frames to measure the hair boundary from')
+    if len(bottoms) > 1:
+        print(f'note: face-bearing frames disagree on the boundary ({bottoms}); using the lowest')
+    shared = bottoms[-1]
     for f in frames:
-        out = convert(f)
+        out = convert(f, shared)
         dest = f.replace('kris_', 'vessel_')
         out.save(dest)
         print('wrote', os.path.relpath(dest, os.path.join(HERE, '..')))
