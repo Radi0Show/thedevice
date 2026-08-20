@@ -337,6 +337,10 @@ export async function runBoard(canvas, base = 'assets/board/') {
   function frame(now) {
     acc += now - last;
     last = now;
+    // A hidden tab pauses rAF but time keeps passing - without this
+    // clamp the backlog replays at 8x on return (the fast-forward
+    // burst). Coming back resumes at normal speed, dropping the gap.
+    if (acc > MS_PER_FRAME * 4) acc = MS_PER_FRAME;
     let guard = 0;
     while (acc >= MS_PER_FRAME && guard++ < 8) {
       acc -= MS_PER_FRAME;

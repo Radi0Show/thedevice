@@ -203,12 +203,15 @@ export async function runRoom(canvas, opts = {}) {
    * sprite would also swallow the spot the game itself walks Kris to.
    */
   const SOLIDS = [
-    // The console on the floor. The box used to run to 414 — 2px PAST the
-    // sprite's base (412) — so a walk-up from the front stopped a whole
-    // step early, feet hovering below the unit. The bottom now sits 16px
-    // inside the sprite: the feet can reach its base edge (the usual
-    // top-down depth illusion) and the block reads where the console is.
-    { x: 206, y: 380, w: 190, h: 16 },
+    // The console on the floor — sized to the ART, not the file.
+    // console.png is 99x45 but the unit's opaque pixels occupy only
+    // x 34..83, y 0..16 of it (the rest is transparent padding), so drawn
+    // at (202,322) x2 the VISIBLE console is x 270..369, y 322..355. The
+    // old box (x 206..396, y 380..414) was derived from the padded file:
+    // it floated in empty floor BELOW the unit — an invisible wall you
+    // could not cross, while the console itself could be walked over.
+    // This box is the unit's footprint, feet allowed to its base edge.
+    { x: 270, y: 336, w: 100, h: 18 },
   ];
 
   /**
@@ -584,6 +587,10 @@ export async function runRoom(canvas, opts = {}) {
   function frame(now) {
     acc += now - last;
     last = now;
+    // A hidden tab pauses rAF but time keeps passing - without this
+    // clamp the backlog replays at 8x on return (the fast-forward
+    // burst). Coming back resumes at normal speed, dropping the gap.
+    if (acc > MS_PER_FRAME * 4) acc = MS_PER_FRAME;
     let guard = 0;
     while (acc >= MS_PER_FRAME && guard++ < 8) {
       acc -= MS_PER_FRAME;
