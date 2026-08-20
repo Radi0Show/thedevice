@@ -123,15 +123,15 @@ export async function runCrt(canvas, opts = {}) {
   // boot — one line of text tiled across the screen, every row drifting
   // left, alternate rows half-phase, stepped at the CRT's 30fps. The
   // drift rate and row spacing are approximated from the look of the
-  // game's insert screens, not extracted values. After `frames` steps
-  // (default 90 = 3 seconds) it confirms itself; Z skips.
+  // game's insert screens, not extracted values. It scrolls until Z;
+  // pass `frames` only if a timed auto-advance is ever wanted again.
   const scroll = opts.scroll ?? null;
   let scrollDone = false;
 
   function step() {
     state.time += scrWave(0, 0.75, 4, 0);
     state.frame += 1;
-    if (scroll && !scrollDone && state.frame >= (scroll.frames ?? 90)) {
+    if (scroll && !scrollDone && scroll.frames && state.frame >= scroll.frames) {
       scrollDone = true;
       opts.onConfirm?.();
     }

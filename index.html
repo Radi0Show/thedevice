@@ -96,7 +96,7 @@
 </div>
 
 <script type="module">
-  import { runCrt } from './shared/crt.js?v=boot2';
+  import { runCrt } from './shared/crt.js?v=boot3';
   import { loadPrefs, savePrefs, applyPrefs } from './shared/device.js';
 
   const canvas = document.getElementById('crt');
@@ -148,10 +148,8 @@
         fontBase: 'assets/gonermaker/',
         shader: 'assets/crt/shd_crt2.frag',
         // the cartridge-boot scroller: rows of the line drifting across
-        // the set, then it walks itself into the room. Z skips.
-        // ?holdboot=1 pins the scroller for debugging/screenshots.
-        scroll: { text: 'BOOTING DEVICE_MENU . . .',
-          frames: new URLSearchParams(location.search).get('holdboot') ? 1e9 : 105 },
+        // the set until Z is pressed — no timed advance.
+        scroll: { text: 'BOOTING DEVICE_MENU . . .' },
         onConfirm: () => { go(); },
       });
     } catch (err) {
