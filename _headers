@@ -7,6 +7,17 @@
 /DEVICE_KNIGHT/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# THE INDEXES MUST REVALIDATE. These two files are the vendored assets'
+# tables of contents and they CHANGE on re-vendor — immutable caching is
+# how the mus_knight fix could never reach a returning visitor (their
+# browser held the old audio index for a year). Binaries stay immutable;
+# the manifests do not.
+/DEVICE_KNIGHT/assets/audio/index.json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/DEVICE_KNIGHT/assets/sprites/manifest.json
+  Cache-Control: public, max-age=0, must-revalidate
+
 /og/*
   Cache-Control: public, max-age=86400
 

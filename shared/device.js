@@ -19,7 +19,12 @@ export function loadPrefs() {
       //
       // FLICKER is the other way round on purpose: it defaults to still,
       // because the cost of guessing wrong there is not a wasted second.
-      soundOn: p.soundOn !== false,
+      // SOUND IS ALWAYS ON. The old boot gate could store soundOn:false,
+      // and when the gate was removed the stored NO became permanent — no
+      // UI left to undo it, every room and boot sound silently dead for
+      // anyone who ever toggled it. The stored value is ignored for good;
+      // if a sound toggle ever returns, give it a UI before honouring it.
+      soundOn: true,
     };
   } catch { return { seenIntro: false, flickerOK: false, soundOn: true }; }
 }
