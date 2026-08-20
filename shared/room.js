@@ -117,8 +117,11 @@ export async function runRoom(canvas, opts = {}) {
     loadImage(`${base}bg.png`),
     loadImage(`${base}console.png`),
     loadImage(`${base}tvglow.png`),
-    loadImage(`${base}kris_hold.png`),
-    ...['d', 'r', 'u', 'l'].flatMap((d) => [0, 1, 2, 3].map((f) => loadImage(`${base}kris_${d}_${f}.png`))),
+    // THE PLAYER IS THE VESSEL — the grey, brown-haired one. The frames are
+    // a region-aware palette map over the kris_* set (tools/make-vessel.py),
+    // so every pose is silhouette-identical; only the colours moved.
+    loadImage(`${base}vessel_hold.png`),
+    ...['d', 'r', 'u', 'l'].flatMap((d) => [0, 1, 2, 3].map((f) => loadImage(`${base}vessel_${d}_${f}.png`))),
     ...[0, 1, 2, 3, 4, 5, 6, 7].map((f) => loadImage(`${base}static_${f}.png`)),
   ]);
   const walk = { d: rest.slice(0, 4), r: rest.slice(4, 8), u: rest.slice(8, 12), l: rest.slice(12, 16) };
