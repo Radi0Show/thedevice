@@ -83,18 +83,12 @@
   </noscript>
 </div>
 
-<div class="cornerlabel">THE DEVICE</div>
-
-
+<!-- The corner label, key legend and footer are gone from THIS page by
+     request — the boot is bare. The fan-project/attribution footer still
+     ships on every other page of the site (the room, both sims, contact),
+     which is where it needs to be; do not strip it from those. -->
 <canvas id="crt" width="640" height="480"
-        aria-label="A television asking for a cartridge, with the site's settings on it."></canvas>
-
-<div id="keys">&#9650; &#9660; QUESTION &middot; &#9664; &#9654; ANSWER &middot; [ Z ] CONFIRM</div>
-
-<footer>
-  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
-  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
-</footer>
+        aria-label="A television booting up."></canvas>
 
 <div id="failed">
   <p>* THE SCREEN DID NOT LOAD.</p>
@@ -102,7 +96,7 @@
 </div>
 
 <script type="module">
-  import { runCrt } from './shared/crt.js';
+  import { runCrt } from './shared/crt.js?v=boot2';
   import { loadPrefs, savePrefs, applyPrefs } from './shared/device.js';
 
   const canvas = document.getElementById('crt');
@@ -124,57 +118,47 @@
   fit();
 
   const prefs = loadPrefs();
+  // The boot no longer asks its two questions. The stored preferences (and
+  // their SAFE defaults — flicker effects off unless opted in, and
+  // prefers-reduced-motion always honoured) still apply; they are just not
+  // a gate any more.
+  applyPrefs(prefs);
 
-  /* THE SET COMES ON, AND THEN YOU WALK IN.
-     Answering here is what the interrogation used to do — the same two
-     questions, the same stored preferences — so it hands straight over to
-     the room rather than to the fight. */
+  /* THE SET COMES ON, AND THEN YOU WALK IN. */
   function go() {
     prefs.seenIntro = true;
     savePrefs(prefs);
     location.href = 'DEVICE_ROOM/';
   }
 
-  // The same two answers the interrogation takes, asked here as settings
-  // rather than as questions — same options, same yellow, same order.
-  const questions = [
-    {
-      label: 'ARE YOU PHOTOSENSITIVE?',
-      options: ['YES', 'NO'],
-      value: prefs.flickerOK ? 1 : 0,
-      onChange: (v) => { prefs.flickerOK = v === 1; savePrefs(prefs); applyPrefs(prefs); },
-    },
-    {
-      label: 'DO YOU WANT SOUND?',
-      options: ['YES', 'NO'],
-      value: prefs.soundOn ? 0 : 1,
-      onChange: (v) => { prefs.soundOn = v === 0; savePrefs(prefs); },
-    },
-  ];
-
-  setTimeout(() => {
-    const p = document.getElementById('prelude');
-    if (p) p.style.display = 'none';
-  }, matchMedia('(prefers-reduced-motion: reduce)').matches ? 250 : 850);
-
   window.addEventListener('keydown', (e) => {
     // X backs out of nothing here, but Z at any point is "get on with it".
     if (e.key.toLowerCase() === 'x') { e.preventDefault(); go(); }
   });
 
-  try {
-    await runCrt(canvas, {
-      fontBase: 'assets/gonermaker/',
-      shader: 'assets/crt/shd_crt2.frag',
-      title: ['INSERT', 'THE KNIGHT'],
-      questions,
-      footer: '[ Z ]',
-      onConfirm: () => { go(); },
-    });
-  } catch (err) {
-    console.error('crt failed:', err);
-    document.getElementById('failed').style.display = 'flex';
-  }
+  // The 404 prelude holds a beat longer, and the set only comes ON when it
+  // lifts — the scroller's frame clock must not run under the overlay, or
+  // most of its time is spent invisible.
+  const hold = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1250 : 1850;
+  setTimeout(async () => {
+    const p = document.getElementById('prelude');
+    if (p) p.style.display = 'none';
+    try {
+      await runCrt(canvas, {
+        fontBase: 'assets/gonermaker/',
+        shader: 'assets/crt/shd_crt2.frag',
+        // the cartridge-boot scroller: rows of the line drifting across
+        // the set, then it walks itself into the room. Z skips.
+        // ?holdboot=1 pins the scroller for debugging/screenshots.
+        scroll: { text: 'BOOTING DEVICE_MENU . . .',
+          frames: new URLSearchParams(location.search).get('holdboot') ? 1e9 : 105 },
+        onConfirm: () => { go(); },
+      });
+    } catch (err) {
+      console.error('crt failed:', err);
+      document.getElementById('failed').style.display = 'flex';
+    }
+  }, hold);
 </script>
 </body>
 </html>

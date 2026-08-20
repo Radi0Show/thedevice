@@ -90,6 +90,38 @@ ready:
    boss exists; when one becomes real, give it a named route first
    (`DEVICE_<NAME>/` as a slot page), then repeat this list.
 
+## 2a-2. Connect eram-sim (DEVICE_MANTLE — the in-TV handoff)
+
+Different contract from the knight: eram-sim does not navigate to its own
+page — selecting DEVICE_MANTLE transitions **inside the television on
+DEVICE_ROOM**, same browser page, no iframe. The sim is built for it:
+`runBoard(canvas, level, opts)` takes any canvas and a `base` path, every
+fetch is base-relative, audio is injectable (`opts.audio`), and
+`opts.onComplete` hands control back. At merge time:
+
+1. Vendor `sim/ assets/` from ~/eram-sim (its index.html is bug-test
+   scaffolding — do not copy it).
+2. On DEVICE_MANTLE select: play the reverse tvturnoff as usual, then
+
+   ```js
+   import { mountEram } from './DEVICE_MANTLE/sim/eram.js';
+   const eram = await mountEram(tvCanvas, {
+     base: './DEVICE_MANTLE/assets/',
+     onLevelChange: (n, title) => { /* label the TV */ },
+     onExit: () => { /* the route finished — hand the TV back */ },
+   });
+   // eram.stop() tears down; eram.jump(n) is the debug entry.
+   ```
+
+   `mountEram` chains all seven levels itself, touches no DOM beyond the
+   canvas, and every fetch is base-relative. eram-sim's index.html is the
+   reference host — it runs on exactly this call.
+3. The sim's own TV-set drawing (`drawTV` in sim/board.js) duplicates the
+   room's television — pass/patch it off at embed time; it is one function,
+   kept separable on purpose.
+4. localStorage: eram uses `eramsim.*` keys only — no collision with
+   `thedevice.prefs` or `knightsim.settings`.
+
 ## 2b. The extracted assets
 
 The interrogation draws with the game's own font, background and soul, and

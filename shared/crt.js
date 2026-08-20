@@ -116,10 +116,25 @@ export async function runCrt(canvas, opts = {}) {
     // obj_ch5_LW20W_crt Step: aberration 0.34, and time accumulates a wave.
     time: 0,
     aberration: 0.34,
+    frame: 0,
   };
+
+  // SCROLL MODE (opts.scroll = { text, frames?, speed? }): the cartridge
+  // boot — one line of text tiled across the screen, every row drifting
+  // left, alternate rows half-phase, stepped at the CRT's 30fps. The
+  // drift rate and row spacing are approximated from the look of the
+  // game's insert screens, not extracted values. After `frames` steps
+  // (default 90 = 3 seconds) it confirms itself; Z skips.
+  const scroll = opts.scroll ?? null;
+  let scrollDone = false;
 
   function step() {
     state.time += scrWave(0, 0.75, 4, 0);
+    state.frame += 1;
+    if (scroll && !scrollDone && state.frame >= (scroll.frames ?? 90)) {
+      scrollDone = true;
+      opts.onConfirm?.();
+    }
   }
 
   function drawInner() {
@@ -128,6 +143,23 @@ export async function runCrt(canvas, opts = {}) {
     g.fillRect(0, 0, VIEW_W, VIEW_H);
     g.setTransform(LAYOUT_SCALE, 0, 0, LAYOUT_SCALE, 0, 0);
     const W = VIEW_W / LAYOUT_SCALE;
+
+    if (scroll) {
+      const H = VIEW_H / LAYOUT_SCALE;
+      const text = `${scroll.text}    `;
+      const tw = textWidth(font, text);
+      const speed = scroll.speed ?? 1.5;           // px per 30fps step
+      const off = (state.frame * speed) % tw;
+      const rowH = 28;
+      for (let r = -1; r * rowH < H + rowH; r++) {
+        const phase = r % 2 ? tw / 2 : 0;
+        for (let x = -tw; x < W + tw; x += tw) {
+          drawText(g, font, text, Math.round(x - off - phase), 18 + r * rowH,
+            { color: '#8a8a8a' });
+        }
+      }
+      return;
+    }
 
     let y = 30;
     for (const line of state.title) {
@@ -174,6 +206,15 @@ export async function runCrt(canvas, opts = {}) {
 
   /* ---------------- input ---------------- */
   const onKey = (e) => {
+    if (scroll) {
+      // the scroller has one input: get on with it
+      const sk = e.key.toLowerCase();
+      if (sk === 'z' || sk === 'enter') {
+        e.preventDefault();
+        if (!scrollDone) { scrollDone = true; opts.onConfirm?.(); }
+      }
+      return;
+    }
     if (!questions.length) return;
     const k = e.key.toLowerCase();
     const q = questions[row];

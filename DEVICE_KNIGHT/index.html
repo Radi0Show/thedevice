@@ -16,16 +16,12 @@
 <meta name="twitter:description" content="Fight the Roaring Knight in your browser.">
 <meta name="twitter:image" content="https://radi0show.github.io/thedevice/og/knight.png">
 
-<!-- WHY <base>: the sim's sprite and audio loaders fetch '../assets/…'
-     DOCUMENT-relative (render/sprites.js, render/audio.js), so the document
-     must sit one level below the vendored repo root, exactly like the
-     upstream web/ page does. This base plants us there without moving the
-     file. Every href in THIS page therefore resolves from ./web/ — count
-     your ../ twice. Remove the base once the approved upstream fix (BASE →
-     import.meta.url) lands; see INTEGRATION.md § the 2-line sim change. -->
-<base href="./web/">
+<!-- The <base href="./web/"> workaround is GONE: knight-sim 4911a09 made
+     the sim's asset loaders module-relative (import.meta.url), so the page
+     no longer has to impersonate web/index.html's URL position. Paths in
+     this page are plain document-relative. -->
 
-<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <style>
   /* The letterbox, verbatim from the sim's own web/index.html: the game is
      640x480 centred in whatever it is given, and fitCanvas() in main.js
@@ -123,7 +119,7 @@
   <canvas id="game" width="640" height="480"></canvas>
   <div id="hud">loading…</div>
 
-  <a class="chrome" id="back" href="../../">&#9664; DEVICE_MENU</a>
+  <a class="chrome" id="back" href="../">&#9664; DEVICE_MENU</a>
   <button class="chrome" id="mute" aria-pressed="false" title="Mute all sound (M)">[ SOUND: ON ]</button>
   <div id="legal">
     FAN PROJECT · UNAFFILIATED WITH TOBY FOX · DELTARUNE © TOBY FOX ·
@@ -134,7 +130,7 @@
     <p>* ARE YOU THERE?<br>* . . .<br>* DEVICE_KNIGHT IS NOT CONNECTED.</p>
     <p class="hint">pre-release state · run tools/vendor-knight.sh from the site root,<br>
        then reload — INTEGRATION.md has the full procedure</p>
-    <a href="../../">&larr; DEVICE_MENU</a>
+    <a href="../">&larr; DEVICE_MENU</a>
   </div>
 
   <script type="module">
@@ -150,7 +146,7 @@
     }
 
     try {
-      await import('./main.js'); // resolves via <base> to ./web/main.js
+      await import('./web/main.js');
       // main.js has run: window.__audio exists. The hub mute is the master
       // switch (audio.enabled stops every loop on the way down); the sim's
       // own Q key and volume sliders keep working underneath it. A muted
