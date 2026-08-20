@@ -69,18 +69,13 @@
 </style>
 </head>
 <body>
-<div class="cornerlabel">DEVICE_ROOM</div>
-<a id="skip" href="../">SKIP &#9654;</a>
+<!-- The corner label, SKIP link, key legend and footer are gone from this
+     page by request — the room is bare, like the boot. The attribution
+     footer still ships on the sims' and the other device pages. -->
 
 <canvas id="room" width="640" height="480"
         aria-label="A room with a television. Walk Kris to the console with the arrow keys and press Z to plug in the controller."></canvas>
 
-<div id="keys">&#9664; &#9654; &#9650; &#9660; / WASD WALK &middot; HOLD [ X ] RUN &middot; [ Z ] INTERACT</div>
-
-<footer>
-  A FAN PROJECT &middot; UNAFFILIATED WITH TOBY FOX &middot; DELTARUNE &copy; TOBY FOX &middot;
-  <a href="https://deltarune.com" rel="noopener">SUPPORT THE OFFICIAL RELEASE</a>
-</footer>
 
 <div id="eyes"><span></span><span></span></div>
 
@@ -131,8 +126,8 @@
         // board's own blue and its own font. Kris stays in front of it and
         // stops walking, because the board has the keys now.
         room.suspend(true);
-        document.getElementById('keys').textContent =
-          '\u25B2 \u25BC CHOOSE · [ Z ] CONFIRM';
+        // the #keys legend is gone from this page — the board teaches its
+        // own controls
       },
     });
   } catch (err) {
