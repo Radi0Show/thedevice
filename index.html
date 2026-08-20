@@ -136,6 +136,18 @@
     if (e.key.toLowerCase() === 'x') { e.preventDefault(); go(); }
   });
 
+  // THE SET HUMS. A quiet loop of the TV's own static under the scroller —
+  // the weird-route CRT's ambience approximated with the site's extracted
+  // noise (that scene's actual bed is soundtrack music, which this site
+  // does not ship). Browsers gate audio behind a gesture, so it tries when
+  // the set comes on and again on the first key or click.
+  const hum = new Audio('assets/room/tvstatic.wav');
+  hum.loop = true;
+  hum.volume = 0.12;
+  const tryHum = () => { if (prefs.soundOn !== false) hum.play().catch(() => {}); };
+  window.addEventListener('keydown', tryHum, { once: true });
+  window.addEventListener('pointerdown', tryHum, { once: true });
+
   // The 404 prelude holds a beat longer, and the set only comes ON when it
   // lifts — the scroller's frame clock must not run under the overlay, or
   // most of its time is spent invisible.
@@ -143,6 +155,8 @@
   setTimeout(async () => {
     const p = document.getElementById('prelude');
     if (p) p.style.display = 'none';
+    tryHum();   // succeeds only if a gesture has already happened; the
+                // once-listeners above cover the other order
     try {
       await runCrt(canvas, {
         fontBase: 'assets/gonermaker/',

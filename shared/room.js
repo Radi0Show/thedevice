@@ -132,6 +132,17 @@ export async function runRoom(canvas, opts = {}) {
   const nocontroller = new Audio(`${base}nocontroller.wav`);
   const tvstatic = new Audio(`${base}tvstatic.wav`);
   nocontroller.volume = 0.4; tvstatic.volume = 0.35;
+  // obj_swordroute_consolestarter's other two cues: the set clicking over
+  // when the controller goes in (snd_tv_poweron2), and the console's boot
+  // jingle as the blue comes up (snd_nes_intro).
+  const tvPowerOn = new Audio(`${base}snd_tv_poweron2.wav`);
+  const nesIntro = new Audio(`${base}snd_nes_intro.wav`);
+  tvPowerOn.volume = 0.45; nesIntro.volume = 0.45;
+  // the board menu's blips — snd_menumove on the cursor, snd_select on
+  // confirm, the gameshow menus' own pair.
+  const menuMove = new Audio(`${base}snd_menumove.wav`);
+  const menuSelect = new Audio(`${base}snd_select.wav`);
+  menuMove.volume = 0.5; menuSelect.volume = 0.5;
   // obj_tvturnoff_manager's two cues. Played in reverse order, because the
   // picture is.
   const tvBase = opts.tvBase ?? 'assets/tv/';
@@ -155,12 +166,12 @@ export async function runRoom(canvas, opts = {}) {
 
     // THE BOARD HAS THE KEYS ONCE IT IS UP.
     if (screenState === 'device') {
-      if (k === 'u') deviceSel = (deviceSel + DEVICES.length - 1) % DEVICES.length;
-      if (k === 'd') deviceSel = (deviceSel + 1) % DEVICES.length;
+      if (k === 'u') { deviceSel = (deviceSel + DEVICES.length - 1) % DEVICES.length; play(menuMove); }
+      if (k === 'd') { deviceSel = (deviceSel + 1) % DEVICES.length; play(menuMove); }
       if (k === 'z') {
         const d = DEVICES[deviceSel];
-        if (d.ready) startLaunch(d.href);
-        else notBuilt = 90;   // three seconds of saying so
+        if (d.ready) { play(menuSelect); startLaunch(d.href); }
+        else { play(menuMove); notBuilt = 90; }   // three seconds of saying so
       }
       return;
     }
@@ -389,6 +400,7 @@ export async function runRoom(canvas, opts = {}) {
         con = 'static';
         timer = 0;
         stop(nocontroller);
+        play(tvPowerOn);          // the set clicks over as the plug goes in
         play(tvstatic);
         screenState = 'static';
       }
@@ -402,6 +414,7 @@ export async function runRoom(canvas, opts = {}) {
     // on dialogue this room does not have.
     if (con === 'static' && timer >= 24) {
       stop(tvstatic);
+      play(nesIntro);             // the console's boot jingle under the blue
       con = 'blue';
       timer = 0;
       screenState = 'blue';
