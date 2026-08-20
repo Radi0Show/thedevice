@@ -203,7 +203,12 @@ export async function runRoom(canvas, opts = {}) {
    * sprite would also swallow the spot the game itself walks Kris to.
    */
   const SOLIDS = [
-    { x: 206, y: 380, w: 190, h: 34 },     // the console on the floor
+    // The console on the floor. The box used to run to 414 — 2px PAST the
+    // sprite's base (412) — so a walk-up from the front stopped a whole
+    // step early, feet hovering below the unit. The bottom now sits 16px
+    // inside the sprite: the feet can reach its base edge (the usual
+    // top-down depth illusion) and the block reads where the console is.
+    { x: 206, y: 380, w: 190, h: 16 },
   ];
 
   /**
@@ -570,13 +575,8 @@ export async function runRoom(canvas, opts = {}) {
 
     drawLaunch();
 
-    // The prompt, only where it means something.
-    if (con === 'idle' && atConsole()) {
-      ctx.fillStyle = '#ffff00';
-      ctx.font = 'bold 14px "Courier New", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('[ Z ] PLUG IN THE CONTROLLER', VIEW_W / 2, 430);
-    }
+    // (the "[ Z ] PLUG IN THE CONTROLLER" prompt is gone by request —
+    // Z at the console still does the interaction, it is just unlabelled)
   }
 
   /* ---------------- the clock ---------------- */
