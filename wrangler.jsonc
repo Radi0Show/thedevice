@@ -1,0 +1,20 @@
+// Cloudflare Workers (static assets) — the git-connected project on the
+// Cloudflare dashboard builds this repo on push and deploys it as a static
+// site. There is no Worker script: assets only, served from the repo root
+// (this repo IS the site tree). `.assetsignore` keeps the repo's plumbing
+// (tools, docs, workflows) out of the published site.
+//
+// The staging/production gate lives in the dashboard: the project's
+// production branch must be `prod` (Settings → Build), so pushes to main
+// only make preview builds and shadowcrystal.dev only moves when main is
+// promoted with `git push origin main:prod`.
+{
+  "name": "thedevice",
+  "compatibility_date": "2026-08-20",
+  "assets": {
+    "directory": ".",
+    // a missing path serves /404.html — which on this site is the
+    // in-fiction DEVICE_FAILURE page, exactly as intended
+    "not_found_handling": "404-page"
+  }
+}

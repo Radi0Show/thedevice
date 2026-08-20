@@ -1,0 +1,10 @@
+# Repo plumbing that must not be served as part of the site.
+.git
+.github
+.gitignore
+.assetsignore
+wrangler.jsonc
+tools
+docs
+README.md
+INTEGRATION.md

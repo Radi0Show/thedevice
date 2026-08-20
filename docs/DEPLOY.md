@@ -42,28 +42,32 @@ script, commit here.
   DEVICE_ROOM's television mounts it in-page via `mountEram`, see
   INTEGRATION.md § 2a-2)
 
-## One-time human steps (in order, ~15 minutes)
+## How production actually deploys
 
-1. **Cloudflare account** (free plan) at dash.cloudflare.com.
-2. **Buy shadowcrystal.dev** — Cloudflare Registrar sells at cost
-   (Domain Registration → Register). Registering it there puts its DNS on
-   the same account, which makes step 5 two clicks.
-3. **Create the Pages project**: Workers & Pages → Create → Pages →
-   "Direct Upload" → name it exactly `shadowcrystal`. (Direct Upload
-   because the workflow pushes builds to it; no git connection needed.)
-4. **Add the two repo secrets** on github.com/Radi0Show/thedevice →
-   Settings → Secrets and variables → Actions:
-   - `CLOUDFLARE_ACCOUNT_ID` — dashboard right sidebar.
-   - `CLOUDFLARE_API_TOKEN` — My Profile → API Tokens → Create Token →
-     "Cloudflare Pages: Edit" template.
-5. **Custom domain**: the Pages project → Custom domains → add
-   `shadowcrystal.dev` (and `www.shadowcrystal.dev` if wanted — Cloudflare
-   sets the redirect). Certificates are automatic.
-6. Push anything to main (or run the workflow manually) — the deploy step
-   wakes up on its own once the secrets exist.
+The dashboard project `thedevice` (Workers & Pages) is GIT-CONNECTED to
+this repo: Cloudflare clones on push and runs wrangler itself — no GitHub
+Action, no repo secrets. `wrangler.jsonc` declares the repo root as a
+directory of static assets (no Worker script), and `.assetsignore` keeps
+tools/, docs/ and the workflows out of the served site. A missing URL
+serves /404.html — the in-fiction DEVICE_FAILURE page.
 
-Until steps 1-5 happen, the workflow runs and skips the deploy politely;
-nothing breaks.
+Settings that make the gate hold (dashboard → the project → Settings →
+Build):
+
+- **Production branch: `prod`.** Production deploys ONLY from `prod`;
+  pushes to `main` make preview builds at most (or turn non-production
+  builds off entirely to save build minutes).
+- Build command: none. Deploy command: the default (`npx wrangler
+  deploy` on the production branch; non-production branches get
+  `versions upload`, which never touches live traffic).
+
+Remaining one-time steps:
+
+1. **Buy shadowcrystal.dev** — Cloudflare Registrar sells at cost
+   (Domain Registration → Register), same account, so DNS is automatic.
+2. **Attach the domain**: the project → Domains tab → add
+   `shadowcrystal.dev` (and `www.shadowcrystal.dev` if wanted).
+   Certificates are automatic.
 
 ## Posture
 
