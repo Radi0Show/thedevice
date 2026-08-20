@@ -131,32 +131,40 @@
     location.href = 'DEVICE_ROOM/';
   }
 
-  window.addEventListener('keydown', (e) => {
-    // X backs out of nothing here, but Z at any point is "get on with it".
-    if (e.key.toLowerCase() === 'x') { e.preventDefault(); go(); }
-  });
-
-  // THE SET HUMS. A quiet loop of the TV's own static under the scroller —
-  // the weird-route CRT's ambience approximated with the site's extracted
-  // noise (that scene's actual bed is soundtrack music, which this site
-  // does not ship). Browsers gate audio behind a gesture, so it tries when
-  // the set comes on and again on the first key or click.
+  // THE SET'S SOUND, from the weird-route CRT scene itself: the scene
+  // loops ocean.ogg and fades it to half volume over a second
+  // (mus_volume(..., 0.5, 30)), and the tube carries a faint static bed
+  // under it. Both start on the Z press below — which is also the user
+  // gesture browsers demand before any audio may play.
+  const ocean = new Audio('assets/crt/ocean.ogg');
+  ocean.loop = true;
+  ocean.volume = 0;
   const hum = new Audio('assets/room/tvstatic.wav');
   hum.loop = true;
-  hum.volume = 0.12;
-  const tryHum = () => { if (prefs.soundOn !== false) hum.play().catch(() => {}); };
-  window.addEventListener('keydown', tryHum, { once: true });
-  window.addEventListener('pointerdown', tryHum, { once: true });
+  hum.volume = 0.1;
+  function startSound() {
+    if (prefs.soundOn === false) return;
+    hum.play().catch(() => {});
+    ocean.play().then(() => {
+      const t0 = performance.now();
+      const fade = (now) => {
+        ocean.volume = Math.min(0.5, ((now - t0) / 1000) * 0.5);
+        if (ocean.volume < 0.5) requestAnimationFrame(fade);
+      };
+      requestAnimationFrame(fade);
+    }).catch(() => {});
+  }
 
-  // The 404 prelude holds a beat longer, and the set only comes ON when it
-  // lifts — the scroller's frame clock must not run under the overlay, or
-  // most of its time is spent invisible.
-  const hold = matchMedia('(prefers-reduced-motion: reduce)').matches ? 1250 : 1850;
-  setTimeout(async () => {
+  // THE 404 PAGE WAITS FOR Z. No timer: the page you were not supposed to
+  // find sits there until you answer it. Z (or Enter) brings the set on;
+  // X anywhere is still "get on with it".
+  let setOn = false;
+  async function bringTheSetOn() {
+    if (setOn) return;
+    setOn = true;
     const p = document.getElementById('prelude');
     if (p) p.style.display = 'none';
-    tryHum();   // succeeds only if a gesture has already happened; the
-                // once-listeners above cover the other order
+    startSound();
     try {
       await runCrt(canvas, {
         fontBase: 'assets/gonermaker/',
@@ -170,7 +178,13 @@
       console.error('crt failed:', err);
       document.getElementById('failed').style.display = 'flex';
     }
-  }, hold);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    const k = e.key.toLowerCase();
+    if (k === 'x') { e.preventDefault(); go(); return; }
+    if (!setOn && (k === 'z' || k === 'enter')) { e.preventDefault(); bringTheSetOn(); }
+  });
 </script>
 </body>
 </html>
