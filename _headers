@@ -12,10 +12,15 @@
 # how the mus_knight fix could never reach a returning visitor (their
 # browser held the old audio index for a year). Binaries stay immutable;
 # the manifests do not.
+# (the ! line detaches the wildcard rule's header first — without it the
+# platform APPENDS, and the file serves "immutable" and "max-age=0" in one
+# merged header, leaving the browser to pick)
 /DEVICE_KNIGHT/assets/audio/index.json
+  ! Cache-Control
   Cache-Control: public, max-age=0, must-revalidate
 
 /DEVICE_KNIGHT/assets/sprites/manifest.json
+  ! Cache-Control
   Cache-Control: public, max-age=0, must-revalidate
 
 /og/*
