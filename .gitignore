@@ -3,13 +3,9 @@
 # with the sequence it belongs to rather than being a local-only luxury.
 # tools/extract-gonermaker.sh regenerates all of it from a copy of the game.
 
-# The vendored simulator: a copy of another repository's build, dropped in by
-# tools/vendor-knight.sh at merge time. See INTEGRATION.md.
-DEVICE_KNIGHT/web/
-DEVICE_KNIGHT/sim/
-DEVICE_KNIGHT/render/
-DEVICE_KNIGHT/input/
-DEVICE_KNIGHT/assets/
-DEVICE_KNIGHT/BUILD
+# The vendored simulators (DEVICE_KNIGHT, DEVICE_MANTLE) are COMMITTED as
+# of the merge: the deployed site must be a self-contained tree, and a
+# clone that lacks them is exactly how /DEVICE_KNIGHT/ shipped as an empty
+# shell once. tools/vendor-*.sh refresh them; INTEGRATION.md § 1 and 2a-2.
 
 .DS_Store
