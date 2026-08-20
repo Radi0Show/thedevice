@@ -44,23 +44,29 @@ PALETTE = {
 }
 
 
-def face_bottom(path):
+def measure(path):
+    """(opaque_top, face_bottom or None) — face_bottom in canvas rows."""
     im = Image.open(path).convert('RGBA')
     w, h = im.size
     px = im.load()
-    rows = [y for y in range(h) for x in range(w) if px[x, y][3] > 0 and px[x, y][:3] == FACE]
-    return max(rows) + 1 if rows else None
+    tops = [y for y in range(h) for x in range(w) if px[x, y][3] > 0]
+    faces = [y for y in range(h) for x in range(w) if px[x, y][3] > 0 and px[x, y][:3] == FACE]
+    return min(tops), (max(faces) + 1 if faces else None)
 
 
-def convert(path, shared_hair_bottom):
+def convert(path, hair_offset):
     im = Image.open(path).convert('RGBA')
     w, h = im.size
     px = im.load()
 
-    # the head band: down/left/right frames carry the face; the back-facing
-    # frames take the boundary the face-bearing frames agreed on
-    own = face_bottom(path)
-    hair_bottom = own if own is not None else shared_hair_bottom
+    # THE BOUNDARY IS AN OFFSET FROM THE FRAME'S OWN TOP, NEVER A CANVAS
+    # ROW. The walk cycle bobs the art a pixel down on alternate frames, so
+    # a canvas-absolute boundary lands on different parts of the BODY per
+    # frame — that was the visible few-pixel jump in the back walk. Frames
+    # with a face keep their own measured boundary (it tracks their face);
+    # faceless back frames take top + the modal offset of the others.
+    top, own = measure(path)
+    hair_bottom = own if own is not None else top + hair_offset
 
     out = Image.new('RGBA', (w, h))
     po = out.load()
@@ -92,13 +98,15 @@ def main():
     frames = sorted(glob.glob(os.path.join(ROOM, 'kris_*.png')))
     if not frames:
         raise SystemExit('no kris_*.png frames found')
-    # pass 1: the shared hair boundary, measured from every frame with a face
-    bottoms = sorted({b for f in frames if (b := face_bottom(f)) is not None})
-    if not bottoms:
+    # pass 1: the hair boundary as an offset from each frame's top edge —
+    # the mode across every face-bearing frame (the offset is bob-invariant;
+    # one frame's face dips a pixel lower and stays an outlier)
+    offsets = [fb - top for f in frames for top, fb in [measure(f)] if fb is not None]
+    if not offsets:
         raise SystemExit('no face-bearing frames to measure the hair boundary from')
-    if len(bottoms) > 1:
-        print(f'note: face-bearing frames disagree on the boundary ({bottoms}); using the lowest')
-    shared = bottoms[-1]
+    shared = max(set(offsets), key=offsets.count)
+    if len(set(offsets)) > 1:
+        print(f'note: per-frame offsets {sorted(set(offsets))}; using the mode {shared}')
     for f in frames:
         out = convert(f, shared)
         dest = f.replace('kris_', 'vessel_')
