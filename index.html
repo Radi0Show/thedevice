@@ -131,28 +131,16 @@
     location.href = 'DEVICE_ROOM/';
   }
 
-  // THE SET'S SOUND, from the weird-route CRT scene itself: the scene
-  // loops ocean.ogg and fades it to half volume over a second
-  // (mus_volume(..., 0.5, 30)), and the tube carries a faint static bed
-  // under it. Both start on the Z press below — which is also the user
-  // gesture browsers demand before any audio may play.
-  const ocean = new Audio('assets/crt/ocean.ogg');
-  ocean.loop = true;
-  ocean.volume = 0;
+  // THE SET HUMS, AND THAT IS ALL. The weird-route scene's ocean loop is
+  // gone by request: the boot is the tube's own static, nothing over it.
+  // (assets/crt/ocean.ogg stays in the repo — the room may want it.)
+  // The hum starts on the Z press below, which is also the user gesture
+  // browsers demand before any audio may play.
   const hum = new Audio('assets/room/tvstatic.wav');
   hum.loop = true;
-  hum.volume = 0.1;
+  hum.volume = 0.16;
   function startSound() {
-    if (prefs.soundOn === false) return;
     hum.play().catch(() => {});
-    ocean.play().then(() => {
-      const t0 = performance.now();
-      const fade = (now) => {
-        ocean.volume = Math.min(0.5, ((now - t0) / 1000) * 0.5);
-        if (ocean.volume < 0.5) requestAnimationFrame(fade);
-      };
-      requestAnimationFrame(fade);
-    }).catch(() => {});
   }
 
   // THE 404 PAGE WAITS FOR Z. No timer: the page you were not supposed to
