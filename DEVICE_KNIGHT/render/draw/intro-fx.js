@@ -70,10 +70,31 @@ export function drawIntroFx(ctx, e, sprites) {
   //
   // so it closes fast and reddens as it does. This is the beat the roar
   // builds on, and a 24px outline read as nothing at all.
-  if (e.crushTimer >= 0 && e.crushTimer <= 24) {
-    const t = e.crushTimer / 24;
-    const radius = 960 + (160 - 960) * t;
-    const alpha = 0.1 * t;
+  // TWO PHASES, and the second one is the whole point. The Create lerps are
+  // only the wind-up; `alarm[0] = 24` then fires
+  //
+  //     scr_lerpvar("radius", 160, 0,   64, 1, "out");
+  //     scr_lerpvar("alpha",  0.1, 1,   64, 1, "out");
+  //
+  // so the ball goes from a barely-there 0.1 to FULLY OPAQUE WHITE while it
+  // shrinks to nothing. This drew only the first 24 frames and capped alpha at
+  // 0.1, which over a near-black scene is invisible — the white ball was, for
+  // all practical purposes, absent. `1 - (1 - q) * (1 - q)` is scr_ease_out's
+  // curve 2, `-t * (t - 2)`.
+  if (e.crushTimer >= 0 && e.crushTimer <= 88) {
+    let radius;
+    let alpha;
+    if (e.crushTimer <= 24) {
+      const t = e.crushTimer / 24;
+      radius = 960 + (160 - 960) * t;
+      alpha = 0.1 * t;
+    } else {
+      const q = Math.min(1, (e.crushTimer - 24) / 64);
+      const e2 = 1 - (1 - q) * (1 - q);
+      radius = 160 + (0 - 160) * e2;
+      alpha = 0.1 + (1 - 0.1) * e2;
+    }
+    const t = Math.min(1, e.crushTimer / 24);
     // hsv runs on its own 64-frame ease-out, not the 24-frame one.
     const ht = Math.min(1, e.crushTimer / 64);
     const hsv = 256 + (64 - 256) * (1 - (1 - ht) * (1 - ht));
@@ -116,9 +137,24 @@ export function drawIntroFx(ctx, e, sprites) {
     tg.globalCompositeOperation = 'destination-in';
     tg.drawImage(crushCanvas, 0, 0);
 
+    // ADDITIVE, RE-ASSERTED BEFORE EVERY DRAW. This is `gpu_set_blendmode
+    // (bm_add)` around the whole block, and it is the difference between the
+    // ball being made of light and being a hole: the surface it composites is
+    // an OPAQUE BLACK DISC with the flow written into its colour channels,
+    // so under source-over those four passes paint the scene black — which is
+    // exactly what was on screen, a black ball collapsing onto the Knight
+    // instead of a white one. Setting the mode once before the loop was not
+    // holding; it is now set immediately before each draw.
     ctx.globalAlpha = alpha;
-    for (let i = 0; i < 4; i++) ctx.drawImage(tintCanvas, 0, 0);
-    // The white core, same radius, same alpha, still additive.
+    for (let i = 0; i < 4; i++) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.drawImage(tintCanvas, 0, 0);
+    }
+    // `draw_set_alpha(alpha); draw_circle_color(x, y, radius, c_white,
+    // c_white, false)` — the white core, same radius, same alpha, still
+    // additive. THIS is the white ball.
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(px, py, Math.max(1, radius), 0, Math.PI * 2);
@@ -129,7 +165,7 @@ export function drawIntroFx(ctx, e, sprites) {
   // The in-rush while the whiteout holds: 2 + irandom(2) particles a frame,
   // born 40..240 out, pulled toward the centre. Each is drawn for a few
   // frames along its inward path, seeded by its birth frame.
-  if (e.whiteout && e.fxState === 'intro') {
+  if (e.inrushLast != null) {
     // THE IMPLOSION. Each particle's whole life, from the Step:
     //
     //     scr_lerpvar("speed", 4, 16 + irandom(8), 32, 1, "in");
@@ -150,6 +186,9 @@ export function drawIntroFx(ctx, e, sprites) {
     const easeIn = (t) => 1 - Math.cos(t * 1.5707963267948966);
     for (let back = 0; back < LIFE; back++) {
       const bf = e.frame - back;
+      // Births only while the Step was still spawning; the ones already born
+      // finish their flight regardless of the state now.
+      if (bf > e.inrushLast) continue;
       const n = 2 + Math.floor(frand(bf, 1) * 3);
       for (let i = 0; i < n; i++) {
         const dir = frand(bf, 2 + i) * Math.PI * 2;
@@ -167,7 +206,12 @@ export function drawIntroFx(ctx, e, sprites) {
         const len = 3 * size * (1 + 15 * easeIn(t));
         const thick = Math.max(1, 3 * (size + (size * 0.5 - size) * easeIn(t)));
         ctx.save();
-        ctx.globalAlpha = 0.6;
+        // FULL ALPHA. obj_particle_generic (spr_pixel_white, confirmed via
+        // the object-definition dump — its Create sets no sprite, so no grep
+        // could find it) is created with the default image_alpha of 1 and
+        // nothing fades it; it is destroyed outright inside 32px. The 0.6
+        // here was invented and is most of why the implosion read as faint.
+        ctx.globalAlpha = 1;
         ctx.fillStyle = '#ffffff';
         ctx.translate(sx, sy);
         ctx.rotate(dir + Math.PI); // image_angle = direction, toward centre
@@ -189,19 +233,18 @@ export function drawIntroFx(ctx, e, sprites) {
     }
   }
 
-  // The white circle FLASH at the roar itself (the persistent red layer is
-  // drawn by the scene, over everything).
-  if (e.circleFlash > 0 && e.circleFlash < 30) {
-    const t = e.circleFlash / 30;
-    ctx.save();
-    ctx.globalAlpha = (1 - t) * 0.8;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = Math.max(1, 12 * (1 - t));
-    ctx.beginPath();
-    ctx.arc(px, py, 20 + t * 260, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-  }
+  // NO STROKED RING HERE. There used to be one — a flat white outline
+  // expanding to r=280 over 30 frames — and it was INVENTED. Nothing in
+  // obj_knight_roaring_fx's Draw strokes a circle: that event is the vertical
+  // bar, the shift_ol sprite with its shudder offsets, and the white-fogged
+  // whiteout copy, and that is all. The climax's actual circle is
+  // obj_knight_circle, a FILLED additive gradient (black centre to (r,g,b)
+  // rim) growing 40px a frame to 960 while g and b fall to zero over 28 —
+  // modelled in sim/intro.js and drawn as the red layer below.
+  //
+  // The invented ring sat on top of that bloom as a hard flat arc, which is
+  // what read as a badly drawn white circle: a thin outline over a
+  // screen-filling flash. Removing it lets the real thing carry the moment.
 
   // The vertical flash bar. The decay lives in sim (see intro.js).
   if (e.bar) {

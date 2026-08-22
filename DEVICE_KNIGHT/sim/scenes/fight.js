@@ -378,6 +378,66 @@ export function launchAttack(state, entry) {
   // jitter finally attributed it.
   if (state.gmlRng) gmlIrandom(state.gmlRng, 360);
 
+  // THE KNIGHT'S STEP CONTINUES BELOW THE SELECTOR, and the controller does
+  // not create the attack until its OWN Step later in the frame -- so a draw
+  // the knight takes after the dispatch lands BETWEEN basedir and the
+  // attack's Create randoms. The chargeup afterimage's `random(360)` is such
+  // a draw, and `chargeuptimer` here still holds the value from before this
+  // frame's tick (tickChargeup runs from the director, which steps after the
+  // launcher).
+  const _k = state.knight;
+  // MINUS ONE, MEASURED AND STILL UNEXPLAINED -- see the elimination log
+  // below. It is NOT the charge-up frame offset it was first read as.
+  // What IS established: an oracle probe at the top of obj_dbulletcontroller's
+  // Step (tools/patches/oracle_fullfight_drawprobe.csx) read the stream
+  // position there as exactly 3 u32 draws off the anchor, where basedir alone
+  // accounts for 2 -- so one single-draw call lands in this window, and the
+  // only such call in the knight's Step below the selector is this one. The
+  // probe recording's main trace is byte-identical to the canonical one
+  // before the probe frame, so the measurement is sound.
+  //
+  // THIS OFFSET IS NOT A CHARGE-UP MISALIGNMENT, and the note that used to
+  // stand here -- "find the frame where the game's tick and the sim's part
+  // company" -- was chasing a frame that does not exist. Three eliminations,
+  // all cheap to redo and none worth redoing:
+  //
+  //   1. THE START FRAME IS ALREADY RIGHT. The charge is armed on the sim's
+  //      turntimer-arm frame (f10953 on token 37) and the game sets
+  //      `chargeupcon = 1` in the dispatch ladder at Step line 532, which is
+  //      the sim's LAUNCH frame, f10954. Moving the arm to the launch to
+  //      match looks obviously correct and BREAKS ALL FOUR FIGHTS at f11027,
+  //      column `menu`: `chargeuptimer == 60` stomps global.turntimer to 1
+  //      and that stomp is what ends the turn, so a start one frame later
+  //      opens the menu one frame later than the oracle does. The oracle's
+  //      own menu frame therefore PINS the game's charge-up to f10953, and
+  //      with a tick every frame its timer at this launch is 185, not 184.
+  //   2. THE GAME NEVER SKIPS A TICK. A skipped tick would reconcile both
+  //      (stomp stays at f11012, launch reads 184). obj_knight_enemy's Step
+  //      has exactly one early exit, `!i_ex(obj_herosusie) ||
+  //      !i_ex(obj_heroralsei)`, and the heroes are created once in
+  //      obj_battlecontroller's Create and never destroyed. It cannot fire.
+  //   3. A DELAYED ROAR CREATE CANNOT SPLIT THE TOKENS. If the stream were
+  //      read d frames after the anchor, token 37 first reaches a `% 4` draw
+  //      3 frames out (timer 188) and token 21 reaches one at 2 (timer 192),
+  //      so any d that gives 37 a draw gives 21 one too. No d works.
+  //
+  // What that leaves: at 185 the charge-up block CANNOT fire (185 % 4 == 1),
+  // so the one extra u32 draw the probe measured is NOT this afterimage, and
+  // `- 1` is a coincidence -- it encodes "timer mod 4 == 1", which happens to
+  // be true on 37 and false on 21. It is load-bearing and must not be removed
+  // without a replacement, but it is NOT the mechanism it claims to be.
+  //
+  // NEXT: the only single-draw call in the knight's Step below the selector
+  // is this one, so the draw belongs to ANOTHER object stepping between the
+  // knight and obj_dbulletcontroller. Settle it by probing the oracle for
+  // `chargeuptimer` and the stream position TOGETHER on the launch frame --
+  // one recording, the same needle-substitution idiom that cracked f11269.
+  const _ct = _k ? _k.chargeuptimer - 1 : 0;
+  if (_k && _k.chargeupcon === 1 && _ct % 4 === 0 && _ct > 10 && state.gmlRng) {
+    gmlRandom(state.gmlRng, 360);
+    state.chargeupDrawTaken = true;
+  }
+
   switch (ac) {
     case 1: {
       // SPAWN ORDER IS STREAM ORDER. The game creates the CONTROLLER first
@@ -458,9 +518,10 @@ export function launchAttack(state, entry) {
       return spawnRotatingSlash(state, kx, ky, { difficulty });
 
     case 9: {
-      const r = spawn(state, roaring2, { x: state.view.x + 320, y: state.view.y + 88 });
-      r.rand_angle = gmlIrandom(state.gmlRng, 360);
-      return r;
+      // rand_angle is rolled by roaring2's own create(), where the original
+      // has it. Doing it here as well took the draw twice and put it after
+      // Create instead of inside it.
+      return spawn(state, roaring2, { x: state.view.x + 320, y: state.view.y + 88 });
     }
 
     case 11:

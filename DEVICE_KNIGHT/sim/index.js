@@ -10,7 +10,7 @@ import { traceRow } from './trace.js';
 import { spriteMaskHit, SPRITE_MASKS, masksOverlap, GRAZE_MASK, grazeMaskAt } from './masks.js';
 import { stepGraze } from './tension.js';
 import { freshParty, scrRevive } from './damage.js';
-import { stepDmgNumbers } from './dmgnumbers.js';
+import { stepDmgNumbers, stepHealWriters} from './dmgnumbers.js';
 import { rngNext } from './rng.js';
 
 export { createState } from './state.js';
@@ -61,6 +61,7 @@ export const PHASES = ['animation', 'beginStep', 'alarm', 'step', 'motion', 'col
  */
 function runMotion(state) {
   state.eventPhase = 'motion';
+
   for (const e of state.entities) {
     if (!e.alive) continue;
 
@@ -115,8 +116,8 @@ function runMotion(state) {
     //
     //   r  = f32( f32( f32(direction) * f32(pi) ) / 180 )   // SINGLE-PRECISION pi
     //   c  = cos(r); s = sin(r)                              // f64-grade trig
-    //   if (|c| > 1 - 1e-4) c = sign(c)                      // the SNAP: within
-    //   if (|s| > 1 - 1e-4) s = sign(s)                      //   1e-4 of ±1 -> ±1
+    //   if (|c| > 1 - SNAP_EPS) c = sign(c)                  // the SNAP: a hair
+    //   if (|s| > 1 - SNAP_EPS) s = sign(s)                  //   from ±1 -> ±1
     //   hspeed = f32( f32(speed) *  f32(c) )
     //   vspeed = f32( f32(speed) * -f32(s) )
     //
@@ -133,12 +134,36 @@ function runMotion(state) {
     // 8e-6, which flipped a y-grid phase, then a graze at f217, then the
     // cone's turntimer release frame, then the star count of the turn — and
     // from there the RNG stream of every later Stars turn.
+    // SNAP_EPS WAS 1e-4 AND THAT WAS 11 ORDERS TOO LOOSE. The snap exists so a
+    // CARDINAL direction reads back exactly +/-1: the f32-pi radian puts
+    // |cos(180 deg)| at 1 - 3.8e-15 rather than 1, and the runner returns the
+    // clean value. That is the snap's entire data support -- and it does not
+    // constrain the width at all, because over the 720-point integer sweep
+    // that validated this block, 1e-4 and 1e-6 snap the SAME four directions
+    // (0/90/180/270); the nearest integer miss, 1 deg, sits at 1 - 1.5e-4,
+    // outside both. The width was simply never measured.
+    //
+    // At 1e-4 the window is +/-0.81 deg wide, so it swallowed real headings.
+    // verify37's true first divergence was a Stars bullet at direction
+    // 180.6504058838, where cos = -0.99993555: the sim snapped it to exactly
+    // -1 and moved the star its FULL speed in x, while the oracle moved it by
+    // speed * cos. That is a per-frame x excess of exactly 2^-11, growing
+    // linearly, and it is why the star's y stayed bit-exact while its x
+    // walked off -- a signature that is impossible for any (speed, direction)
+    // pair, since it needs |cos| > 1.
+    //
+    // 1e-12 keeps three orders of headroom over the 3.8e-15 a true cardinal
+    // needs, while narrowing the false-snap window to 8e-5 deg. The choice is
+    // not fitted: 1e-6, 1e-9, 1e-12 and 1e-14 all put verify37's front at the
+    // same frame (6832), the same plateau argument that pins the collision
+    // walk's step density.
+    const SNAP_EPS = 1e-12;
     const PI32 = Math.fround(Math.PI);
     const r = Math.fround(Math.fround(Math.fround(e.direction) * PI32) / 180);
     let rc = Math.cos(r);
     let rs = Math.sin(r);
-    if (Math.abs(rs) > 1 - 1e-4) rs = Math.sign(rs);
-    if (Math.abs(rc) > 1 - 1e-4) rc = Math.sign(rc);
+    if (Math.abs(rs) > 1 - SNAP_EPS) rs = Math.sign(rs);
+    if (Math.abs(rc) > 1 - SNAP_EPS) rc = Math.sign(rc);
     let hs = Math.fround(Math.fround(e.speed) * Math.fround(rc));
     let vs = Math.fround(Math.fround(e.speed) * -Math.fround(rs));
 
@@ -148,8 +173,15 @@ function runMotion(state) {
       const gr = Math.fround(Math.fround(Math.fround(e.gravity_direction) * PI32) / 180);
       let gc = Math.cos(gr);
       let gsn = Math.sin(gr);
-      if (Math.abs(gsn) > 1 - 1e-4) gsn = Math.sign(gsn);
-      if (Math.abs(gc) > 1 - 1e-4) gc = Math.sign(gc);
+      // SAME SNAP_EPS as the direction vector above. These two were left at
+      // 1e-4 when that one was tightened, and the half-fix is exactly what
+      // verify37's next front was: a star whose speed reaches 0 arms
+      // `gravity_direction = direction - 180`, so a heading of 180.6504 gives
+      // a gravity direction of 0.6504 -- cos 0.99993555, inside the old
+      // window. The sim accelerated it by a clean 0.1 in x while the oracle
+      // used 0.1 * cos, and the two crept apart one f32 ulp at a time.
+      if (Math.abs(gsn) > 1 - SNAP_EPS) gsn = Math.sign(gsn);
+      if (Math.abs(gc) > 1 - SNAP_EPS) gc = Math.sign(gc);
       hs = Math.fround(hs + Math.fround(Math.fround(e.gravity) * Math.fround(gc)));
       vs = Math.fround(vs + Math.fround(Math.fround(e.gravity) * -Math.fround(gsn)));
       e.speed = Math.sqrt(hs * hs + vs * vs);
@@ -415,6 +447,32 @@ export function stepFrame(state, input) {
   // slash jitter, the tunnel boundary rolls, the star chain); see the
   // ledger header over stepDmgNumbers.
   stepDmgNumbers(state, state.rng ? () => rngNext(state.rng) : undefined);
+  // obj_healwriter: no delay, no RNG, rises and fades on its own. Frame-level
+  // like its owner instance in the game, so it keeps moving while the menu is
+  // open — which is when items are actually used.
+  stepHealWriters(state);
+  // obj_returnheart: `move_towards_point(distx, disty, dist / flytime)` with
+  // flytime 8 — a CONSTANT speed set once at creation, so it covers an eighth
+  // of the original distance every frame and arrives on frame 8, where
+  // alarm[0] snaps it to the target and swaps it for obj_heartburst.
+  // Frame-level because it outlives the turn that made it.
+  const rh = state.returnHeart;
+  if (rh) {
+    rh.t += 1;
+    const p = Math.min(1, rh.t / rh.flytime);
+    rh.x = rh.x + (rh.tx - rh.x) * (1 / Math.max(1, rh.flytime - rh.t + 1));
+    rh.y = rh.y + (rh.ty - rh.y) * (1 / Math.max(1, rh.flytime - rh.t + 1));
+    if (p >= 1) {
+      // `x = distx; y = disty; instance_create(x, y, obj_heartburst);`
+      state.returnHeart = null;
+      state.heartBurst = { x: rh.tx, y: rh.ty, burst: 0 };
+    }
+  }
+  // obj_heartburst's Draw is its whole life: `burst += 1` and out at > 10.
+  if (state.heartBurst) {
+    state.heartBurst.burst += 1;
+    if (state.heartBurst.burst > 10) state.heartBurst = null;
+  }
 
   // obj_grazebox's End Step: the box moves to the heart NOW, after this
   // frame's collisions already tested against where it was. See runCollisions.

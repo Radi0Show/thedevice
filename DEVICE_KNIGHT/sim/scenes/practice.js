@@ -23,7 +23,7 @@ import { gmlCreate, gmlChoose, gmlIrandom, gmlRandom } from '../rng.js';
 import { FIGHT_TABLE, launchAttack, openArena, clearTurn, nextTurn, phase4Entry, turnLength } from './fight.js';
 import { battleMsgFor, OPENING_MSG } from '../battlemsg.js';
 import { createMenu, stepMenu, openMenu, bagOf } from '../menu.js';
-import { partyWiped, PARTY as PARTY_STATS, isUp } from '../damage.js';
+import { partyWiped, PARTY as PARTY_STATS, isUp, PARTY_POS} from '../damage.js';
 import { createFightBar, stepFightBar, fightTp } from '../fightbar.js';
 import { endTurnItems } from '../menu.js';
 import { applyItem } from '../items.js';
@@ -33,7 +33,7 @@ import {
   textSoundChar,
 } from '../dialogue.js';
 import {
-  spawnDmgNumber, stepDmgNumbers, stepHealWriters, resetDmgStack,
+  spawnDmgNumber, stepDmgNumbers, resetDmgStack,
 } from '../dmgnumbers.js';
 import { spawnImpact, stepAttackVfx } from '../attackvfx.js';
 import { stepRudeBuster, rudeBusterBusy } from '../rudebuster.js';
@@ -112,8 +112,24 @@ const TURN_GAP = 1;
 const moveheart = {
   name: 'obj_moveheart',
   create(e) {
+    // `image_alpha = 0` and the Step's `image_alpha += 0.334` — it FADES IN
+    // over three frames as it leaves Kris. spr_dodgeheart is its own sprite
+    // (object definition, like obj_returnheart's), which is why the alarm can
+    // hand it straight to the new heart: `heart.sprite_index = sprite_index`.
     e.image_alpha = 0;
     e.image_speed = 0;
+    e.flytime = 8;
+    e.sprite_index = 'spr_dodgeheart';
+  },
+  /**
+   * `image_alpha += 0.334` — the whole of obj_moveheart's Step. It fades in
+   * over three frames while it travels. The TRAVEL is not here: the spawn
+   * site already gives it builtinMotion with `speed = dist / 8` and the
+   * matching direction, which is `move_towards_point(distx, disty,
+   * dist / flytime)` exactly.
+   */
+  step(e) {
+    e.image_alpha = Math.min(1, (e.image_alpha ?? 0) + 0.334);
   },
   alarm: {
     0(e, state) {
@@ -191,6 +207,12 @@ const turnClock = {
     // decrement below.
     const d = e.director;
     if (d?.started && state.soul && gmlLte(state.turntimer, 1) && state.turntimer > -900000) {
+      // THE RETURN HEART IS BORN HERE, in the same breath as the destroy —
+      // `with (obj_heart) { instance_create(x, y, obj_returnheart);
+      // instance_destroy(); }`. This is the controller's block, so it is the
+      // site that actually sees the soul; the director's endStep below runs
+      // after it and finds nothing left.
+      spawnReturnHeart(state, state.soul.x, state.soul.y);
       state.soul.alive = false;
       state.soul = null;
     }
@@ -291,8 +313,10 @@ const director = {
     // pin the ordering; calling it from this endStep put the rolls before
     // the slash jitter and the tunnel boundary rolls, which only balanced
     // out under the old skip-a-tick model by call-site accident.
-    // obj_healwriter has no delay and no RNG — it rises and fades on its own.
-    stepHealWriters(state);
+    // obj_healwriter is stepped from sim/index.js's frame end instead: it is
+    // its own instance in the game and rises whether or not this scene's
+    // entity is stepping, and being tied here froze it whenever the menu was
+    // up — which is exactly when items are used.
     stepAttackVfx(state);
     // obj_rudebuster_anim + obj_rudebuster_bolt. The press is an EDGE, and it
     // is the same button that confirms in the menu — but the menu is closed
@@ -1232,8 +1256,8 @@ const director = {
         // no board, no bullets, no soul. Independent confirmation of the
         // phase-4 charge-up finding, from a completely different line.
         //
-        // The flight itself is not modelled yet; the soul appears at its
-        // landing spot. That is a renderer gap, not a sim one.
+        // The flight IS modelled — builtinMotion at `dist / 8` from the spawn
+        // site below, fading in, with obj_heartburst at each end.
         advanceTurn(state);
         // The table row advances here; the knight's real SELECTOR — where
         // the phase variable flips — runs at the arena-open below, and
@@ -1333,6 +1357,10 @@ const director = {
           state.invTimer = 0;
           const kris = PARTY[0];
           const mh = spawn(state, moveheart, { x: kris.x + 10, y: kris.y + 40 });
+          // `instance_create(x, y, obj_heartburst)` — obj_moveheart's Create
+          // bursts at the LAUNCH point, the mirror of obj_returnheart's burst
+          // on arrival. Visual only, same plain-state object.
+          state.heartBurst = { x: kris.x + 10, y: kris.y + 40, burst: 0 };
           // No obj_heartmarker exists in this fight (only the watercooler
           // enemy ever creates one), so the destination is the moveheart
           // Create's growtangle branch: `(gt.x - 10, gt.y - 10)` — with the
@@ -1418,6 +1446,29 @@ const director = {
     e.drain = 0;
   },
 };
+
+/**
+ * `obj_returnheart` — spr_dodgeheart (from the object definition; its Create
+ * sets no sprite), flying to Kris and bursting.
+ *
+ *     flytime = 8;
+ *     distx = obj_herokris.x + 10; disty = obj_herokris.y + 40;
+ *     move_towards_point(distx, disty, dist / flytime);
+ *     alarm[0] = flytime;   ->  snap, obj_heartburst, destroy
+ *
+ * PURELY VISUAL: plain state, not an entity, so it cannot reach a traced
+ * column, and it draws no RNG. Stepped from sim/index.js because it outlives
+ * the turn that made it.
+ */
+function spawnReturnHeart(state, x, y) {
+  state.returnHeart = {
+    x, y,
+    tx: PARTY_POS[0].x + 10,
+    ty: PARTY_POS[0].y + 40,
+    t: 0,
+    flytime: 8,
+  };
+}
 
 export function buildPracticeScene(state, { seed = 12345 } = {}) {
   state.menu = createMenu();

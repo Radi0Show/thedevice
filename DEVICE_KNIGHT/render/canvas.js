@@ -1,3 +1,14 @@
+
+/**
+ * Is the battle menu currently pointing at the enemy? True for the enemy row
+ * (`bmenuno == 1`) and for Kris's ACT enemy picker (`bmenuno == 11`), the two
+ * states where the player is choosing the Knight as a target.
+ */
+function menuTargetsEnemy(state) {
+  const m = state.menu;
+  if (!m || !m.open) return false;
+  return m.submenu === 'enemy' || m.submenu === 'actpick';
+}
 // Canvas renderer. Reads sim state, never writes to it.
 //
 // Draws the game's own sprites (assets/sprites, extracted from the player's
@@ -21,7 +32,7 @@ import { drawFightBar } from './fightbar.js';
 import { drawBackground } from './background.js';
 import { drawSnowBackdrop } from './draw/intro-fx.js';
 import { CAM_X } from '../sim/intro.js';
-import { drawDmgNumbers, drawAttackVfx } from './dmgnumbers.js';
+import { drawDmgNumbers, drawAttackVfx, drawHealWriters } from './dmgnumbers.js';
 import { drawRudeBuster } from './rudebuster.js';
 import { drawDialogue } from './dialogue.js';
 import {
@@ -406,6 +417,36 @@ export async function createRenderer(canvas) {
      */
     obj_knight_enemy(ctx, e, state) {
       const k = state.knight;
+
+      // THE SELECTION GLOW — a DELIBERATE ADDITION, not game behaviour.
+      // obj_knight_enemy carries `flash`/`becomeflash` from
+      // scr_enemy_object_init, but nothing in the dump ever sets becomeflash
+      // for him, so the original never highlights the enemy you are pointing
+      // at: the only feedback is the heart cursor on the name row. This adds
+      // it because it was asked for, and it is renderer-only -- no sim state,
+      // no RNG, no effect on any trace or suite.
+      //
+      // A halo UNDER the sprite, not a tint over it: he is a dark silhouette
+      // with a white outline, so a white copy on top would erase him. Three
+      // scaled-up fogged copies at low alpha, additive, pulsing on the menu's
+      // own siner so it breathes at the same rate as the cursor.
+      if (menuTargetsEnemy(state)) {
+        const entry = sprites.get(e.sprite_index ?? SPRITE_FOR.obj_knight_enemy);
+        if (entry && entry.frames.length) {
+          const idx = Math.abs(Math.floor(e.image_index ?? 0)) % entry.frames.length;
+          const halo = fogged(entry.frames[idx], [255, 255, 255]);
+          const pulse = 0.5 + 0.5 * Math.sin((state.menu?.siner ?? 0) / 6);
+          const xs = e.image_xscale ?? 1;
+          const ys = e.image_yscale ?? 1;
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          for (const [grow, a] of [[1.22, 0.16], [1.13, 0.22], [1.05, 0.28]]) {
+            blit(halo, entry.meta.ox, entry.meta.oy, e.x, e.y,
+              xs * grow, ys * grow, e.image_angle ?? 0, a * (0.55 + 0.45 * pulse));
+          }
+          ctx.restore();
+        }
+      }
       // ROARING's launch. con 3 is "gone until the CleanUp hands him back";
       // con 2 is the TEN-FRAME WHITE BURN-OUT that gets him there, and it is
       // NOT dead code — the retraction this replaces assumed `chargeuptimer`
@@ -803,6 +844,49 @@ export async function createRenderer(canvas) {
     // never up together — the exchange runs before the menu opens.
     drawDialogue(ctx, state, sprites);
     drawMenu(ctx, state, sprites);
+    // OVER THE BAND. obj_healwriter is created at `yy + 430` — inside the
+    // charbox strip it annotates — and rises out of it. Drawn with the damage
+    // numbers (under the band) the first frames of every heal were hidden
+    // behind the very box whose HP it is reporting.
+    drawHealWriters(ctx, state, sprites);
+
+    // THE SOUL FLYING HOME — obj_returnheart, spr_dodgeheart (its sprite is
+    // on the object definition, so no grep of the code could find it). Drawn
+    // here, over the band, because it travels from the arena down to Kris.
+    const rh = state.returnHeart;
+    if (rh) {
+      const hs = sprites.get('spr_dodgeheart');
+      if (hs?.frames?.length) {
+        blit(hs.frames[0], hs.meta.ox, hs.meta.oy, rh.x, rh.y, 1, 1, 0, 1);
+      }
+    }
+    // obj_heartburst — three expanding outlines, from its Draw:
+    //
+    //   draw_sprite_ext(spr_heartoutline2, 0, xs+9, ys+9, 0.25+b, 0.25+b/2, ...
+    //                   c_white, 0.8 - b/6);
+    //   draw_sprite_ext(spr_heartoutline,  0, xs+9, ys+9, 0.25+b/1.5, ...
+    //
+    // spr_heartoutline and spr_heartoutline2 are NOT in the sprite pack, so
+    // the burst is approximated with spr_dodgeheart at the same scales and
+    // alphas rather than skipped — LABELLED, and a note for whoever next runs
+    // the sprite extraction: adding those two names makes this exact.
+    const hb = state.heartBurst;
+    if (hb) {
+      const hs = sprites.get('spr_dodgeheart');
+      if (hs?.frames?.length) {
+        const b = hb.burst;
+        const rings = [
+          [0.25 + b, 0.25 + b / 2, 0.8 - b / 6],
+          [0.25 + b / 1.5, 0.25 + b / 3, 1 - b / 6],
+          [0.2 + b / 2.5, 0.2 + b / 5, 1.2 - b / 6],
+        ];
+        for (const [sx, sy, a] of rings) {
+          if (a <= 0) continue;
+          blit(hs.frames[0], hs.meta.ox, hs.meta.oy, hb.x + 9, hb.y + 9,
+            sx, sy, 0, Math.min(1, a));
+        }
+      }
+    }
     // The FIGHT bar sits where the menu was — the menu is closed while it runs.
     drawFightBar(ctx, state.fightBar, sprites, undefined, undefined, state);
 

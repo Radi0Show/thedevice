@@ -27,7 +27,7 @@
 
 import { drawSpriteExt, rgb } from './draw/gm.js';
 import { drawSpriteText, measureText, FONTS } from './text.js';
-import { dmgColor, TYPE_DEAD, MSG_MAX } from '../sim/dmgnumbers.js';
+import { dmgColor, TYPE_DEAD, MSG_MAX, TYPE_SWOON, C_LIME } from '../sim/dmgnumbers.js';
 import { loadFont, drawText } from './font.js';
 
 /**
@@ -54,7 +54,13 @@ export function drawAttackVfx(ctx, state, sprites) {
 
 export function drawDmgNumbers(ctx, state, sprites) {
   const d = state.dmg;
-  if (!d || !d.list.length) return;
+  if (!d) return;
+  // obj_dmgwriter only. obj_healwriter is a SEPARATE object with its own
+  // lifetime and its own depth, so it is drawn by drawHealWriters from the
+  // canvas's own order — over the charbox band, not under it. It used to be
+  // called from the bottom of this function, which meant the early return
+  // below swallowed it whenever no damage number happened to be on screen.
+  if (!d.list.length) return;
   const msg = sprites.get('spr_battlemsg');
 
   ctx.save();
@@ -82,6 +88,9 @@ export function drawDmgNumbers(ctx, state, sprites) {
     if (n.special === MSG_MAX) frame = 2;
     if (n.damage === 0) frame = 0;
     if (n.type === TYPE_DEAD) frame = 1;
+    // AFTER type 4, as the Draw applies them: `if (type == 4) message = 2;`
+    // then `if (type == 12) message = 10;` -> FRAME 13, the SWOON graphic.
+    if (n.type === TYPE_SWOON) frame = 13;
     if (frame >= 0) {
       if (msg) drawSpriteExt(ctx, msg, frame, n.x + 30, n.y, xs, ys, 0, color, alpha);
       continue;
@@ -109,8 +118,6 @@ export function drawDmgNumbers(ctx, state, sprites) {
     }
   }
   ctx.restore();
-
-  drawHealWriters(ctx, state);
 }
 
 /**
@@ -126,7 +133,7 @@ export function drawDmgNumbers(ctx, state, sprites) {
  * object's. And `image_alpha` starts at 1.5 against a draw_set_alpha that
  * CLAMPS at 1, so it holds solid for five frames before the ten-frame fade.
  */
-function drawHealWriters(ctx, state) {
+export function drawHealWriters(ctx, state, sprites) {
   const heals = state.dmg?.heals;
   if (!heals || !heals.length) return;
   const font = loadFont();
@@ -136,8 +143,19 @@ function drawHealWriters(ctx, state) {
   for (const h of heals) {
     const alpha = Math.min(1, h.alpha);
     if (alpha <= 0) continue;
+    // MAX IS A SPRITE, NOT TEXT. obj_dmgwriter's specialmessage 3 draws
+    // `spr_battlemsg` FRAME 2 in c_lime — the game's own MAX graphic, the
+    // same one the spell heal path uses. Spelling it out in the battle font
+    // was close but not the game's lettering.
+    if (h.maxed) {
+      const msg = sprites?.get('spr_battlemsg');
+      if (msg) {
+        drawSpriteExt(ctx, msg, 2, h.x + 30, h.y, 2, 2, 0, C_LIME, alpha);
+        continue;
+      }
+    }
     drawText(ctx, font, `+${h.healamt}`, h.x, h.y, {
-      color: 'rgb(0,255,0)', alpha,
+      color: 'rgb(0,255,0)', alpha, halign: 'center',
     });
   }
   ctx.restore();

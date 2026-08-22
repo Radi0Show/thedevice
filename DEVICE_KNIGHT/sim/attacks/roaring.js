@@ -95,7 +95,35 @@ export const roaring2 = {
     // as the knight appearing, then appearing a second time — which is
     // exactly what it was doing.
     e.fake_alpha = 0;
-    e.rand_angle = 0; // irandom(360) in the original; replayed by the scene
+    // `rand_angle = irandom(360)` — IN THE ORIGINAL'S CREATE, so the draw is
+    // taken here and not by the caller. It was left at 0 with a note saying
+    // the scene would replay it, and only ONE scene ever did: sim/scenes/
+    // fight.js. The whole-fight runner builds the PRACTICE scene, which never
+    // set it, so every ROARING in a full fight fired its star rings from a
+    // base of 0 while the game fired from a random one.
+    //
+    // Invisible until the camera work pushed verify37's front this far: at
+    // f11269 the six ring stars sat on the right circle, 60 degrees apart,
+    // uniformly 2 degrees off — the token's roll happened to be 58, and 58
+    // minus a whole 60-degree step is what that 2 degrees was.
+    //
+    // Position in the stream matters as much as the value: irandom is two
+    // draws, and taking them at Create is what the runner does.
+    e.rand_angle = gmlIrandom(state.gmlRng, 360);
+    // ONE U32 DRAW IS MISSING BEFORE THIS ROLL, and it is CONDITIONAL.
+    // verify37's front sits on the six-star ring at f11269: the ring is right
+    // (radius 590, 60 degrees apart) but rotated, because rand_angle is 220
+    // here and 278 in the game. The anchor is correct (n=27, seed 27037) and
+    // 278 is exactly what this roll returns after THREE u32 draws off that
+    // anchor, where the sim takes two (obj_dbulletcontroller's basedir).
+    //
+    // Do NOT pad it unconditionally: measured, a single extra draw here moves
+    // verify37 to f11726 AND makes the camera match on every one of its
+    // 12,007 frames -- and BREAKS verify21j, which is byte-exact today, at
+    // f11274. So the third draw happens in token 37's roar and not token
+    // 21's. Launch conditions look identical in both (no live bullets, inv
+    // -5, full party), so what varies has not been found yet. Attribute it
+    // before adding it; this project has been burnt by blind pads twice.
     e.rand_dist = 320;
     e.starcount_p1 = 0;
     e.starcount_p2 = 0;
@@ -522,7 +550,29 @@ export const roaring2 = {
       // 212.5120697 with +0.0209 in y — the direction from (222,139), the
       // frame-START position. Reading the live heart gave dir exactly 0.
       // Same compensation family as the heart follower and the bar.
-      const hp = state.soulPrev ?? heart;
+      const hp0 = state.soulPrev ?? heart;
+      // CLAMPED, because the Step's very first act is
+      //
+      //     with (obj_heart) { if (x < camerax()) x = camerax(); ... }
+      //
+      // and the tempdir read at line 100 sees the heart AFTER it. The sim
+      // applied that clamp to the LIVE soul but fed the pull the frame-start
+      // snapshot, which never saw it. Identical whenever the camera is
+      // steady and the soul is already inside — which is every frame the
+      // pull was verified on, f11271 included — and wrong on exactly the
+      // frames a SHAKE moves the boundary: at f11726 the camera is at (3, 3),
+      // so the game clamps the soul from x 0 to x 3 and aims from there,
+      // while the sim aimed from 0. Same asymmetry as the clamp above: left
+      // and top snap to the edge, right and bottom to 20 inside.
+      const cvx = state.view.x;
+      const cvy = state.view.y;
+      let hpx = hp0.x;
+      let hpy = hp0.y;
+      if (hpx < cvx) hpx = cvx;
+      if (hpx > cvx + 640 - 20) hpx = cvx + 640 - 20;
+      if (hpy < cvy) hpy = cvy;
+      if (hpy > cvy + 480) hpy = cvy + 480 - 20;
+      const hp = { x: hpx, y: hpy };
       // A --roar replay row's RESOLVED tempdir wins over the recomputation:
       // the runner's atan2 differs from JS's in the last bits, and those
       // bits reach the soul's f32-narrowed position (one ULP at f11288) and

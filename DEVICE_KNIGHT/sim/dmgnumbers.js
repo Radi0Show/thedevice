@@ -41,7 +41,7 @@
 // And the fade reuses `kill` in BOTH the alpha and the Y SCALE: `stretch +
 // kill` means the number stretches vertically as it disappears.
 
-import { PARTY_POS } from './damage.js';
+import { PARTY_POS, PARTY } from './damage.js';
 import { gmlRandom } from './rng.js';
 
 // `type` is the writer's colour selector, and IT MEANS DIFFERENT THINGS in the
@@ -74,11 +74,24 @@ export const DMG_COLORS = [LIGHTB, LIGHTF, LIGHTG];
 /** `doomtype`. -1 is an ordinary hit on the party; 4 is a death. */
 export const TYPE_PARTY = -1;
 export const TYPE_DEAD = 4;
+/**
+ * `doomtype 12` — SWOON, and it is a DIFFERENT WRITER FROM DOWN.
+ *
+ *     if (target == 0) { doomtype = 4;  hp = round(-maxhp / 2); }
+ *     else             { doomtype = 12; hp = -999; }
+ *
+ * and obj_dmgwriter's Draw maps them to different graphics entirely:
+ * `type == 4` -> message 2 -> spr_battlemsg FRAME 1 (DOWN), while
+ * `type == 12` -> message 10 -> FRAME 13 (SWOON). Both red. Using DEAD for
+ * everyone put the DOWN graphic over Susie and Ralsei, who never go down —
+ * they swoon, which is the whole reason they cannot be healed back.
+ */
+export const TYPE_SWOON = 12;
 /** `type = 3` — a HEAL, drawn in c_lime. Every heal writer in the dump uses it. */
 export const TYPE_HEAL = 3;
 const C_WHITE = [255, 255, 255];
 const C_RED = [255, 0, 0];
-const C_LIME = [0, 255, 0];
+export const C_LIME = [0, 255, 0];
 
 /**
  * `specialmessage`, which swaps the digits for a frame of `spr_battlemsg`:
@@ -102,6 +115,7 @@ export function dmgColor(type) {
   if (type === 2) return LIGHTG;
   if (type === TYPE_HEAL) return C_LIME;
   if (type === TYPE_DEAD) return C_RED;
+  if (type === TYPE_SWOON) return C_RED;
   return C_WHITE;
 }
 
@@ -226,12 +240,48 @@ export function spawnSelfHealNumber(state, target, amount, maxed) {
  * the reported case: a ReviveMint goes through scr_itemuse case 2 into
  * scr_healitem, so what you see is the revive amount it tried to give.
  */
+/**
+ * CENTRE-TOP OF EACH BATTLE SPRITE, which is not PARTY_POS.
+ *
+ * PARTY_POS is the sprite's DRAW ORIGIN — the point passed to draw_sprite_ext
+ * — and every one of these sprites has a non-zero `ox` and is drawn at scale
+ * 2, so the origin sits at the sprite's left edge (Ralsei's a full 138px left
+ * of his right edge). Spawning a heal number there put it beside the
+ * character's foot, not over their head. Damage numbers dodge this with a
+ * hardcoded `+30` at draw time; this table does it properly.
+ *
+ * Derived from the sprite pack's own metadata, at the scale 2 they draw with:
+ *
+ *   slot  origin      sprite            w x h   ox   left = x - ox*2   centre   top
+ *   Kris  (126, 104)  spr_krisb_idle    36x38    3   120               156      104
+ *   Susie ( 80, 142)  spr_susieb_idle   54x45   19    42                96      142
+ *   Rals  ( 58, 190)  spr_ralsei_idle   69x47    0    58               127      190
+ */
+const HEAL_ANCHOR = [
+  { x: 156, y: 104 },
+  { x: 96, y: 142 },
+  { x: 127, y: 190 },
+];
+
 export function spawnHealWriter(state, target, amount) {
   const d = state.dmg;
   if (!d) return;
+  // DELIBERATE DEVIATION, asked for and labelled. The dump puts this one over
+  // the CHARBOX -- `instance_create(scr_charbox_x(t) + 70 + xx, yy + 430,
+  // obj_healwriter)` -- and only the SPELL path (scr_healitemspell, via
+  // scr_dmgwriter_selfchar) puts a heal number over the character with the
+  // MAX graphic. Items here are shown over the character instead, at the same
+  // point damage taken already appears, because that is where it is wanted.
+  // The MAX read below is the same deviation: obj_healwriter has no message
+  // sprite at all, so in the game a Spincake on a full bar reads +150.
+  const hp = state.partyHp?.[target] ?? 0;
+  const max = PARTY[target]?.maxhp ?? 0;
+  const pos = HEAL_ANCHOR[target] ?? PARTY_POS[target];
   d.heals.push({
-    x: CHARBOX_X[target] + 70,
-    y: 430,
+    // Just clear of the head, then it rises.
+    x: pos.x,
+    y: pos.y - 6,
+    maxed: max > 0 && hp >= max,
     healamt: amount,
     // GML `friction` reduces the SPEED MAGNITUDE and clamps at zero on
     // crossing; the writer only ever moves up, so this is vspeed climbing

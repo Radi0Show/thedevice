@@ -31,7 +31,7 @@
 import { gmlRound } from './gml.js';
 import { heroHurt } from './heroes.js';
 import { statsOf } from './equipment.js';
-import { spawnDmgNumber, TYPE_PARTY, TYPE_DEAD } from './dmgnumbers.js';
+import { spawnDmgNumber, TYPE_PARTY, TYPE_DEAD, TYPE_SWOON} from './dmgnumbers.js';
 import { gmlChoose } from './rng.js';
 import { scrShakescreen } from './shake.js';
 
@@ -413,7 +413,12 @@ export function scrDamage(state, damage, target, opts = {}) {
   // `dmgwriter.type = doomtype` — **-1** for an ordinary hit, so the number is
   // WHITE, and 4 on death, which turns it red and swaps the digits for the
   // DOWN graphic. The per-character tints belong to damage you DEAL.
-  const doomtype = hp[target] <= 0 ? TYPE_DEAD : TYPE_PARTY;
+  // KRIS DOWNS, THE OTHERS SWOON — two doomtypes, two graphics. See
+  // TYPE_SWOON. This used TYPE_DEAD for anyone felled, which drew DOWN over
+  // Susie and Ralsei.
+  const doomtype = hp[target] > 0
+    ? TYPE_PARTY
+    : (target === 0 ? TYPE_DEAD : TYPE_SWOON);
   spawnDmgNumber(state, PARTY_POS[target].x, PARTY_POS[target].y, t, doomtype, 2);
   return t;
 }
@@ -539,16 +544,53 @@ export function scrDamageMaxhp(state, fraction, ignoreDefend = false, cannotFell
     // documents the spare ("displays as MISS"); the dump's clamp confirms it.
     t = Math.min(Math.max(t, 1), hp[target] - 1);
   }
+  // `if (!instance_exists(obj_shake)) instance_create(0, 0, obj_shake);`
+  // sits HERE in scr_damage_maxhp, right after the cannotFell clamp — this
+  // script shakes on its own account, it does not route through scr_damage.
+  // The sim's copy had no shake at all, so Flurry's slash (the only caller:
+  // 66% of max HP, ignoring DF, clamped so it cannot fell you) hurt you in
+  // total silence from the camera's point of view.
+  //
+  // That is gameplay, not decoration, for the reason scr_damage's own copy
+  // documents above: every wall cull compares against camerax(). Missing this
+  // is verify37's f6832 -- the shake it should have made at f6829 would have
+  // put the camera at +3 by f6832, moving obj_regularbullet's `x < view.x -
+  // 80` boundary to -77, which is what culls the Flurry tooth sitting at
+  // -78.9147. The sim kept the tooth and the live bullet count diverged.
+  if (!state.entities?.some((sh) => sh.alive && sh.type?.name === 'obj_shake')) {
+    scrShakescreen(state);
+  }
+
   // NO EARLY RETURN AT ZERO. The original carries on: `hurt = 1`, the
   // dmgwriter (a 0 draws MISS) and the invulnerability all still happen —
   // the slash connects and whiffs visibly, it does not silently not-happen.
   if (t < 0) t = 0;
 
   hp[target] -= t;
-  if (hp[target] <= 0) hp[target] = target === 0 ? Math.round(-PARTY[0].maxhp / 2) : -999;
+  if (hp[target] <= 0) {
+    // THE SAME FELL AS scr_damage, AND IT HAS TO BE. This path had its own
+    // half-copy: it set the HP hole but never called scr_dead, and it drew
+    // TYPE_DEAD for everyone. Both halves were wrong and they broke in
+    // opposite directions.
+    //
+    //   - NO scr_dead meant `chardead` stayed 0 while HP went negative, and
+    //     those are the two SEPARATE gates stepHeroes and isUp read (the pose
+    //     follows the HP sign, the menu follows chardead). So the felled
+    //     character drew the defeat pose and stayed in the menu, the FIGHT
+    //     bar and the target list -- down and still acting.
+    //   - TYPE_DEAD for everyone put the DOWN graphic over Susie and Ralsei,
+    //     who SWOON. That was fixed in scr_damage and missed here, so
+    //     whichever entry point felled you decided which graphic you got.
+    //
+    // scr_damage_maxhp is Flurry's slash, which passes cannotFell and clamps
+    // to hp - 1 -- so this only runs for a caller that does NOT, which is
+    // exactly why it went unnoticed.
+    hp[target] = target === 0 ? Math.round(-PARTY[0].maxhp / 2) : -999;
+    scrDead(state, target);
+  }
   heroHurt(state, target);
   spawnDmgNumber(state, PARTY_POS[target].x, PARTY_POS[target].y, t,
-    hp[target] <= 0 ? TYPE_DEAD : TYPE_PARTY, 2);
+    hp[target] > 0 ? TYPE_PARTY : (target === 0 ? TYPE_DEAD : TYPE_SWOON), 2);
   state.invTimer = state.invc * 30;
   return t;
 }

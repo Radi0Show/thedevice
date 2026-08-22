@@ -29,6 +29,7 @@ import { KNIGHT, PARTY as PARTY_ACTORS } from '../sim/actors.js';
 import { damageKnight } from '../sim/knight.js';
 import { spawnDmgNumber } from '../sim/dmgnumbers.js';
 import { createAudio } from '../render/audio.js';
+import { deltaruneMultiplier } from '../render/windowsize.js';
 import { drainCues } from '../sim/audio.js';
 import { resetTensionBar } from '../render/tensionbar.js';
 
@@ -42,8 +43,10 @@ const ctx = renderer.ctx;
  *
  *   FULL   fill the window, letterboxed on the short axis. The default, and
  *          what fullscreen should look like.
- *   SMALL  scale by a WHOLE number of DEVICE pixels, leaving black around the
- *          edges when the window is not a clean multiple of 640x480.
+ *   SMALL  the size DELTARUNE ITSELF would open at on this display, leaving
+ *          black around the edges. Not "the biggest whole multiple that
+ *          fits" -- that was the old behaviour and it is a different, larger
+ *          number on most screens. See deltaruneMultiplier() below.
  *
  * The trade is unavoidable. `image-rendering: pixelated` at a fractional
  * factor gives some source columns n device pixels and their neighbours n + 1,
@@ -57,14 +60,27 @@ const ctx = renderer.ctx;
  * a regression by the other's standard. Now it is a switch.
  */
 let scalingMode = 'fit';
+
 function fitCanvas() {
   const dpr = window.devicePixelRatio || 1;
   const availW = window.innerWidth * dpr;
   const availH = window.innerHeight * dpr;
   const fit = Math.min(availW / renderer.VIEW_W, availH / renderer.VIEW_H);
-  // Below 1x there is no whole multiple to land on, so SMALL falls back to
-  // filling: showing the whole frame slightly soft beats cropping the arena.
-  const scale = scalingMode === 'pixel' && fit >= 1 ? Math.floor(fit) : fit;
+  let scale = fit;
+  if (scalingMode === 'pixel' && fit >= 1) {
+    // The game's own answer, then clamped to what the BROWSER WINDOW can
+    // actually show. A real window can be the full display; a canvas cannot,
+    // because the browser's own chrome is in the way -- so without this the
+    // arena would hang off the bottom on a maximised window. The clamp is a
+    // deviation the browser forces, and it only ever reduces.
+    const m = deltaruneMultiplier(
+      window.screen?.width ?? window.innerWidth,
+      window.screen?.height ?? window.innerHeight,
+      renderer.VIEW_W,
+      renderer.VIEW_H,
+    );
+    scale = Math.min(m * dpr, Math.floor(fit));
+  }
   canvas.style.width = `${(renderer.VIEW_W * scale) / dpr}px`;
   canvas.style.height = `${(renderer.VIEW_H * scale) / dpr}px`;
 }
@@ -743,9 +759,27 @@ function frame(now) {
       }
       const cues = [];
       stepVictoryScene(cutsceneSeq, input, cues);
-      // The scene's music ops ride the cue list: the wind track plays only
-      // if the local pack carries it (wind_highplace is not extracted), so
-      // 'wind' is a labelled no-op today; 'stop' quiets any loop.
+      // THE WIND. The ending's ambience is a real track and it is now in the
+      // pack: obj_ch3_PTB02 does
+      //
+      //     c_mus2("initloop", "wind_highplace.ogg", 0);
+      //     c_mus2("pitch", 0.5, 0);
+      //     c_mus2("volume", 0, 0); c_mus2("volume", 1, 60);
+      //
+      // a LOOP at HALF PITCH under the whole cutscene. It used to be a
+      // labelled no-op because the file was thought unextracted; it is a
+      // loose .ogg in Resources/mus, like knight.ogg and AUDIO_DRONE, so it
+      // needed no extraction pass at all. The 60-frame volume ramp is not
+      // reproduced — the driver has no fade — so it comes in at full gain;
+      // that is the one approximation here and it is deliberate.
+      for (const c of cues) {
+        if (!c.music) continue;
+        if (c.music === 'wind') {
+          audio.play([{ name: 'wind_highplace', pitch: 0.5, gain: 1, loop: true }]);
+        } else if (c.music === 'stop') {
+          audio.stopLoop('wind_highplace');
+        }
+      }
       const sound = cues.filter((c) => !c.music);
       if (sound.length) audio.play(sound);
       if (cutsceneSeq.done) break;

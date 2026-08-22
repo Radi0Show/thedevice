@@ -98,12 +98,23 @@ export function stepIntroFx(e, cues, sc) {
   if (e.done) return;
   e.frame += 1;
   if (e.shudder) e.shudder -= 1;
-  if (e.crushTimer >= 0 && e.crushTimer < 48) e.crushTimer += 1;
+  // 24 frames of wind-up plus the alarm's 64-frame bright collapse.
+  if (e.crushTimer >= 0 && e.crushTimer < 96) e.crushTimer += 1;
   if (e.circleFlash > 0) e.circleFlash += 1;
 
   if (e.whiteout) {
     // `scr_approach(whiteout_counter, 1, 1/48)`.
     e.whiteout_counter = Math.min(1, e.whiteout_counter + 1 / 48);
+    // THE LAST FRAME THE IMPLOSION SPAWNED. The Step's particle burst is
+    // gated `if (whiteout) { if (state != "roaring") { ...spawn... } }` —
+    // only the SPAWNING stops when the roar begins. Everything already in
+    // flight keeps rushing in on its own 32-frame ramp until it is inside
+    // 32px and destroyed. The renderer reconstructs particles from their
+    // birth frame, so it needs to know when births were allowed rather than
+    // testing the CURRENT state: gating on the latter made every streak
+    // vanish mid-flight the instant fxState flipped, which is why the
+    // implosion appeared to stop dead instead of collapsing.
+    if (e.fxState === 'intro') e.inrushLast = e.frame;
   }
 
   if (e.fxState === 'intro') {
