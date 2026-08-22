@@ -275,7 +275,9 @@ export const splitslash = {
       // `global.inv = global.invc * 30`. This wrote `state.inv`, which is
       // READ NOWHERE — a write-only variable, the same class of bug CLAUDE.md
       // catalogues in the original's GML, only this one was mine. The field
-      // the damage path actually gates on is `invTimer`.
+      // the damage path actually gates on is `invTimer`. The same-frame
+      // post-decrement the trace shows (11 at f1094, not 12) comes from the
+      // soul's inv decrement living in the motion phase — see sim/soul.js.
       state.invTimer = state.invc * 30;
       destroy(e);
     }

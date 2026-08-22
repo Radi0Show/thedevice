@@ -255,6 +255,27 @@ export function stepHealWriters(state) {
   d.heals = d.heals.filter((h) => h.alpha >= 0);
 }
 
+// THE WRITERS RUN AT THE FRAME'S END — obj_dmgwriter's whole behaviour is
+// its DRAW event, and draws run after every step, collision and end step of
+// the frame, including the frame the writer is born (any-phase creations
+// join that frame's draw pass; the balloon writer measured pos 2 at birth).
+// So the delay clock TICKS FROM BIRTH and the one-shot throw roll lands at
+// birth+delay-1 in the END-OF-FRAME slot. Three ledgers pin the ordering,
+// and an earlier per-dispatch "skip the birth tick" model fit the first two
+// only by accident of call-site ordering:
+//
+//   f1720-1722 (turn 5): jitter pairs at stream 96-97 / 98-99, the three
+//     throws at 100-102 — the throws are f1721's END slot, after f1721's
+//     end-step jitter, not f1722's start;
+//   f2969/f2974 (turn 8): throws at birth+1 (2970/2975), the +1 that moved
+//     the tunnel boundary rolls to their measured positions;
+//   f4213 (phase 3 Stars): three throws at 4214's end slot, BEFORE the
+//     f4215 star's chain roll — the sim's old model put them after it, and
+//     the star's u read three positions early (u at 152 vs the game's 155).
+//
+// stepFrame calls this AFTER runPhase('endStep') for exactly that reason —
+// a scene-level endStep call site puts the rolls before every same-frame
+// end-step consumer and inverts the second receipt.
 export function stepDmgNumbers(state, rng) {
   const d = state.dmg;
   if (!d) return;

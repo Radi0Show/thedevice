@@ -51,7 +51,7 @@ export const splitFlameMarker = {
 import { splitBullet } from './split-bullet.js';
 import {
   scrEaseIn, scrEaseOut, scrMovetowards, inverselerp, sign,
-  lengthdirX, lengthdirY, WHITE, GRAY,
+  lengthdirX, lengthdirY, pointDirection, angleDifference, WHITE, GRAY,
 } from '../gml.js';
 import { gmlChoose, gmlRandomRange, gmlIrandomRange } from '../rng.js';
 
@@ -92,6 +92,20 @@ function eventUser0(e) {
 
 export const splitGrowtangle = {
   name: 'obj_knight_split_growtangle',
+
+  // BEFORE THE SOUL. The runner steps newest-first and the splitter organism
+  // is born mid-turn, so in the game its Step — the distance easing, the
+  // con-2 heart drag, and above all the main box's park/return at the tail —
+  // runs before obj_heart's. The one frame that order is observable is the
+  // cut's CLOSE: the box returns to xstart in the half's step, and the
+  // heart's own step then resolves its movement against the ring while the
+  // envelope clamp has not yet pulled the soul out of the border — the
+  // game's soul loses its input move that frame (verify21j f2500: oracle x
+  // stalls at 346 with right held; the sim, stepping the soul first against
+  // a still-parked box, walked on). During an open cut the box is at -9999
+  // and nothing the order touches can collide, which is why every earlier
+  // split verified row-exact with the wrong order.
+  stepOrder: -0.5,
 
   create(e, state) {
     const gt = box(state);
@@ -216,9 +230,26 @@ export const splitGrowtangle = {
         // that is not there.
         if (!heart) return;
         if (e.diagonal) {
-          // Diagonal branch not exercised by the verified scenario.
-          e.heart_x = 1;
-          e.heart_y = e.vertical ? -1 : 1;
+          // WHICH SIDE OF THE DIAGONAL CUT the soul is on — an angle test,
+          // not the axis thresholds. The heading from the cut point to the
+          // soul is compared against the cut's own normal (angle + 45 for a
+          // vertical-diagonal, -45 otherwise); within 90 degrees the soul
+          // rides the (+1, -/+1) half, past it the opposite. This was
+          // hardcoded to the first half ("not exercised by the verified
+          // scenario") until turn 12's first d2 cut put the soul on the
+          // other side: verify21j f4654 dragged the oracle's soul -14/frame
+          // while the sim pushed +10 the other way.
+          const hd = pointDirection(
+            e.x + e.xoffset, e.y + e.yoffset, heart.x + 10, heart.y + 10,
+          );
+          const cutNormal = (e.angle ?? 0) + (e.vertical ? 45 : -45);
+          if (Math.abs(angleDifference(cutNormal, hd)) < 90) {
+            e.heart_x = 1;
+            e.heart_y = e.vertical ? -1 : 1;
+          } else {
+            e.heart_x = -1;
+            e.heart_y = e.vertical ? 1 : -1;
+          }
         } else {
           e.heart_x = heart.x + 10 < e.x + e.xoffset ? -1 : 1;
           e.heart_y = heart.y + 10 < e.y + e.yoffset ? -1 : 1;

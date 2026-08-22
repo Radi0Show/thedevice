@@ -16,9 +16,10 @@
 
 import { spawn } from '../entity.js';
 import { soul } from '../soul.js';
+import { HEART_RECT } from '../masks.js';
 import { battlebox, settleBox } from '../battlebox.js';
 import { gmlCreate, gmlChoose, gmlIrandom, gmlRandom } from '../rng.js';
-import { FIGHT_TABLE, launchAttack, openArena, clearTurn, nextTurn, phase4Entry } from './fight.js';
+import { FIGHT_TABLE, launchAttack, openArena, clearTurn, nextTurn, phase4Entry, turnLength } from './fight.js';
 import { battleMsgFor, OPENING_MSG } from '../battlemsg.js';
 import { createMenu, stepMenu, openMenu, bagOf } from '../menu.js';
 import { partyWiped, PARTY as PARTY_STATS, isUp } from '../damage.js';
@@ -27,7 +28,7 @@ import { endTurnItems } from '../menu.js';
 import { applyItem } from '../items.js';
 import { createHeroes, stepHeroes, heroAct, HERO_ATTACK, HERO_IDLE, HERO_ITEM, HERO_SPELL } from '../heroes.js';
 import {
-  advanceBalloon, advanceReply, clearDialogue, dialogueDone, dialogueSkipTimer,
+  advanceBalloon, advanceReply, clearDialogue, msgLines,
   textSoundChar,
 } from '../dialogue.js';
 import {
@@ -38,7 +39,7 @@ import { stepRudeBuster, rudeBusterBusy } from '../rudebuster.js';
 import { castSpell } from '../spells.js';
 import { rngNext } from '../rng.js';
 import {
-  fightDamage, damageKnight, advanceTurn, stepKnightAnim, phase4Reached,
+  fightDamage, damageKnight, advanceTurn, stepKnightAnim, tickChargeup, phase4Reached,
   endCutsceneReached, startEndCutscene, stepEndCutscene, DR_PHASE4, KNIGHT_MAXHP,
 } from '../knight.js';
 import { scrTensionheal } from '../tension.js';
@@ -119,6 +120,21 @@ const moveheart = {
       e.y = e.disty;
       if (!state.soul) {
         state.soul = spawn(state, soul, { x: e.distx, y: e.disty });
+        // No special case for the tunnel's delivery: the newborn soul's
+        // birth step runs everywhere, and ac-13's frozen first frame falls
+        // out of the real mechanics — the soul tests the box's PRE-step
+        // grow state (obj_growtangle's stepOrder note) and at t=7 the
+        // mid-grow ring's true coverage blocks every move and slide
+        // (growmeet probe, 28,000-point rect-A fit).
+        // The original's alarm hands the new heart obj_moveheart's OWN
+        // sprite and mask: `heart.mask_index = mask_index`. obj_moveheart's
+        // definition mask is spr_dodgeheart — a 20x20 AxisAlignedRect — so
+        // the FIGHT soul collides as the full square, not the heart-shaped
+        // spr_dodgeheartmask the tester room's directly-created soul keeps.
+        // Verified by the verify21g hitlog (mask name logged per pairing)
+        // and by all four fight wall rests re-deriving from the stored wall
+        // mask under bbox [0..19]. See HEART_RECT in sim/masks.js.
+        state.soul.mask = HEART_RECT;
       }
       e.alive = false;
     },
@@ -143,8 +159,51 @@ const turnClock = {
   name: 'turn_clock',
   stepOrder: -100,
   create(e) {},
+  // END STEP, and the whole frame's ordering hangs on it. Three measured
+  // constraints pin the decrement's slot:
+  //
+  //   * the knight's `scr_turntimer(240)` on the rtimer-12 frame ends that
+  //     frame at 239 — the decrement runs AFTER the knight's Step;
+  //   * the cone's star release reads the PRE-decrement clock: with the
+  //     clocks aligned to the diag, the recording releases on the frame the
+  //     previous frame's value crosses 120, not its own — the decrement runs
+  //     AFTER the cone's Step too;
+  //   * the heart's destruction fires on the POST-decrement value of the
+  //     same frame (f327: 0.7 - 1 <= 0), inside the same controller block.
+  //
+  // A Step-phase decrement at order -100 satisfied only the third. All
+  // steps, then the decrement: End Step.
   step(e, state) {
-    if (e.director?.started && state.turntimer > 0) state.turntimer -= 1;
+    // The charge-up's tick belongs to the STEP phase — the knight's own
+    // Step, before the controller's decrement — so its timer-60
+    // `turntimer = 1` stomp is decremented to 0 and torn down within the
+    // same frame. See tickChargeup in sim/knight.js.
+    tickChargeup(state);
+    // THE HEART DIES BEFORE ITS OWN STEP on the frame the clock expires.
+    // The controller's block runs [decrement; if <= 0 destroy obj_heart] and
+    // the controller steps BEFORE the per-turn heart — so on the expiry
+    // frame the heart never runs, and the recording's inv column FREEZES on
+    // the previous frame's value (-79 at f327, where the sim's soul stepped
+    // once more and left -80). Read pre-decrement, `<= 1` here IS the
+    // controller's post-decrement `<= 0`. The rest of the teardown stays in
+    // the director's endStep, which sees the same expiry after the End-Step
+    // decrement below.
+    const d = e.director;
+    if (d?.started && state.soul && state.turntimer <= 1 && state.turntimer > -900000) {
+      state.soul.alive = false;
+      state.soul = null;
+    }
+  },
+
+  endStep(e, state) {
+    // `clockOn` covers the WHOLE bullet phase, spawn delay included — the
+    // controller decrements on every `mnfight == 2` frame, and the oracle's
+    // diag shows the clock falling from the first rtimer frame (f77: 120 ->
+    // 119) eleven frames before the attack exists. `started` alone began the
+    // countdown at launch, which left the charge-up turn (whose 90 is set at
+    // mnfight 1.5 and NEVER overridden at launch) twelve frames long.
+    const d = e.director;
+    if ((d?.started || d?.clockOn) && state.turntimer > 0) state.turntimer -= 1;
   },
 };
 
@@ -160,6 +219,7 @@ const director = {
     e.owner = null;
     e.gap = TURN_GAP;
     e.started = false;
+    e.clockOn = false;
     e.menuShown = false;
     e.soulHold = null;
     e.bar = null;
@@ -223,10 +283,13 @@ const director = {
     stepHeroes(state);
     // obj_knight_enemy's reaction timers — hurt strobe, shake, block vfx.
     stepKnightAnim(state);
-    // obj_dmgwriter's Draw, for every live number. It consumes randomness
-    // (`vspeed = -5 - random(2)`), so it draws from the sim's generator and a
-    // replayed seed replays the same arcs.
-    stepDmgNumbers(state, () => rngNext(state.rng));
+    // obj_dmgwriter's Draw is now stepped by stepFrame itself, AFTER the
+    // endStep phase — the writers' throw rolls belong to the frame's END
+    // slot, after every end-step consumer of the same frame. See the header
+    // over stepDmgNumbers in sim/dmgnumbers.js for the three ledgers that
+    // pin the ordering; calling it from this endStep put the rolls before
+    // the slash jitter and the tunnel boundary rolls, which only balanced
+    // out under the old skip-a-tick model by call-site accident.
     // obj_healwriter has no delay and no RNG — it rises and fades on its own.
     stepHealWriters(state);
     stepAttackVfx(state);
@@ -249,6 +312,36 @@ const director = {
       cueLoop(state, 'mus_knight');
     }
 
+    // SWING DAMAGE LANDS BEFORE THE END-CUTSCENE CHECK AND BEFORE THE BAR
+    // TICKS — the game's phase order: obj_heroparent's Other_10 resolves
+    // `finishattacktimer == 0` in the STEP phase, while boltx advances in
+    // obj_attackpress's DRAW, and the knight's own Draw fires the ending in
+    // between. On the fight's last frame (verify21j f12010) the ending hit
+    // lands, ecv flips, and the bar's draw exits with boltx still 28 — the
+    // sim used to resolve the swing after its bar tick and count 29. The
+    // swings were QUEUED by the bar's block below on earlier frames (+11
+    // delay), so resolving here needs nothing from this frame's bar step.
+    if (e.pendingSwing) {
+      for (const s of e.pendingSwing) {
+        if (s.done || state.frame < s.at) continue;
+        s.done = true;
+        if (s.points <= 0) {
+          // A missed bolt still writes a number — `scr_damage_enemy` creates
+          // the writer before the `arg1 > 0` test, and a zero draws MISS.
+          spawnDmgNumber(state, KNIGHT.x, KNIGHT.ystart + 40, 0, s.c);
+          continue;
+        }
+        const dealt = fightDamage(state, s.c, s.points);
+        if (dealt > 0) {
+          damageKnight(state, dealt);
+          scrTensionheal(state, fightTp(s.points));
+          spawnImpact(state, KNIGHT.x, KNIGHT.ystart + 40, s.c, s.points === 150,
+            () => rngNext(state.rng));
+        }
+        spawnDmgNumber(state, KNIGHT.x, KNIGHT.ystart + 40, dealt, s.c);
+      }
+    }
+
     // ENDLESS never reaches the ending — that is the mode's entire promise.
     // The fight wraps back to phase 1 instead, and the Knight's HP resets so
     // the 5840 gate can be crossed again rather than sitting permanently open.
@@ -261,8 +354,11 @@ const director = {
     } else if (endCutsceneReached(state)) {
       startEndCutscene(state);
       state.menu.open = false;
-      state.fightBar = null;
-      e.bar = null;
+      // THE BAR IS FROZEN, NOT REMOVED. `end_cutscene_version > 0` makes
+      // obj_attackpress's Draw exit on its first line — the instance stays,
+      // boltx just stops. The recording's last row still reads the bar at
+      // 28 (verify21j f12010); nulling it here traced '-' and let the turn
+      // flow below mint a fresh bar on the ending frame.
     }
     // The ending's own clock: the white fadeout at 32, the UI teardown and
     // the tension bar's exit past 45. See stepEndCutscene.
@@ -337,8 +433,13 @@ const director = {
 
     const entry = FIGHT_TABLE[e.phase][e.turn];
     state.phase = `phase ${e.phase} · turn ${e.turn + 1} · ${entry.name}`;
-    // Numeric, for the wide trace — a diff should point at a turn, not at prose.
-    state.phaseNum = e.phase;
+    // Numeric, for the wide trace — a diff should point at a turn, not at
+    // prose. THE GAME'S `phase` VARIABLE FLIPS AT THE SELECTION of a
+    // phase's LAST turn (Other_10: `myattackchoice = 5; phase = 2;
+    // phaseturn = 0;`), so the rotating-slash turn already reads as the
+    // NEXT phase in the recording (verify21i f1662). Phase 3 loops onto
+    // itself, and phase 4's third turn hands back to 3.
+    state.phaseNum = state.knightPhase ?? e.phase;
     state.turnNum = e.turn;
 
     if (e.started) {
@@ -370,10 +471,14 @@ const director = {
       // soul on f345 exactly). The sim's old grace period held the soul for
       // eleven extra frames every turn, which shifted every later turn's
       // menus, bars and attacks — the f345/f357 group in the triage map.
+      // The controller's own form: `turntimer <= 0` tested right after its
+      // decrement. This endStep runs AFTER turnClock's (stepOrder -100
+      // orders End Steps too), so the value here IS the post-decrement one.
       const finished = state.turntimer <= 0;
       if (!finished) return;
 
       e.started = false;
+      e.clockOn = false;
       e.balloonDone = false;
       e.arenaOpen = false;
       // THE SOUL DOES NOT SURVIVE THE TURN. obj_heart is created per bullet
@@ -524,6 +629,14 @@ const director = {
         // table (a phase's LAST turn has already reset phaseturn to 0 at
         // selection, and nx.turn is 0 there too).
         e.resumeTurn = nx.turn;
+        // THE GATE FLIPS THE KNIGHT'S OWN PHASE ON THIS FRAME, not at the
+        // next selector: `if (hp <= maxhp*0.8 ...) phase = 4;` runs in the
+        // knight's Step on the turn's LAST frame (turntimer <= 1). The
+        // trace column rides state.knightPhase, which otherwise updates in
+        // the mnfight-1.5 block ~15 frames on — verify21j f10831 has the
+        // recording at 4 with the sim still 3.
+        state.knightPhase = 4;
+        state.phaseNum = 4;
       }
       return;
     }
@@ -535,19 +648,112 @@ const director = {
     // party members picks from their button row, and only when the last one
     // confirms does the enemy attack. The gap above is the beat before the
     // panels rise.
-    if (state.dialogue.text) {
-      // X HELD JUMPS THE TYPING TO THE END. obj_writer's Draw:
+    // THE WRITER MACHINE is shared by two call sites: the per-frame talk
+    // block below it, and the balloon's BIRTH frame at the advanceBalloon
+    // site — step-created writers run their draw the same frame, so a b3
+    // pulse landing on the birth frame skips the balloon right then
+    // (measured at verify21j f2413: the game's turn-7 exchange skipped at
+    // birth and its selector ran at f2421; the sim without the birth pass
+    // typed to f2417 and landed four frames late).
+    const stepTalkWriter = () => {
+      // THE WRITER MACHINE — obj_writer's real per-frame lifecycle, measured
+      // whole (verify21k's writer sidecar, frames 2022-2033) after the
+      // previous timer model ran the balloonturn-6 exchange 17 frames long
+      // and pushed every later turn off by that much.
       //
-      //     if (halt == 0 && button2 == 1 && pos < length && skippable == 1)
-      //         skipme = 1;
-      //     if (skipme == 1) { pos = string_length(mystring) + 1; ... }
+      // What the recording settled that reading the dump could not:
       //
-      // so it is not a faster crawl, it is the whole line at once.
-      if (state.input?.focus) {
-        state.dialogue.timer = Math.max(
-          state.dialogue.timer, dialogueSkipTimer(state.dialogue.text));
+      //   * `global.flag[10]` — the text auto-advance setting — is ON in the
+      //     reference save. With it, EVERY b3 press (`button3_h()`, raw hold,
+      //     no edge or buffer gate) runs the writer's automash: it sets the
+      //     writer's own `prevent_mash_buffer = 3`, toggles its own
+      //     `automash_timer`, and presses button2 (SKIP the typing to the
+      //     end) on the first toggle, button1 (DISMISS) on the next.
+      //   * button1 (confirm, EDGE) and button2 (focus, HELD) are gated on
+      //     `prevent_mash_buffer <= 0`; the automash branch is not.
+      //   * `pos` starts at 1 and ticks +1 per frame INCLUDING the creation
+      //     frame (writers created in a step run their draw that same frame
+      //     — pos reads 2 at the birth frame's end). The '/%' terminator
+      //     halts the crawl at visible-length + 1.
+      //   * a halted writer dies to button1; the death is what the knight's
+      //     `!i_ex(obj_writer)` arms see ON THE NEXT STEP.
+      //
+      // Measured sequence, balloonturn 6 ("Heheh..." + the standing reply):
+      // born 2022 (pos 2), b3 automash SKIP 2025 (pos 11, pmb 3), confirm
+      // kill 2028, knight step 2029 queues the reply + creates its writer,
+      // which the SAME frame's b3 skips (pos 51); alarm[6] -> talked 1 at
+      // 2030; pmb blocks the 2030 confirm, the 2032 confirm kills; the
+      // `talked == 1 && !i_ex(obj_writer)` gate passes at 2033 and the
+      // selector runs that same step (oracle turntimer 89 on row 2033).
+      const dlg = state.dialogue;
+      const flag10 = state.textAutoMash !== false; // the reference save's setting
+
+      // Writer created outside this block (advanceBalloon) arrives with its
+      // birth tick applied; one created below runs its birth frame here.
+      if (!e.talkWriter) {
+        e.talkWriter = { pos: 2, halted: false, pmb: 0, automash: 0, dead: false };
       }
-      state.dialogue.timer += 1;
+
+      // ---- the KNIGHT'S STEP half ------------------------------------------
+      // b3 edge for the `(button3_p() && talktimer > 15)` arm — the knight's
+      // own read, not buffered by the writer's prevent_mash_buffer.
+      const b3Held = !!state.input?.button3;
+      const cPress = b3Held && !e.talkHeld;
+      e.talkHeld = b3Held;
+      e.talkTimer = (e.talkTimer ?? 0) + 1;
+
+      // A death last frame (or the C-arm this frame) is the dismissal.
+      let dismissed = e.talkWriter.dead;
+      if (!dismissed && dlg.speaker === 'knight' && cPress && e.talkTimer > 15) {
+        // `with (obj_writer) instance_destroy()` — the arm kills it directly.
+        dismissed = true;
+      }
+      if (dismissed) {
+        if (dlg.speaker === 'knight' && dlg.ballooncon) {
+          // The 0.6 dismissal: queue the reply, create its writer in this
+          // same step — its machine below runs this frame (that is how the
+          // recording's reply skipped on its own birth frame) — and arm
+          // alarm[6]; balloonend is 1 so `talked` is 1 from the next frame,
+          // and the reply gates the phase on nothing but its writer's death.
+          advanceReply(dlg);
+          e.talkWriter = { pos: 1, halted: false, pmb: 0, automash: 0, dead: false };
+          e.talkTimer = 0;
+        } else if (dlg.speaker === 'knight') {
+          // SINGLE balloon (the 0.5 path): the knight step that sees the
+          // death arms alarm[6]; talked reads 1 one frame later and the gate
+          // passes then — one linger frame between death and the selector.
+          e.talkWriter = null;
+          clearDialogue(dlg);
+          e.talkTimer = 0;
+          return;
+        } else {
+          // The reply (talked already 1): the gate `talked == 1 &&
+          // !i_ex(obj_writer)` passes on the step AFTER the death — clearing
+          // here on the death frame puts the selector (the spawnDelay block
+          // below, reached once `state.dialogue.text` is null) exactly one
+          // frame later, where the oracle runs it.
+          e.talkWriter = null;
+          clearDialogue(dlg);
+          e.talkTimer = 0;
+          return;
+        }
+      }
+
+      // ---- the WRITER'S DRAW half ------------------------------------------
+      const w = e.talkWriter;
+      const visible = msgLines(dlg.text).join('').length;
+      let b1 = false;
+      let b2 = false;
+      const zPress = !!state.input?.confirm && !e.talkConfirmHeld;
+      e.talkConfirmHeld = !!state.input?.confirm;
+      if (zPress && w.pmb <= 0) b1 = true;
+      if (state.input?.focus && w.pmb <= 0) b2 = true;
+      if (flag10 && b3Held) {
+        w.pmb = 3;
+        w.automash = w.automash === 0 ? 1 : 0;
+        if (w.automash === 0) b1 = true;
+        if (w.automash === 1) b2 = true;
+      }
       // THE BALLOON'S VOICE IS snd_txtsus FOR BOTH SPEAKERS, and the previous
       // reading of this was wrong in a way that is audible.
       //
@@ -570,41 +776,51 @@ const director = {
       // SUSIE's head (`obj_herosusie.x + 92`), so to anyone watching it read
       // as Susie occasionally speaking in someone else's voice — which is
       // exactly how it was reported.
-      if (!state.input?.focus
-        && textSoundChar(state.dialogue.text, state.dialogue.timer)) {
-        cue(state, 'snd_txtsus', 1, 1);
+      // The typing tick — the writer's Alarm 0, `pos += 1` at rate 1, which
+      // ran BEFORE the draw's button handling in the frame. The '/%'
+      // terminator halts the crawl one past the visible text.
+      if (!w.halted) {
+        w.pos += 1;
+        // The voice blip rides the crawl (snd_txtsus for BOTH speakers —
+        // both balloon creations set typer 75 before scr_enemyblcon; the
+        // block's opening typer 81 is a dead assignment, another `linex`).
+        if (textSoundChar(dlg.text, w.pos - 1)) cue(state, 'snd_txtsus', 1, 1);
+        if (w.pos > visible) w.halted = true;
       }
-      const done = dialogueDone(state.dialogue.text, state.dialogue.timer);
-
-      // TWO BUTTONS ADVANCE THIS, and only one of them was wired up.
-      //
-      // The knight's own Step takes C: `(button3_p() && talktimer > 15)`.
-      // But the SAME condition's other arm is `|| !i_ex(obj_writer)`, and
-      // the writer dismisses ITSELF on Z once the line has finished typing:
-      //
-      //     if (halt != 0 && button1 == 1 && siner > 0) { ... instance_destroy(); }
-      //
-      // (`button1_p()` is Z or Enter; `button3_p()` is C or Ctrl — the
-      // default control map, input_k[4] and input_k[6].) So Z really does
-      // advance the exchange in the real game, one indirection away, and
-      // modelling only the C arm left the tool's own confirm key dead here —
-      // reported from play as the dialogue not being skippable with Z.
-      const cPress = !!state.input?.button3 && !e.talkHeld;
-      e.talkHeld = !!state.input?.button3;
-      const zPress = !!state.input?.confirm && !e.talkConfirmHeld;
-      e.talkConfirmHeld = !!state.input?.confirm;
-
-      if ((cPress && state.dialogue.timer > 15)
-        || (zPress && done)
-        || (done && state.dialogue.timer > 90)) {
-        if (state.dialogue.speaker === 'knight') advanceReply(state.dialogue);
-        else clearDialogue(state.dialogue);
-        // The press that dismissed this line must not also eat the next one
-        // (the writer's `prevent_mash_buffer`, and the held-across-a-
-        // transition rule this project keeps relearning).
-        e.talkConfirmHeld = true;
-        e.talkHeld = true;
+      // button2 — the skip. Whole line at once, never a faster crawl:
+      // `pos = string_length(mystring) + 1`, and the draw's own scan of the
+      // now-complete text is what sets halt.
+      if (b2 && !w.halted) {
+        w.pos = visible + 3;
+        w.halted = true;
       }
+      // button1 on a halted writer destroys it; the knight's step sees the
+      // death next frame. The FINAL balloon short-circuits: `talked` is
+      // already 1, so the death frame is the last with a live talk — the
+      // gate passes on the very next knight step and the selector runs that
+      // same step, which in this endStep's ordering means the talk must be
+      // gone before the next frame's pass (measured: reply dead during
+      // frame 2032, oracle selector and turn clock at 2033).
+      if (b1 && w.halted) {
+        if (dlg.speaker === 'susie') {
+          e.talkWriter = null;
+          clearDialogue(dlg);
+          e.talkTimer = 0;
+          return;
+        }
+        w.dead = true;
+      }
+      w.pmb -= 1;
+
+      if (globalThis.process?.env?.KNIGHT_TALK_DEBUG) {
+        console.error(`[talk] f=${globalThis.__simFrame} spk=${dlg.speaker}`
+          + ` pos=${w.pos}/${visible} halt=${w.halted ? 1 : 0} pmb=${w.pmb}`
+          + ` dead=${w.dead ? 1 : 0} b1=${b1 ? 1 : 0} b2=${b2 ? 1 : 0} tt=${e.talkTimer}`);
+      }
+    };
+
+    if (state.dialogue.text) {
+      stepTalkWriter();
       return;
     }
 
@@ -656,6 +872,58 @@ const director = {
     // So the bar EXISTS from the moment the menu closes but sits inactive
     // while the spells and items play out. Rude Buster happens first, the
     // bolts come after — which is the order you actually see.
+    // ---- THE ACT RESOLUTION, before the bar --------------------------------
+    //
+    // `if (actcon == 1 && !instance_exists(obj_writer)) scr_nextact()` — the
+    // knight waits for the ACT's chatbox writer to die before the phase can
+    // reach scr_attackphase, so an ACTing turn's bar starts late by exactly
+    // the message's writer lifecycle. Same machine as the balloons (automash
+    // on b3, pmb 3, confirm kills a halted page), plus the page chain: a
+    // mid-message `/` halt takes a confirm to ADVANCE (scr_nextmsg in the
+    // same writer), only the final `/%` halt lets one destroy it.
+    if (state.pendingAct) {
+      const a = state.pendingAct;
+      if (!a.w) a.w = { pos: 1, page: 0, halted: false, pmb: 0, automash: 0 };
+      const w = a.w;
+      const visible = msgLines(a.pages[w.page]).join('').length;
+      let b1 = false;
+      let b2 = false;
+      const zP = !!state.input?.confirm && !e.actConfirmHeld;
+      e.actConfirmHeld = !!state.input?.confirm;
+      if (zP && w.pmb <= 0) b1 = true;
+      if (state.input?.focus && w.pmb <= 0) b2 = true;
+      if (state.textAutoMash !== false && state.input?.button3) {
+        w.pmb = 3;
+        w.automash = w.automash === 0 ? 1 : 0;
+        if (w.automash === 0) b1 = true;
+        if (w.automash === 1) b2 = true;
+      }
+      if (!w.halted) {
+        w.pos += 1;
+        if (textSoundChar(a.pages[w.page], w.pos - 1)) cue(state, 'snd_text', 1, 1);
+        if (w.pos > visible) w.halted = true;
+      }
+      if (b2 && !w.halted) {
+        w.pos = visible + 3;
+        w.halted = true;
+      }
+      if (b1 && w.halted) {
+        if (w.page < a.pages.length - 1) {
+          w.page += 1;
+          w.pos = 1;
+          w.halted = false;
+        } else {
+          // The writer dies; the knight's gate fires on the next step and
+          // scr_attackphase creates the bar that frame — which is the next
+          // pass through the block below.
+          state.pendingAct = null;
+        }
+      }
+      w.pmb -= 1;
+      state.battlemsg = a.pages[Math.min(w.page, a.pages.length - 1)];
+      return;
+    }
+
     if (state.menu.fight.some(Boolean) && !e.bar) {
       const order = [0, 1, 2].filter((c) => state.menu.fight[c] && isUp(state, c));
       // The schedule is RANDOM, so the bar draws from the sim's generator —
@@ -717,6 +985,12 @@ const director = {
     if (state.pendingSpell) state.pendingSpell = [];
     if (state.pendingItem) state.pendingItem = [];
 
+    if (e.bar && (state.knight?.endCutscene ?? 0) > 0) {
+      // The ending froze it — keep it visible at its last value and step
+      // nothing. See the freeze note at the end-cutscene trigger above.
+      state.fightBar = e.bar;
+      return;
+    }
     if (e.bar) {
       // STEPPED EVERY FRAME THE OBJECT EXISTS, done or not. obj_attackpress
       // has no such gate: `boltx += 1`, the pressbuffer decrements, imagetimer
@@ -762,6 +1036,10 @@ const director = {
       // 7300 — and then landed the identical +7 TP and -12 HP at frame 36,
       // eleven frames later. The player's report was the same fact from the
       // outside: "after you attack it feels like it is incorrect".
+      // `attacked[]` arrives ONE CHARACTER PER FRAME — obj_attackpress's
+      // shared-`i` quirk, implemented and documented at the latch in
+      // sim/fightbar.js — so this loop starts at most one swing a frame
+      // without any pacing of its own.
       for (let c = 0; c < 3; c++) {
         if (!e.bar.attacked[c] || e.resolved[c]) continue;
         e.resolved[c] = true;
@@ -776,25 +1054,6 @@ const director = {
         }
         e.pendingSwing.push({ at: state.frame + 11, c, points: acc, done: false });
       }
-      for (const s of e.pendingSwing) {
-        if (s.done || state.frame < s.at) continue;
-        s.done = true;
-        if (s.points <= 0) {
-          // A missed bolt still writes a number — `scr_damage_enemy` creates
-          // the writer before the `arg1 > 0` test, and a zero draws MISS.
-          spawnDmgNumber(state, KNIGHT.x, KNIGHT.ystart + 40, 0, s.c);
-          continue;
-        }
-        const dealt = fightDamage(state, s.c, s.points);
-        if (dealt > 0) {
-          damageKnight(state, dealt);
-          scrTensionheal(state, fightTp(s.points));
-          spawnImpact(state, KNIGHT.x, KNIGHT.ystart + 40, s.c, s.points === 150,
-            () => rngNext(state.rng));
-        }
-        spawnDmgNumber(state, KNIGHT.x, KNIGHT.ystart + 40, dealt, s.c);
-      }
-
       if (!e.bar.done) return;
 
       // `posttimer` runs to `timermax` and the black fade takes 13 more
@@ -903,6 +1162,16 @@ const director = {
         }
       }
       advanceBalloon(state.dialogue, state);
+      // The balloon's writer is born in this same step, and step-created
+      // writers run their whole draw the same frame — the birth tick AND the
+      // buttons (a b3 pulse on the birth frame skips the line immediately,
+      // verify21j f2413). This site sits AFTER the talk block's slot in the
+      // endStep, so the machine's birth pass runs from here.
+      if (state.dialogue.text) {
+        e.talkWriter = { pos: 1, halted: false, pmb: 0, automash: 0, dead: false };
+        e.talkTimer = 0;
+        stepTalkWriter();
+      }
     }
     if (state.dialogue.text) return;
 
@@ -965,15 +1234,70 @@ const director = {
         // The flight itself is not modelled yet; the soul appears at its
         // landing spot. That is a renderer gap, not a sim one.
         advanceTurn(state);
+        // The table row advances here; the knight's real SELECTOR — where
+        // the phase variable flips — runs at the arena-open below, and
+        // state.knightPhase tracks its value.
+        state.knightPhase = e.phase;
         // `phaseturn++` — the SELECTOR's own first line, which is GUARDED:
         // `if (phase != 4) { turn++; phaseturn++; }`. So the counter FREEZES
         // through phase 4 and resumes after ROARING. For phases 1-3 the live
         // value is the row index + 1 (identical to the old increment in every
         // normal-flow case, and correct on the post-ROARING resume turn,
         // where the increment had accumulated through phase 4).
-        state.phaseturn = e.phase === 4 ? (state.phaseturn ?? 0) : e.turn + 1;
+        // ...AND THE LAST TURN OF A PHASE READS 0: the selector's own
+        // `if (phaseturn == 5) { ... phaseturn = 0; }` resets the counter in
+        // the same breath that assigns the attack (phases 1/2 hand over,
+        // phase 3 loops) — so the rotating-slash turn is phaseturn 0 in the
+        // recording, not 5.
+        {
+          const rowT = FIGHT_TABLE[e.phase];
+          const lastT = e.turn === rowT.length - 1;
+          state.phaseturn = e.phase === 4 ? (state.phaseturn ?? 0) : (lastT ? 0 : e.turn + 1);
+        }
         const upcoming = FIGHT_TABLE[e.phase][e.turn];
+        // The mnfight 1.5 -> 2 transition's own `scr_turntimer(90)` — a
+        // FLOOR, not an assignment — and the clock starting. Attacks with a
+        // launch override floor it away twelve frames later; the charge-up
+        // and knightlines keep this 90, already worn down by the spawn
+        // window, exactly as the recording's diag shows.
+        //
+        // 89, NOT 90: the knight's floor lands during his Step and the
+        // battlecontroller's decrement follows within the SAME frame, so
+        // the armed frame ENDS one lower. verify21j's per-frame clock
+        // (oracle_box.csv) shows every 1.5-transition ending its frame at
+        // 89 — all fourteen of them — and every launch override ending at
+        // tl - 1. The sim's decrement for this frame has already run (or
+        // is gated off), so the same-frame wear is folded into the armed
+        // value.
+        if (state.turntimer < 90) state.turntimer = 89;
+        e.clockOn = true;
         openArena(state, upcoming);
+        // THE SELECTOR HAS RUN (this tick is the game's post-dialogue
+        // mnfight-1.5 block — the box re-arm above lands on the recorded
+        // box-birth frames exactly). Other_10's last-turn assignments flip
+        // the knight's phase variable HERE: phases 1/2 hand to the next on
+        // their final turn, phase 4's third turn hands back to 3.
+        {
+          const row2 = FIGHT_TABLE[e.phase];
+          const isLast = e.turn === row2.length - 1;
+          if ((e.phase === 1 || e.phase === 2) && isLast) state.knightPhase = e.phase + 1;
+          else if (e.phase === 4 && isLast) state.knightPhase = 3;
+          else state.knightPhase = e.phase;
+          // The per-frame assignment already ran earlier this frame; write
+          // through so the flip is visible on ITS OWN frame's trace row,
+          // as the recording has it.
+          state.phaseNum = state.knightPhase;
+        }
+        // ROARING'S SELECTOR LINES land HERE — Other_10's `phase4turn == 3`
+        // branch assigns `damagereduction = 0.4` and `haveusedroaring =
+        // true` alongside `myattackchoice = 9`, and Other_10 runs on this
+        // mnfight-1.5 frame, eleven frames before the launch. verify21j
+        // f11130: the recording's dr flips to 0.4 on the same frame its
+        // clock floors to 89.
+        if (upcoming?.name?.toLowerCase().includes('roaring') && state.knight) {
+          state.knight.haveusedroaring = true;
+          state.knight.damagereduction = DR_PHASE4;
+        }
         const gt = state.entities.find((x) => x.alive && x.type.name === 'obj_growtangle');
         if (gt) gt.arenaOpened = upcoming.ac;
         // THE CHARGE-UP TURN RAISES NO BOARD. `openArena` already refuses it
@@ -999,7 +1323,13 @@ const director = {
         // oracle's — the whole-fight diff's soul_x column moved at frame 88
         // in the sim and 96 in the recording, and 96 - 88 is this flytime.
         if (upcoming.ac !== -1 && !state.soul) {
-          state.inv = 0;
+          // scr_moveheart's `global.inv = 0`. This wrote `state.inv`, WHICH
+          // NOTHING READS — the traced clock is `state.invTimer` — so the
+          // second turn's soul arrived still carrying turn 1's -79 while the
+          // recording restarts from 0 (whole-fight f438). Turn 1 masked it:
+          // inv is 0 at fight start anyway. The write-only-variable trap,
+          // again (CLAUDE.md lists `state.inv` by name).
+          state.invTimer = 0;
           const kris = PARTY[0];
           const mh = spawn(state, moveheart, { x: kris.x + 10, y: kris.y + 40 });
           // No obj_heartmarker exists in this fight (only the watercooler
@@ -1027,6 +1357,45 @@ const director = {
           mh.speed = dist / 8;
           mh.direction = (Math.atan2(-(mh.disty - mh.y), mh.distx - mh.x) * 180) / Math.PI;
           mh.alarm[0] = 8;
+        }
+      }
+      // THE CLOCK ARMS ON THE KNIGHT'S OWN FRAME. rtimer hits 12 during the
+      // knight's Step and `scr_turntimer(<attack>)` floors the clock right
+      // there — one frame before this director's launch (whose cone-creation
+      // timing already absorbs the offset). The battlecontroller's decrement
+      // follows the knight within the same frame, so the floored value ends
+      // the frame one lower: the oracle diag reads 239 for a 240 attack. The
+      // controller's +30 then lands on ITS first step (fight.js /
+      // stars-controller.js). Arming at launch instead ran the whole turn's
+      // clock one frame late — one unit high — which pushed the
+      // battlecontroller's `turntimer <= 0` heart-destruction one frame past
+      // the recording's at f327.
+      if (e.spawnDelay === 1) {
+        const up = FIGHT_TABLE[e.phase][e.turn];
+        const tl = turnLength(up.ac, up.difficulty);
+        // tl - 1, EVERY TURN — the rule the old per-turn fit asked a future
+        // recording to settle, now settled: verify21j's per-frame clock
+        // (oracle_box.csv) shows every launch override in the fight ending
+        // its frame at tl - 1, Flurry included (349 for 350 at f800, f2432,
+        // f4577, f6735, f8833). The knight's scr_turntimer floor lands in
+        // his Step and the battlecontroller's decrement follows in the same
+        // frame. The old `ac === 2 ? tl` exception (fitted to verify21g's
+        // turn-3 soul-kill under the older harness) ran every Flurry clock
+        // one high for its whole turn — invisible while Flurry's manager
+        // zeroed the clock itself, and caught at f9166 where lap 2's last
+        // split was still mid-flight and the NATURAL expiry decided.
+        const armed = tl - 1;
+        if (tl > 0 && state.turntimer < armed) state.turntimer = armed;
+        state.turntimerArmed = true;
+        // THE CHARGE-UP STARTS ON THE ARM FRAME. The selector's
+        // `chargeupcon = 1` and the charge block's first tick share ONE
+        // knight Step (the block sits below the selector in the same
+        // event) — the game's rtimer-12 frame. The sim's launchAttack runs
+        // a frame later than its arm, so the flag and tick land here:
+        // verify21j — launch f10953, tick 60 at f11012, teardown f11012.
+        if (up.ac === -1 && state.knight) {
+          state.knight.chargeupcon = 1;
+          tickChargeup(state);
         }
       }
       e.spawnDelay -= 1;

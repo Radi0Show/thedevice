@@ -45,10 +45,12 @@
 
 import { spawn, destroy } from '../entity.js';
 import { lengthdirX, lengthdirY, pointDirection, pointDistance, scrApproach, gmlEq } from '../gml.js';
-import { gmlChoose, gmlIrandom, gmlIrandomRange } from '../rng.js';
+import { gmlChoose, gmlIrandom, gmlIrandomRange, gmlRandom } from '../rng.js';
 import { scrLerpvar } from '../lerpvar.js';
 import { cue, cueSustain, cueTune } from '../audio.js';
 import { roaringStar } from './roaring-star.js';
+import { roaringknightSlash } from './roaringknight-slash.js';
+import { scrBulletInherit } from '../bullets/regularbullet.js';
 import {
   screenPiece, scrAfterimage, knightCircle, particleGeneric, afterimageScreen,
 } from '../fx.js';
@@ -511,9 +513,53 @@ export const roaring2 = {
     if (heart) {
       const tx = state.view.x + e.fake_x;
       const ty = state.view.y + e.fake_y + 55;
-      const tempdir = pointDirection(heart.x + 10, heart.y + 10, tx, ty);
+      // THE DIRECTION READS THE PRE-STEP HEART. The roar is born at launch,
+      // AFTER the turn's heart is delivered to the arena, so it is the
+      // NEWER instance and the runner's newest-first stepping runs its pull
+      // before the heart's own move each frame. verify21j f11271 pins it:
+      // the heart starts the frame at (212,129), the held DOWN moves it to
+      // 133, and the recording's pull lands 212 + 0.5125*cos(-2.337°) =
+      // 212.5120697 with +0.0209 in y — the direction from (222,139), the
+      // frame-START position. Reading the live heart gave dir exactly 0.
+      // Same compensation family as the heart follower and the bar.
+      const hp = state.soulPrev ?? heart;
+      // A --roar replay row's RESOLVED tempdir wins over the recomputation:
+      // the runner's atan2 differs from JS's in the last bits, and those
+      // bits reach the soul's f32-narrowed position (one ULP at f11288) and
+      // from there a homing child's discrete turn decision (f11809). Same
+      // concession shape as --grazes: give up the term nobody can model,
+      // pin everything around it. Free play recomputes live.
+      const roarRow = state.roarReplay?.get(state.frame);
+      const tempdir = roarRow?.tempdir ?? pointDirection(hp.x + 10, hp.y + 10, tx, ty);
       heart.x += lengthdirX(e.player_suck, tempdir);
       heart.y += lengthdirY(e.player_suck, tempdir);
+      // RE-CLAMP AFTER THE SHOVE, with the HEART'S OWN boundary geometry.
+      // In the game the heart's Step runs AFTER this one (the roar is the
+      // newer instance), so the frame ENDS on the heart's own clamps: x in
+      // [0, view+620], y in [0, view.y + 300 + boundaryup] — with the
+      // roar's boundaryup 160 that floor is the screen floor, 460. The
+      // sim's heart steps first, so without this the reversed suck parks
+      // the end-of-frame soul past the edges: verify21j f11715 reads
+      // x 0.000 in the recording and -2.37 here, and f11738-11755 hold
+      // y 460.000 against a drifting 462.07 (the corral's own bottom clamp
+      // only fires past 480 and never pulls it back).
+      //
+      // A fresh shake's incoming first offset is peeked, exactly as the
+      // heart's own step clamp does (sim/soul.js) — without it this clamp
+      // dragged the soul back off the shaken floor mid-frame.
+      let shx = 0;
+      let shy = 0;
+      for (const sh of state.entities) {
+        if (sh.alive && sh.type.name === 'obj_shake' && sh.active === 0) {
+          shx = sh.shakex;
+          shy = sh.shakey;
+        }
+      }
+      if (heart.x >= state.view.x + shx + 640 - 20) heart.x = state.view.x + shx + 640 - 20;
+      if (heart.x <= 0) heart.x = 0;
+      if (heart.y <= 0) heart.y = 0;
+      const hfloor = state.view.y + shy + 320 - 20 + (heart.boundaryup ?? 0);
+      if (heart.y >= hfloor) heart.y = hfloor;
     }
 
     e.attack_timer += 1;
@@ -651,10 +697,20 @@ export const roaring2 = {
           // the whole wind-up.
           e.roarGhosts = { left: 8, rate: 2, next: 0 };
 
-          // ...and the eight stars, straight out on the compass points.
-          const burst = state.roarBurstSpeeds ?? [];
+          // ...and the eight stars, straight out on the compass points, at
+          // `8.5 + random(2)` EACH — a live roll per star, one u32 per
+          // iteration. The fullfight replays no roar table, and the flat
+          // 8.5 fallback ran the whole burst slow: verify21j f11591's ring
+          // leaves at vx 8.50 while the recording's b0 flies 9.04 (its roll
+          // was 0.54) — nine pixels short by the catch, which then landed
+          // two frames off. The recorded-table path stays for the scenario
+          // suites that predate live RNG.
+          const burst = state.roarBurstSpeeds ?? null;
           for (let a = 0; a < 8; a++) {
-            fireRoarStar(state, e, a * 45, burst[a] ?? 8.5, 1.2);
+            const spd = burst
+              ? (burst[a] ?? 8.5)
+              : 8.5 + gmlRandom(state.gmlRng, 2);
+            fireRoarStar(state, e, a * 45, spd, 1.2);
           }
         }
         // The repeat's own clock. obj_script_delayed fires on its rate until
@@ -699,12 +755,18 @@ export const roaring2 = {
           // One per star of the roar's stream, at half volume.
           cue(state, 'snd_stardrop', 0.5, 0.5);
           // A THREE-STAR FAN every five frames, walking around the circle.
-          const fan = (state.roarFans ?? [])[state.roarFanIndex++] ?? {
-            rand: 0,
-            s1: 6.5,
-            s2: 8.5,
-            s3: 8.5,
-          };
+          // The walk and every speed ROLL LIVE: `irandom(10)` (two u32) for
+          // the step, then `6.5 + random(2)` / `8.5 + random(2)` /
+          // `8.5 + random(2)` in spawn order — same fallback story as the
+          // burst above.
+          let fan;
+          if (state.roarFans) {
+            fan = state.roarFans[state.roarFanIndex++] ?? {
+              rand: 0, s1: 6.5, s2: 8.5, s3: 8.5,
+            };
+          } else {
+            fan = { rand: gmlIrandom(state.gmlRng, 10) };
+          }
           e.rand_angle += 60 + fan.rand;
 
           // ORIGINAL BUG: the line above this in the source aims star_angle1
@@ -715,9 +777,9 @@ export const roaring2 = {
           e.star_angle2 = e.rand_angle + 20;
           e.star_angle3 = e.rand_angle - 20;
 
-          fireRoarStar(state, e, e.star_angle1, fan.s1, 1.6);
-          fireRoarStar(state, e, e.star_angle2, fan.s2, 1.6);
-          fireRoarStar(state, e, e.star_angle3, fan.s3, 1.6);
+          fireRoarStar(state, e, e.star_angle1, fan.s1 ?? (6.5 + gmlRandom(state.gmlRng, 2)), 1.6);
+          fireRoarStar(state, e, e.star_angle2, fan.s2 ?? (8.5 + gmlRandom(state.gmlRng, 2)), 1.6);
+          fireRoarStar(state, e, e.star_angle3, fan.s3 ?? (8.5 + gmlRandom(state.gmlRng, 2)), 1.6);
         }
       }
 
@@ -773,6 +835,27 @@ export const roaring2 = {
         scrLerpvar(state, spawn, e, 'image_index', 2, 5, 6);
         e.do_fake_screen = true;
         cue(state, 'snd_knight_cut', 1);
+
+        // THE CUT IS A REAL SLASH BULLET, not just the screen effect: the
+        // original spawns obj_roaringknight_slash across the screen centre
+        // at 117 degrees, xscale 4, width x4, slashdir forced -1, inherits
+        // the roar's bullet fields, and lets it live out its ordinary
+        // shrink-and-die — the recording's last bullet, parked at
+        // (247.36, 97.44) from f11881 while everything else is swept
+        // (`event_user(0)` on it is a no-op: the slash has no Other_10 and
+        // its parents are codeless). The soul is destroyed by the same
+        // frame's finale, so it can never connect.
+        const cut = spawn(state, roaringknightSlash, {
+          x: state.view.x + 320 - lengthdirX(-160, 117),
+          y: state.view.y + 240 - lengthdirY(-160, 117),
+        });
+        cut.direction = 117;
+        cut.image_xscale = 4;
+        cut.xscale = 4;
+        cut.image_angle = 117;
+        cut.width *= 4;
+        cut.slashdir = -1;
+        scrBulletInherit(e, cut);
 
         // AND HE LEAPS. The cut is a jump-through: he dips 40px over 16 frames
         // easing out, and then — delayed by exactly those 16 — is thrown 360px
@@ -932,6 +1015,26 @@ export const roaring2 = {
   },
 
   endStep(e, state) {
+    // THE PINNED SOUL'S END-OF-FRAME CLAMP, once more with the FINAL view.
+    // The step-phase clamp above ran before obj_shake's own first Step
+    // (spawn order puts the shake last), so on a shake's FIRST frame it
+    // clamped against the unshaken view; the game's heart steps after the
+    // shake's set and its floor rides the offset. End steps run after every
+    // step, so the view here is the frame's final one: verify21j
+    // f11756-11759 holds the edge-pinned soul at 464/456/463/458 — the
+    // shaken floor — where a view-0 clamp froze it at 460.
+    if (state.soul && (e.timer ?? 0) > 128) {
+      const heart = state.soul;
+      // Left and top are ABSOLUTE zero (the heart's own `x + px <= 0`
+      // form); right and floor are view-relative. The recording holds
+      // x 0.000 through the shake while the floor rides it.
+      if (heart.x >= state.view.x + 640 - 20) heart.x = state.view.x + 640 - 20;
+      if (heart.x <= 0) heart.x = 0;
+      if (heart.y <= 0) heart.y = 0;
+      const hfloor = state.view.y + 320 - 20 + (heart.boundaryup ?? 0);
+      if (heart.y >= hfloor) heart.y = hfloor;
+    }
+
     // THE FINALE, and it lives at the bottom of the Draw event in the original:
     // the composite is snapshotted into two sprites cut along the -63 degree
     // diagonal, `obj_heart` is DESTROYED, `stop` is set so nothing draws again,

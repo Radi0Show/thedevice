@@ -47,7 +47,7 @@ import {
   BLACK,
   RED,
 } from '../gml.js';
-import { scrBulletInit, collidebulletOther15 } from '../bullets/regularbullet.js';
+import { collidebulletOther15, regularbulletStep, regularbulletCreate } from '../bullets/regularbullet.js';
 import { starOther15 } from './pointing-star.js';
 import { STARCHILD_MASK, STARCHILD_TRAIL_MASK, scrPreciseHit, enginePairHit } from '../masks.js';
 
@@ -63,10 +63,21 @@ function scrAngleLerp(from, to, t) {
   return from + lerp(0, angleDifference(to, from), t);
 }
 
+// spr_knight_starchild_parts, the sprite every shard wears (Create).
+// GML's sprite_width/sprite_height are the FULL sprite dimensions times the
+// SIGNED image scales — not the bbox, and not origin-adjusted, so
+// scr_onscreen_tolerance's `x + sprite_width` treats a centre-origin sprite
+// as if its origin were top-left. Faithful: the game's own sloppiness is the
+// margin. Reading these as 0 killed a homer whose delay expired at
+// y = -10.78: the game sees y + 32*0.73 + 10 = 22.6 (onscreen, turns home,
+// verify21j f6496 b10); a zero footprint reads -0.78 and destroys it.
+const STARCHILD_SPRITE_W = 33;
+const STARCHILD_SPRITE_H = 32;
+
 /** scr_onscreen_tolerance(self, spacer). */
 function onscreen(e, spacer, state) {
-  const w = e.sprite_width ?? 0;
-  const h = e.sprite_height ?? 0;
+  const w = STARCHILD_SPRITE_W * (e.image_xscale ?? 1);
+  const h = STARCHILD_SPRITE_H * (e.image_yscale ?? 1);
   if (e.x + w + spacer < state.view.x) return false;
   if (e.x - spacer > state.view.x + 640) return false;
   if (e.y + h + spacer < state.view.y) return false;
@@ -82,13 +93,25 @@ function onscreen(e, spacer, state) {
 export const heartFollower = {
   name: 'obj_heart_follower',
 
+  // AFTER THE SHARDS. The runner steps newest-first: the shards (born at
+  // the burst) run before the launch-born follower, so their homing reads
+  // the follower's PREVIOUS-frame position — live reads in the sim's
+  // spawn order handed them the current one. Stepping the follower after
+  // every order-0 entity makes the shards' live read exactly that stale
+  // value. And the follower itself is newer than the turn's soul, so IT
+  // reads the soul pre-step — state.soulPrev, the frame-start snapshot.
+  // Both lags are invisible while the soul is parked (turn 1's squeeze,
+  // turn 6), and ~1.5px on a moving soul: verify21j f4314's shard turned
+  // toward a target 0.86 degrees off, drifting b0_y from f4313.
+  stepOrder: 0.5,
+
   create(e) {
     e.smoothing = 0.125;
     e.max_speed = 4;
   },
 
   step(e, state) {
-    const t = state.soul;
+    const t = state.soulPrev ?? state.soul;
     if (!t) return;
     const xdiff = t.x - e.x;
     const ydiff = t.y - e.y;
@@ -97,11 +120,43 @@ export const heartFollower = {
   },
 };
 
+/**
+ * The d2+ shard's homing delay — 25 plus the controller's running counter,
+ * which advances +1 per shard with a +5 skip every fifth (measured delays
+ * 25, 26, 27, 28, 29, 34, ... 72). The counter lives on `state` because
+ * these scenes model the controller as this pair of fields.
+ *
+ * ASSIGNED IN INIT ORDER. verify21n's shard ledger shows the game handing
+ * the chain out in plain creation order for turn 11's cohort (the sim's
+ * spawn-order assignment matches it shard-for-shard); a within-burst
+ * reversal was tried against that hypothesis and regressed a verified
+ * receipt. The --shards replay overrides the value per shard anyway, so
+ * any turn where the slot order does scramble the hand-out is covered by
+ * the recording rather than a model.
+ */
+export function chainChildDelay(e, state) {
+  e.delay = 25;
+  e.delay += state.childDelay ?? 0;
+  if ((state.childSubdelay ?? 0) === 4) {
+    state.childSubdelay = 0;
+    state.childDelay = (state.childDelay ?? 0) + 5;
+  } else {
+    state.childSubdelay = (state.childSubdelay ?? 0) + 1;
+    state.childDelay = (state.childDelay ?? 0) + 1;
+  }
+}
+
 export const pointingStarchild = {
   name: 'obj_knight_pointing_starchild',
 
   create(e, state) {
-    scrBulletInit(e);
+    // `event_inherited()` — the FIRST line of the original's Create. The
+    // parent (obj_regularbullet) Create runs scr_bullet_init AND sets the
+    // step-cull's fields: `wall_destroy = 1` is what lets the inherited
+    // step remove a homer that flies off past view -80 (verify21n's cull
+    // ledger). The sim called only scrBulletInit here, so wall_destroy was
+    // undefined and the cull never armed.
+    regularbulletCreate(e, state);
     e.deceleration = 0.1;
     e.minspeed = 1;
     e.timer = 0;
@@ -135,20 +190,50 @@ export const pointingStarchild = {
     if (!e.init) {
       e.init = true;
       if (e.difficulty >= 2) {
-        e.delay = 25;
-        // The controller's running counter — see the header. Held on `state`
-        // because these scenes model the controller only as this pair of
-        // fields; a scene with several controllers would need them per
-        // instance.
-        e.delay += state.childDelay ?? 0;
-        if ((state.childSubdelay ?? 0) === 4) {
-          state.childSubdelay = 0;
-          state.childDelay = (state.childDelay ?? 0) + 5;
-        } else {
-          state.childSubdelay = (state.childSubdelay ?? 0) + 1;
-          state.childDelay = (state.childDelay ?? 0) + 1;
+        // The chain always advances — the game's did too — but a replayed
+        // delay (matched by frame + position, tools/fullfight-trace.mjs
+        // --shards) overrides the value: the chain's hand-out order follows
+        // the runner's instance-slot state, which only the recording knows.
+        chainChildDelay(e, state);
+        const rows = state.shardDelays?.get(state.frame);
+        const match = rows?.find((r) => !r.used
+          && Math.abs(r.x - e.x) <= 0.1 && Math.abs(r.y - e.y) <= 0.1);
+        if (match) {
+          match.used = true;
+          e.delay = match.delay;
         }
       }
+      if (globalThis.process?.env?.KNIGHT_SHARD_DEBUG) {
+        console.error(`[shard] init f=${globalThis.__simFrame} seq=${e.seq}`
+          + ` diff=${e.difficulty} delay=${e.delay} y=${e.y.toFixed(1)}`);
+      }
+    }
+
+    // `event_inherited()` — the FIRST line after the init in the original.
+    // The parent (obj_regularbullet) runs the wall_destroy cull: any shard
+    // past view -80 / +760 / -80 / +580 is destroyed. The homers that miss
+    // the soul and fly off are exactly what it removes — verify21n's cull
+    // ledger shows the game's leaving at x/y just past -80 from f4372 on,
+    // while the sim's flew forever and held the bullet count one high.
+    if (globalThis.process?.env?.KNIGHT_SHARD_DEBUG
+        && (e.x < state.view.x - 70 || e.y < state.view.y - 70)) {
+      console.error(`[shard] edge f=${globalThis.__simFrame} seq=${e.seq}`
+        + ` x=${e.x.toFixed(1)} y=${e.y.toFixed(1)} wd=${e.wall_destroy}`
+        + ` view=${state.view?.x},${state.view?.y}`);
+    }
+    regularbulletStep(e, state);
+    if (!e.alive) return;
+
+    // `if (!i_ex(obj_knight_roaring2))` WRAPS THE ENTIRE REST OF THE STEP —
+    // measured on the dump's brace balance: chars 446-3756 of 3758. While
+    // the roar lives, a starchild is an inert ballistic bullet: no
+    // deceleration, no delay clock, no homing, no cons — just the parent
+    // cull and its own friction. The recording's burst children accelerate
+    // 1.1, 1.2, 1.3, 1.4 in a clean line (oracle_roarchild.csv) while the
+    // ungated sim ran the minspeed deceleration once and froze them at 1.1
+    // (verify21j f11809, b15 0.1px short and compounding).
+    if (state.entities.some((x) => x.alive && x.type.name === 'obj_knight_roaring2')) {
+      return;
     }
 
     const follower = state.entities.find(
@@ -163,6 +248,10 @@ export const pointingStarchild = {
       if (e.con === 0 && e.delay > 0) {
         e.timer += 1;
         if (e.timer >= e.delay) {
+          if (globalThis.process?.env?.KNIGHT_SHARD_DEBUG) {
+            console.error(`[shard] check f=${globalThis.__simFrame} seq=${e.seq}`
+              + ` delay=${e.delay} y=${e.y.toFixed(1)} on=${onscreen(e, 10, state)}`);
+          }
           // A child that has drifted off screen by the time its turn comes
           // never gets to home.
           if (!onscreen(e, 10, state)) {

@@ -26,6 +26,12 @@ import {
   FACE_IDLE, FACE_ATTACK, FACE_SPELL, FACE_ITEM, FACE_DEFEND, FACE_ACT,
   HERO_SPELL, HERO_ITEM, HERO_ACT, heroAct,
 } from './heroes.js';
+import { ACT_PAGES } from './dialogue.js';
+
+// Every key the menu edge-detects, refreshed as a set each open frame (and
+// seeded from prevInput at openMenu) — polling must never decide which keys'
+// held states stay current.
+const MENU_KEYS = ['left', 'right', 'up', 'down', 'confirm', 'cancel', 'focus', 'button3'];
 
 /**
  * `global.charaction[c] = 2` — CHOSE A SPELL. The cast itself happens later,
@@ -357,7 +363,7 @@ export function listRows(state) {
       usable: canAfford(state, id, c),
     }));
   }
-  if (menu.submenu === 'act') {
+  if (menu.submenu === 'actgrid') {
     return (ACTS[c] ?? []).map((a, i) => ({
       label: a.name, descb: a.descb, id: i, usable: true,
     }));
@@ -393,16 +399,37 @@ export function stepMenu(state, input) {
 
   for (let c = 0; c < 3; c++) slide(menu, c, menu.open && menu.charturn === c);
 
-  if (!menu.open) return false;
+  if (!menu.open) {
+    // `onebuffer -= 1; twobuffer -= 1;` are the LAST two lines of
+    // obj_battlecontroller's Step and run UNCONDITIONALLY — menu open or
+    // not. Freezing them while closed carried a confirm lockout from one
+    // menu's last press into the next menu's first frames: the third menu
+    // refused its opening confirm for exactly two frames (f702-703) while
+    // the recording acted on it immediately.
+    menu.onebuffer = (menu.onebuffer ?? 0) - 1;
+    menu.twobuffer = (menu.twobuffer ?? 0) - 1;
+    return false;
+  }
 
   // Edge-triggered: the menu must not skip five buttons because a key was held
   // for five frames. The soul's own movement is level-triggered and unaffected.
-  const rawPressed = (k) => {
+  //
+  // EVERY KEY'S EDGE IS COMPUTED UP FRONT, whether or not the current section
+  // consults it. The game's `right_p()` is a global frame-over-frame edge; it
+  // does not care which bmenuno is looking. The held map used to update only
+  // when a section POLLED the key, so a key never consulted in the current
+  // submenu went stale: verify21j f8720's RIGHT press landed while character
+  // 2 sat on the enemy row (which never reads left/right), the map still
+  // said "up" when character 3's button row opened a frame later, and the
+  // sim minted a phantom edge the game never saw — cursor onto MAGIC, 40 TP
+  // the oracle never pays.
+  const edges = {};
+  for (const k of MENU_KEYS) {
     const down = !!input[k];
-    const was = !!menu.held[k];
+    edges[k] = down && !menu.held[k];
     menu.held[k] = down;
-    return down && !was;
-  };
+  }
+  const rawPressed = (k) => edges[k] ?? false;
 
   // THE BUFFERS GATE CONFIRM AND CANCEL, AND THEY CROSS-GATE.
   //
@@ -418,22 +445,70 @@ export function stepMenu(state, input) {
   // way — so a key held across the cooldown does not fire the moment it
   // lifts. That matches `button1_p()` being evaluated before the buffer test
   // in the original: the press is seen, then discarded.
-  const pressed = (k) => {
-    const edge = rawPressed(k);
-    if (!edge) return false;
-    if (k === 'confirm') {
-      if (menu.twobuffer >= 0) return false;
+  // CONFIRM AND CANCEL ARE EVALUATED LAZILY, IN THE ORDER EACH SECTION
+  // CONSULTS THEM — because the controller's own order is SECTION-DEPENDENT,
+  // and it decides who wins when both edges land on the SAME frame (the
+  // masher's cancel pulse coincides with a confirm every 74 frames):
+  //
+  //   button row (bmenuno 0):  confirm first, gate `twobuffer < 0` (line 288),
+  //                            cancel at 517 gated `onebuffer < 0` — so the
+  //                            confirm's `onebuffer = 1` cross-gates a
+  //                            same-frame cancel away (f702's FIGHT).
+  //   grid lists (2, 4, 9):    confirm first (632/935/1138), BOTH gated on
+  //                            `onebuffer < 0` — confirm still wins.
+  //   target lists (7, 1, 8,   CANCEL FIRST (1178, before the confirm at
+  //   3, 11, 12, 13):          1315): the cancel reassigns bmenuno and the
+  //                            confirm sits behind a RE-TEST of it, so a
+  //                            same-frame Z+X is a cancel and nothing else.
+  //                            verify21j f6622: the token mashes both on the
+  //                            enemy row; the game backs out to the button
+  //                            row and re-picks (bar at 6626), where a
+  //                            global confirm-first ended the command phase
+  //                            four frames early.
+  //
+  // Each edge is read up front (the held map must update every frame), the
+  // GATE resolves at the first `pressed()` call for that key, and the
+  // winner's latch (`onebuffer`/`twobuffer = 1`) is what gates the other —
+  // so call order inside a section reproduces the original's text order.
+  const confirmEdge = rawPressed('confirm');
+  const cancelEdge = rawPressed('cancel');
+  let confirmFired = null;
+  let cancelFired = null;
+  const evalConfirm = () => {
+    if (confirmFired === null) {
+      // The button row's confirm is the only one gated on `twobuffer`;
+      // every list and picker checks `onebuffer`.
+      const gate = menu.submenu ? menu.onebuffer : menu.twobuffer;
+      confirmFired = confirmEdge && gate < 0;
       // `onebuffer = 1` — latched HERE rather than in each accepting branch.
       // The original sets it in all six of them; one gate cannot miss one.
-      menu.onebuffer = 1;
-      return true;
+      if (confirmFired) menu.onebuffer = 1;
+    }
+    return confirmFired;
+  };
+  const evalCancel = () => {
+    if (cancelFired === null) {
+      cancelFired = cancelEdge && menu.onebuffer < 0;
+      if (cancelFired) menu.twobuffer = 1;
+    }
+    return cancelFired;
+  };
+  // Sections may consult each at most once per frame; consuming reads keep
+  // an if/else-if chain from double-acting on one edge.
+  let confirmLeft = null;
+  let cancelLeft = null;
+  const pressed = (k) => {
+    if (k === 'confirm') {
+      if (confirmLeft === false) return false;
+      confirmLeft = false;
+      return evalConfirm();
     }
     if (k === 'cancel') {
-      if (menu.onebuffer >= 0) return false;
-      menu.twobuffer = 1;
-      return true;
+      if (cancelLeft === false) return false;
+      cancelLeft = false;
+      return evalCancel();
     }
-    return true;
+    return rawPressed(k);
   };
 
   // `movenoise` / `selnoise` — the same flag-then-play pattern as the graze:
@@ -540,12 +615,34 @@ export function stepMenu(state, input) {
     return false;
   }
 
+  // ---- KRIS'S ACT PICKER (`bmenuno == 11`) --------------------------------
+  //
+  // The stage between the ACT button and the option grid: pick which enemy
+  // to act on. One enemy in this fight, so it is a single confirm — but the
+  // stage still owns its press and its frames (traced as "act", same as the
+  // grid's parent state, in the oracle's coarse vocabulary).
+  if (menu.submenu === 'actpick') {
+    if (pressed('cancel')) {
+      menu.submenu = null;
+      setFace(state, c, FACE_IDLE);
+      moveNoise = true;
+    } else if (pressed('confirm')) {
+      // `global.bmenuno = 9` — into the option grid.
+      menu.submenu = 'actgrid';
+      menu.gridIndex = 0;
+      menu.itemIndex = 0;
+      cue(state, 'snd_select');
+    }
+    if (moveNoise) cue(state, 'snd_menumove');
+    return false;
+  }
+
   // ---- THE LISTS: bag, MAGIC, ACT -----------------------------------------
   //
   // One handler for all three. They are the same 2x6 grid at the same
   // coordinates and the same `global.bmenucoord` cursor; only the contents
   // differ, which is why the original draws them with near-identical blocks.
-  if (menu.submenu === 'item' || menu.submenu === 'magic' || menu.submenu === 'act') {
+  if (menu.submenu === 'item' || menu.submenu === 'magic' || menu.submenu === 'actgrid') {
     const rows = listRows(state);
     const n = rows.length;
     if (n === 0) {
@@ -583,7 +680,12 @@ export function stepMenu(state, input) {
       while (menu.gridIndex > 0 && !filled(menu.gridIndex)) menu.gridIndex -= 1;
       menu.itemIndex = menu.gridIndex; // the renderer's name for it
 
-      if (pressed('cancel')) {
+      // CONFIRM BEFORE CANCEL — the grid lists (bmenuno 2/4/9) test
+      // button1_p first (632/935/1138 vs 654/994/1151), so a same-frame
+      // Z+X confirms and the latch gates the cancel. Only the TARGET lists
+      // reverse this; see the evaluation-order comment above.
+      const gridConfirm = pressed('confirm');
+      if (!gridConfirm && pressed('cancel')) {
         // A submenu cancel goes to the BUTTON ROW, not the previous character:
         // `global.bmenuno = 0`. Only a cancel already on the row calls
         // scr_prevhero. One step per press, which is what makes the menu
@@ -591,15 +693,33 @@ export function stepMenu(state, input) {
         menu.submenu = null;
         menu.gridIndex = 0;
         moveNoise = true;
-      } else if (pressed('confirm')) {
+      } else if (gridConfirm) {
         const row = rows[menu.gridIndex];
         if (!row || !row.usable) {
           cue(state, 'snd_error');
-        } else if (menu.submenu === 'act') {
+        } else if (menu.submenu === 'actgrid') {
           const line = row.id === 1 && c === 0
             ? holdBreath(state)
             : `* ${PARTY[c].name} used ${row.label}.`;
           menu.lastItem = line;
+          // THE ACT'S CHATBOX MESSAGE HOLDS THE ATTACK BAR. The knight's
+          // acting block picks the page set (checkcount/holdbreathcount pick
+          // the first-time or repeat variant) and the bar is only created
+          // once that writer dies — the director's act interlude runs it.
+          if (c === 0) {
+            state.actCounts = state.actCounts ?? { check: 0, breath: 0 };
+            let key;
+            if (row.id === 1) {
+              state.actCounts.breath += 1;
+              key = state.actCounts.breath <= 1 ? 'holdbreath_first' : 'holdbreath_again';
+            } else {
+              state.actCounts.check += 1;
+              key = state.actCounts.check === 1 ? 'check' : 'point';
+            }
+            state.pendingAct = { pages: ACT_PAGES[key] };
+          } else {
+            state.pendingAct = { pages: ACT_PAGES[c === 1 ? 'susie' : 'ralsei'] };
+          }
           menu.submenu = null;
           // `state = 6` — the ACT swing plays NOW, and it outlasts the menu:
           // the character is still mid-animation when the next one is choosing.
@@ -684,12 +804,16 @@ export function stepMenu(state, input) {
   //
   // `global.charturn > 0` — there is nowhere to go from the first character.
   // The fight does not let you leave the menu.
+  // CONFIRM EVALUATES BEFORE CANCEL on the button row (288 vs 517): a fired
+  // confirm's `onebuffer = 1` gates a same-frame cancel away — f702's FIGHT
+  // press rode a cancel pulse and must not become a prevHero.
+  const rowConfirm = pressed('confirm');
   if (pressed('cancel')) {
     if (prevHero(menu, state)) moveNoise = true;
     else cue(state, 'snd_error');
   }
 
-  if (pressed('confirm')) {
+  if (rowConfirm) {
     // DEFEND is `global.charaction[target] == 10`, and the damage chain reads
     // it: a defending character takes ceil(2 * damage / 3). It is the one
     // button whose choice the dodge-only scope can honour completely.
@@ -719,15 +843,23 @@ export function stepMenu(state, input) {
     // reads ACT where the others read MAGIC because it is one menu slot with
     // different contents, not a different button.
     if (chosen === 'MAGIC' || chosen === 'ACT') {
-      const which = chosen === 'ACT' || (chosen === 'MAGIC' && c === 0) ? 'act' : 'magic';
-      if (listRows({ ...state, menu: { ...menu, submenu: which } }).length === 0) {
+      const isAct = chosen === 'ACT' || (chosen === 'MAGIC' && c === 0);
+      const listName = isAct ? 'actgrid' : 'magic';
+      if (listRows({ ...state, menu: { ...menu, submenu: listName } }).length === 0) {
         cue(state, 'snd_error');
         return false;
       }
-      menu.submenu = which;
+      // KRIS'S ACT IS TWO STAGES. The button opens `bmenuno = 11` — the
+      // ENEMY PICKER for the act — and only its confirm reaches `bmenuno =
+      // 9`, the 2x6 option grid. The sim used to jump straight to the grid,
+      // which spent the token's picker press on the grid instead: verify21j
+      // f2322 shows the oracle in state 9 for the press the sim had already
+      // used to leave the menu. One enemy makes the picker look redundant;
+      // its frames are not.
+      menu.submenu = isAct ? 'actpick' : 'magic';
       menu.gridIndex = 0;
       menu.itemIndex = 0;
-      setFace(state, c, which === 'act' ? FACE_ACT : FACE_SPELL);
+      setFace(state, c, isAct ? FACE_ACT : FACE_SPELL);
       cue(state, 'snd_select');
       return false;
     }
@@ -835,6 +967,25 @@ function skipFallen(state) {
 /** Reopen for the next turn, back at the first conscious character. */
 export function openMenu(state) {
   state.menu.open = true;
+  // `scr_battlecursor_memory_reset()` — called by scr_mnendturn before every
+  // menu (flag 14, cursor memory, is 0 by default): ALL of bmenucoord zeroes,
+  // which includes the button-row cursor per character. Without it the row
+  // reopened wherever last turn's mashing left it — DEFEND for the recorded
+  // token — while the recording confirms FIGHT from a clean cursor.
+  state.menu.selected = [0, 0, 0];
+  // SEED THE EDGE MAP FROM THE PREVIOUS FRAME. The game's `button1_p()` is a
+  // global frame-over-frame edge — it does not care whether a menu was
+  // looking. This map used to freeze on close and reopen carrying the LAST
+  // open frame's held states: the reopen at f342 saw confirm "already down"
+  // from the fight bar three hundred frames earlier, discarded the real edge
+  // the recording acted on, and the held-LEFT auto-repeat walked the cursor
+  // onto DEFEND before the next edge landed — 40 TP the oracle never pays.
+  // Seeding from last frame's mask (not this frame's — the same-frame
+  // stepMenu at open must still see today's edge) reproduces
+  // `mask[f] && !mask[f-1]` exactly.
+  for (const k of MENU_KEYS) {
+    state.menu.held[k] = !!(state.prevInput?.[k]);
+  }
   state.menu.charturn = 0;
   state.menu.submenu = null;
   state.menu.pending = null;

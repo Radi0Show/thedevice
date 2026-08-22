@@ -104,7 +104,7 @@ export const FIGHT_TABLE = {
  * 240, which is what Stars, Rotating Slash and Roaring all get — their own
  * controllers then extend it (Stars adds 30, and another 60 at difficulty 2).
  */
-function turnLength(ac, difficulty) {
+export function turnLength(ac, difficulty) {
   // TYPES 104 AND 107 SET `global.turntimer = 999999` in the controller,
   // overriding whatever `scr_turntimer` just asked for. Both attacks run far
   // longer than a normal turn and end it themselves — rotating slash by
@@ -120,7 +120,7 @@ function turnLength(ac, difficulty) {
   // the `attacked == 0` block with its own `scr_turntimer(...)`; `ac -1` sets
   // `chargeupcon = 1` and nothing else, so the turn keeps the 90 assigned at
   // the mnfight 1.5 -> 2 transition. It is the shortest turn in the fight.
-  if (ac === -1) return 90;
+  if (ac === -1) return 0;
   // AC 20 TAKES NO OVERRIDE EITHER, and unlike the other unused attacks its
   // controller (type 101) does not pin `global.turntimer` to 999999 — so
   // knightlines keeps the same default 90 the charge-up does. Its own timeline
@@ -130,7 +130,7 @@ function turnLength(ac, difficulty) {
   // the practice director's 90-frame drain is what still lets you watch the
   // spears land, and that is the drill being generous, not the number being
   // wrong.
-  if (ac === 20) return 90;
+  if (ac === 20) return 0;
   // `myattackchoice == 0 && difficulty == 0` -> 300, and difficulty 1 the
   // same: two separate branches in the knight's Step with the same number.
   // ac 7's controller pins `global.turntimer = 999999`; the LAST segment's
@@ -221,7 +221,7 @@ export function openArena(state, entry) {
   // exactly once at build, with the default 2 x 2 still in place, and every
   // custom arena keeps the unsnapped scale and the wrong wall.
   gt.init = false;
-  gt.mask = BATTLEBG_MASK;
+  gt.mask = BATTLEBG_MASK; // stored ring — the dilation is retired (heart-rect finding)
   gt.growcon = 1;
   gt.timer = 0;
   gt.image_xscale = 0;
@@ -271,6 +271,9 @@ const CONTROLLER_DAMAGE = KNIGHT_AT * 5;
  * invisible: the stream is random per playthrough either way.
  */
 function reanchorRng(state) {
+  if (globalThis.process?.env?.KNIGHT_ANCHOR_DEBUG) {
+    console.error(`[anchor] f=${globalThis.__simFrame} n=${state.spawnn}`);
+  }
   state.spawnn = state.spawnn ?? 0;
   state.gmlRng = gmlCreate((state.seed + state.spawnn * 1000) >>> 0);
   state.spawnn += 1;
@@ -311,7 +314,7 @@ export function launchAttack(state, entry) {
     gt.maxyscale = arena.yscale;
     // Re-arm the per-turn init — see the note at the other assignment.
     gt.init = false;
-    gt.mask = BATTLEBG_MASK;
+    gt.mask = BATTLEBG_MASK; // stored ring — the dilation is retired (heart-rect finding)
     gt.growcon = 1;
     gt.timer = 0;
     gt.image_xscale = 0;
@@ -336,7 +339,26 @@ export function launchAttack(state, entry) {
   state.flurrySoftened = ac === 2 && (difficulty === 1 || difficulty === 3);
 
   state.invc = invcFor(ac);
-  state.turntimer = turnLength(ac, difficulty);
+  // `scr_turntimer` is a FLOOR (`if (global.turntimer < v) v`), and the
+  // battlecontroller — which steps AFTER the knight — takes the launch
+  // frame's decrement off the freshly floored value: the oracle's diag ends
+  // the launch frame at 239 for a 240 attack, and the +30 the Stars
+  // controller adds only lands on the NEXT frame (its first Step), sampled
+  // 268 = 239 - 1 + 30. When the floor does not engage (charge-up,
+  // knightlines return 0 here), the turnClock's own decrement this frame is
+  // already the real one.
+  // The practice director arms the clock itself on the knight's real
+  // rtimer-12 frame — one frame before this launch — and flags it. Scenes
+  // that launch directly (the per-attack suites) get the whole arming here:
+  // the mnfight-1.5 `scr_turntimer(90)` first — the charge-up and
+  // knightlines have NO launch override and live off that 90 — then the
+  // per-attack floor less the launch frame's controller decrement.
+  if (!state.turntimerArmed) {
+    if (state.turntimer < 90) state.turntimer = 90;
+    const tl = turnLength(ac, difficulty);
+    if (tl > 0 && state.turntimer < tl) state.turntimer = tl - 1;
+  }
+  state.turntimerArmed = false;
 
   const knight = state.entities.find((e) => e.alive && e.type.name === 'obj_knight_enemy');
   const kx = knight ? knight.x : KNIGHT.x;
@@ -349,6 +371,12 @@ export function launchAttack(state, entry) {
   if (knight) knight.difficulty = difficulty;
 
   reanchorRng(state);
+  // EVERY launch runs through scr_bulletspawner -> obj_dbulletcontroller,
+  // whose Create rolls `basedir = irandom(360)` — dead mechanically, two
+  // draws off the fresh anchor. This was fitted blind twice (Flurry's
+  // "two unattributed pads", half of Stars' four) before turn 5's slash
+  // jitter finally attributed it.
+  if (state.gmlRng) gmlIrandom(state.gmlRng, 360);
 
   switch (ac) {
     case 1: {
@@ -390,14 +418,34 @@ export function launchAttack(state, entry) {
       // aligns while star 1 does not, since later stars ride relative
       // offsets. ORACLE-FITTED — replace with the real consumer when it is
       // found.
+      // TWO of the original four fitted pads were the dc's basedir (now
+      // consumed centrally above); these two remain unattributed.
       if (ac === 1 && state.gmlRng) {
-        for (let pad = 0; pad < 4; pad++) gmlRandom(state.gmlRng, 1);
+        for (let pad = 0; pad < 2; pad++) gmlRandom(state.gmlRng, 1);
       }
-      if (difficulty >= 2) state.turntimer += 60;
       return dc;
     }
 
     case 2: {
+      // THREE DRAWS, ORACLE-FITTED AND NOT YET ATTRIBUTED — Flurry's
+      // launch-pad, the same shape as Stars' four. With the anchored stream
+      // and exactly three draws consumed before the boxsplitter's create,
+      // the first slash's angleoffset (6.7539390475) and xoffset
+      // (1.3845433444) both reproduce to ten decimals from the recording's
+      // slash log (fullfight-slashes2). Something between the reseed and
+      // the manager's create consumes them; replace with the real consumer
+      // when it is found.
+      // TWO DRAWS, ORACLE-FITTED AND NOT YET ATTRIBUTED — Flurry's
+      // launch-pad, the same shape as Stars' four. With exactly two draws
+      // consumed before the boxsplitter's create, the anchored stream
+      // reproduces the recording's whole first-slash chain: force_oneside
+      // = 1 (the first cut is vertical), then the init and spawn verticals,
+      // the flip choose, angleoffset 6.7539390475 and xoffset 1.3845433444
+      // to ten decimals (fullfight-slashes2's log). The earlier three-pad
+      // fit was degenerate — it stole the flip draw's slot and landed
+      // force_oneside on a 0.
+      // (The two draws once padded here were the dc's basedir — consumed
+      // centrally above, finally attributed.)
       // type 99 creates this AT THE KNIGHT and then hides him — from here on
       // the manager is the visible knight.
       const mg = spawn(state, boxsplitterAttack, { x: kx, y: ky });
@@ -505,10 +553,15 @@ export function launchAttack(state, entry) {
       // only place the tracking damage is overridden off its inherited 200.
       const mg = spawnRotatingSlash(state, kx, ky, { difficulty: 0 });
       reanchorRng(state);
+      // The second spawner call brings a second dbulletcontroller — and its
+      // own basedir roll.
+      if (state.gmlRng) gmlIrandom(state.gmlRng, 360);
       const tr = spawn(state, trackingSwordsManager, { x: arena.x, y: state.view.y });
       tr.variant = 0;
       tr.damage = 206;
-      trackingSwordsManager.init(tr, state);
+      // The rotating slash sibling (type 104) sparsens the cadence — see
+      // the chainedType note in trackingSwordsManager.init.
+      trackingSwordsManager.init(tr, state, 104);
       return mg;
     }
 
@@ -524,8 +577,18 @@ export function launchAttack(state, entry) {
     }
 
     case 13: {
+      // THE LAUNCH-FRAME STREAM (verify21h, anchor seed 21+3000 — n counts
+      // from the SECOND launch, so turn 4 is n=3):
+      //
+      //   0-1  obj_dbulletcontroller Create: `basedir = irandom(360)` (dead
+      //        mechanically, two draws)
+      //   2+   the manager's own Create, in the dump's order — its timer
+      //        roll at position 2 gives 8, and -40+8 puts the first sword
+      //        pair at launch+36 = f1297, exactly the recording's.
+      //
+      // The manager's timer roll lives in ITS create; the dc's basedir is
+      // consumed centrally above.
       const mg = spawn(state, swordTunnelManager, { x: arena.x, y: state.view.y });
-      mg.timer = -40 + gmlIrandom(state.gmlRng, 10);
       mg.difficulty = difficulty;
       mg.knightDifficulty = difficulty;
       mg.damage = CONTROLLER_DAMAGE;
@@ -535,14 +598,27 @@ export function launchAttack(state, entry) {
 
     case 15: {
       // ac 15 is TWO controllers: the vortex, then tracking swords over it.
-      const mg = spawn(state, swordVortexManager, { x: arena.x, y: arena.y });
+      // `instance_create(obj_growtangle.x, cameray(), ...)` — the vortex
+      // manager sits at the CAMERA TOP like the tracking and tunnel managers,
+      // and as a regularbullet descendant it occupies a traced bullet slot
+      // there. Its own y is otherwise inert (swords orbit
+      // swordcirclecentery).
+      const mg = spawn(state, swordVortexManager, { x: arena.x, y: state.view.y });
       mg.damage = CONTROLLER_DAMAGE;
       // The SECOND scr_bulletspawner call of the ac-15 branch (type 151).
       reanchorRng(state);
+      // Every scr_bulletspawner's dc rolls its dead `basedir = irandom(360)`
+      // — two draws off this second anchor too, same as the central consume
+      // at launchAttack's entry. Its absence displaced the vortex manager's
+      // centermove targets by two stream positions (verify21j f3367: the
+      // center's first lerp read irandom(120)=31 where the game drew 107).
+      if (state.gmlRng) gmlIrandom(state.gmlRng, 360);
       const tr = spawn(state, trackingSwordsManager, { x: arena.x, y: state.view.y });
       tr.variant = 0;
       tr.damage = CONTROLLER_DAMAGE;
-      trackingSwordsManager.init(tr, state);
+      // The vortex sibling (type 154) retunes the tracking cadence — see
+      // the chainedType note in trackingSwordsManager.init.
+      trackingSwordsManager.init(tr, state, 154);
       return mg;
     }
 
@@ -566,6 +642,13 @@ export function launchAttack(state, entry) {
  * anyone remembering to register it.
  */
 const SURVIVES_TURN = new Set([
+  // The slash graze bands have NO parent object (dumped: obj_tracking_
+  // sword_slash_extra_graze's parent is empty), so the turn teardown's
+  // `with (obj_bulletparent) instance_destroy()` never touches them — an
+  // unpaid band HANGS ACROSS TURNS until the soul finally crosses it. The
+  // recording pays one at f804, mid-Flurry, laid by a tracking sword two
+  // turns... one turn earlier. Sweeping them here silently ate those pays.
+  'obj_tracking_sword_slash_extra_graze',
   'obj_heart',
   'obj_growtangle',
   'obj_knight_enemy',

@@ -52,7 +52,7 @@ import { roaringknightSlash } from './roaringknight-slash.js';
 import { knightCircle, knightWarp, knightWarpOut } from '../fx.js';
 import { cue, cueLoop, cueStop } from '../audio.js';
 import { scrApproach } from '../gml.js';
-import { gmlChoose, gmlIrandom, gmlU32 } from '../rng.js';
+import { gmlChoose, gmlIrandom, gmlRandom, gmlRandomRange, gmlU32 } from '../rng.js';
 import { scrBulletInherit } from '../bullets/regularbullet.js';
 import { chainNext } from './combination.js';
 
@@ -237,6 +237,15 @@ export const rotatingSlash = {
     // whole time. Guarding it too left the value one high from the frame the
     // finale ended, which the recording catches at frame 342.
     e.local_turntimer -= 1;
+    if (globalThis.process?.env?.KNIGHT_RS_DEBUG) {
+      const f = globalThis.__simFrame;
+      const [a, b] = globalThis.process.env.KNIGHT_RS_DEBUG.split('-').map(Number);
+      if (f >= a && f <= (b ?? a) && (e.state !== e._lastLoggedState || e.local_turntimer === 199)) {
+        console.error(`[rs] f=${f} state=${e.state} timer=${e.timer} ltt=${e.local_turntimer}`
+          + ` sc=${e.slash_counter} done=${e.slashes_done} a3=${e.alarm[3]}`);
+        e._lastLoggedState = e.state;
+      }
+    }
     if (e.done) return;
 
     // `if (image_index >= 5 && aim_type != 2) { image_index = 5; image_speed = 0; }`
@@ -344,8 +353,14 @@ export const rotatingSlash = {
         // turn sweep takes it; inventing a position would make it lunge at a soul
         // that is not there.
         if (!heart) return;
-        e.aim_x = heart.x + 10;
-        e.aim_y = heart.y + 10;
+        // PRE-STEP soul position (state.soulPrev): the rotating slash is
+        // created mid-turn, newer than the soul, so the runner steps it
+        // first — its aim reads the soul before this frame's movement.
+        // verify21j's first slash lands 4px (one soul-step) from the live
+        // read. Same compensation as the tunnel's swept probe.
+        const hp = state.soulPrev ?? heart;
+        e.aim_x = hp.x + 10;
+        e.aim_y = hp.y + 10;
       }
 
       // `if (timer == 1) instance_create(aim_x, aim_y, obj_knight_circle)` —
@@ -382,7 +397,15 @@ export const rotatingSlash = {
         cue(state, 'snd_knight_cut');
         cue(state, 'snd_explosion_firework');
         if (state.fixedSlashOrder === true && state.angleLists) {
-          // Replay the oracle's shuffled order (see SHUFFLE CAVEAT).
+          // Replay the oracle's shuffled order (see SHUFFLE CAVEAT) — but
+          // the real ds_list_shuffle still RAN in the game and burned its
+          // measured 16 u32 draws per element. Skipping the burn left every
+          // roll after the fan (the slash's own box jitter included) 16n
+          // positions early — verify21j's first jitter pair read +2/-2
+          // where the recording has +1/0.
+          if (state.gmlRng) {
+            for (let i = 0; i < e.slash_list.length * 16; i++) gmlU32(state.gmlRng);
+          }
           const rec = state.angleLists[state.angleIndex++];
           if (rec) e.slash_list = [...rec];
         } else {
@@ -430,6 +453,33 @@ export const rotatingSlash = {
         // obj_knight_tunnel_slasher, which never inherits — dc type 101,
         // myattackchoice 20 "knightlines", which the selector cannot reach.)
         scrBulletInherit(e, s);
+
+        // THE SLASH-MARK DEBRIS — the original's per-slash spawn visuals
+        // (spr_knight_slash_mark generic particles), untranslated as visuals
+        // but their rolls are half the stream: markscalex `5 + random(3)`,
+        // markscaley `2 + random(1)`, then TWO `repeat (4 + irandom(3))`
+        // debris bursts — forward and +180 — each iteration drawing
+        // `12 + irandom(8)` (faade), `-20 + random(60)` (diist),
+        // `6 + random(4)` (speed) and `random_range(-10, 10)` (angle).
+        // 6 + 5*(k1+k2) draws per slash, k in [4,7] — the 46..76-draw block
+        // that sat between the fan and the box jitter in verify21j (the
+        // game's first jitter pair landed at stream position ~96 vs the
+        // sim's 30; k1+k2 = 12 closes it exactly). The particles themselves
+        // never roll again (obj_particle_generic has no random anywhere),
+        // so the whole burn is confined to the spawn frame.
+        if (state.gmlRng) {
+          gmlRandom(state.gmlRng, 3);
+          gmlRandom(state.gmlRng, 1);
+          for (let burst = 0; burst < 2; burst++) {
+            const reps = 4 + gmlIrandom(state.gmlRng, 3);
+            for (let i = 0; i < reps; i++) {
+              gmlIrandom(state.gmlRng, 8);
+              gmlRandom(state.gmlRng, 60);
+              gmlRandom(state.gmlRng, 4);
+              gmlRandomRange(state.gmlRng, -10, 10);
+            }
+          }
+        }
       }
 
       if (e.timer === e.slash_timer) {

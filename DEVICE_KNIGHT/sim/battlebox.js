@@ -1,4 +1,4 @@
-import { mergeColor } from './gml.js';
+import { mergeColor, gmlRound } from './gml.js';
 import { spawn } from './entity.js';
 import { afterimage } from './fx.js';
 // The battle box — obj_growtangle at steady state.
@@ -14,7 +14,7 @@ import { afterimage } from './fx.js';
 // masks have rasterization semantics the oracle showed we do not reproduce
 // (t3 trace frames 0-3). Grow-in support needs its own oracle study first.
 
-import { BATTLEBG_MASK, BATTLEBG_STRETCH_HITBOX_MASK } from './masks.js';
+import { BATTLEBG_MASK, BATTLEBG_FIGHT_MASK, BATTLEBG_STRETCH_HITBOX_MASK } from './masks.js';
 
 /**
  * Put a box straight into its settled state.
@@ -37,8 +37,18 @@ export function settleBox(gt) {
 
 export const battlebox = {
   name: 'obj_growtangle',
+  // AFTER the soul. The runner's step order is newest-first (three
+  // independent receipts: verify21g f1257's newborn soul freezes against
+  // the box's PRE-step t=7 ring; f1258's slide needs the t=8 states with
+  // the box's own step still pending; the f1094 splitslash payoff lands
+  // before the heart's inv decrement). The sim's global order stays
+  // oldest-first — flipping it wholesale would unsettle three verified
+  // turns — but the box, which every turn's soul is newer than, steps
+  // after the 0-order entities so the soul's wall tests see the grow state
+  // the game's soul sees.
+  stepOrder: 0.5,
 
-  create(e) {
+  create(e, state) {
     // Defaults from obj_growtangle Create, post-grow values.
     // ONE SCALE, `image_xscale`/`image_yscale`, exactly as the original has it.
     //
@@ -51,6 +61,14 @@ export const battlebox = {
     if (e.maxxscale === undefined) e.maxxscale = 2;
     if (e.maxyscale === undefined) e.maxyscale = 2;
     e.isSolid = true; // parent: obj_battlesolid
+    // THE STORED MASK, both rooms. The one-pixel "effective dilation"
+    // (BATTLEBG_FIGHT_MASK) is RETIRED: the fight-vs-tester wall
+    // discrepancy it papered over was the HEART's mask difference all
+    // along — the fight soul is the spr_dodgeheart 20x20 rect (bbox
+    // [0..19]) while the tester soul keeps the heart shape ([2..17]), and
+    // all four fight rests (E 372 / W 250 / N 120 / S 242) plus the
+    // tester's (E 374) re-derive from the SAME stored ring under each
+    // room's true heart bbox. See HEART_RECT in sim/masks.js.
     e.mask = BATTLEBG_MASK;
 
     // THE ARENA IS GREEN, for the whole fight. `obj_growtangle`'s Create sets
@@ -145,16 +163,27 @@ export const battlebox = {
     //    and the sword tunnel's 3 becomes 2.9866666...  The sim's box was
     //    2.25 for the whole turn — every wall sat in a subtly wrong place.
     //
-    //  * THE COLLISION MASK CHANGES SPRITE. spr_battlebg_stretch_hitbox is
-    //    not spr_battlebg_0: its wall sits differently, and the effective
-    //    interior is [3..71] (see sim/masks.js for the oracle fit).
+    //  * THE COLLISION MASK CHANGES SPRITE in the original
+    //    (spr_battlebg_stretch_hitbox), but the EFFECTIVE interior under the
+    //    heart-rect finding is [2..72] on every measured side — identical to
+    //    spr_battlebg_0's stored ring, and TWO pixels thinner than the
+    //    stretch sprite's stored [4..70]. Re-derivation of the Stars-box
+    //    rests (E 381 / N 109 / S 214) with the fight soul's true 20x20
+    //    rect: blocked columns start at source 73 and rows at source 1/73 —
+    //    all [2..72]. So the stored ring ships for custom boxes too; only
+    //    the CORNERS (square here, rounded in the stretch sprite's data)
+    //    are unverified, and no measured rest touches a corner.
     if (!e.init) {
       e.init = true;
       if (e.visible !== false && (e.maxxscale !== 2 || e.maxyscale !== 2)) {
         e.customBox = true;
-        if (e.maxxscale % 2 !== 0) e.maxxscale = Math.round(e.maxxscale * 37.5) / 37.5;
-        if (e.maxyscale % 2 !== 0) e.maxyscale = Math.round(e.maxyscale * 37.5) / 37.5;
-        e.mask = BATTLEBG_STRETCH_HITBOX_MASK;
+        // GML round() is HALF-TO-EVEN: the tunnel's 3 x 37.5 = 112.5 snaps
+        // DOWN to 112 (2.98666...), where Math.round's half-up gave 113
+        // (3.01333) — a whole grow-in ring size off, caught by the verify21h
+        // box telemetry (xscale 1.3937777281 at t=7 vs the sim's 1.4062).
+        if (e.maxxscale % 2 !== 0) e.maxxscale = gmlRound(e.maxxscale * 37.5) / 37.5;
+        if (e.maxyscale % 2 !== 0) e.maxyscale = gmlRound(e.maxyscale * 37.5) / 37.5;
+        e.mask = BATTLEBG_MASK;
       }
     }
 

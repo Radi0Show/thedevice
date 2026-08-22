@@ -28,6 +28,7 @@
 // mantled, because that is the loadout the fight's own damage path is written
 // around; `state.loadout.shadowMantle = false` gives the unmantled numbers.
 
+import { gmlRound } from './gml.js';
 import { heroHurt } from './heroes.js';
 import { statsOf } from './equipment.js';
 import { spawnDmgNumber, TYPE_PARTY, TYPE_DEAD } from './dmgnumbers.js';
@@ -283,8 +284,17 @@ export function knightTarget(state, target, opts = {}) {
   // reachable from the equip menu, so both behaviours ship.
   const gear = gearOf(state);
   const wearer = gear.findIndex((g) => (g.armor ?? []).includes(23));
-  const mantle = wearer >= 0;
-  if (mantle && opts.ac !== 13) {
+  // state.noMantle: verification-only override (tools/fullfight-trace.mjs,
+  // KNIGHT_NO_MANTLE) matching a recording whose party fights bare.
+  const mantle = wearer >= 0 && !state.noMantle;
+  // `obj_knight_enemy.myattackchoice != 13` — THE SWORD TUNNEL IS EXEMPT
+  // from the brunt (CLAUDE.md's own table). No caller was passing the ac,
+  // so the gate compared undefined !== 13 and the brunt choose rolled
+  // during turn 4 anyway: tension- and hp-invisible under keep-alive, but
+  // one extra stream draw per tunnel hit — verify21i's corridor boundary
+  // chooses sat exactly that far off from f1322's hit onward.
+  const ac = opts.ac ?? state.currentAc;
+  if (mantle && ac !== 13) {
     const k = state.knight;
     k.damagecounter = (k.damagecounter ?? 0) + 1;
     if (k.damagecounter < 3) {
@@ -355,7 +365,7 @@ export function scrDamage(state, damage, target, opts = {}) {
 
   let mantled = false;
   if (mantle) {
-    t = Math.round(t * 0.33);
+    t = gmlRound(t * 0.33);
     mantled = true;
   }
   if (state.charaction?.[target] === ACTION_DEFEND) t = Math.ceil((2 * t) / 3);
@@ -364,7 +374,7 @@ export function scrDamage(state, damage, target, opts = {}) {
 
   // Flurry (myattackchoice 2) at difficulty 1 or 3 takes a further third off,
   // inside the HP write itself rather than up with the other multipliers.
-  if (opts.flurrySoftened) t = Math.round(t * 0.66);
+  if (opts.flurrySoftened) t = gmlRound(t * 0.66);
 
   // `if (!instance_exists(obj_shake)) instance_create(0, 0, obj_shake)` —
   // every hit the party TAKES shakes the screen, and the shake is GAMEPLAY:

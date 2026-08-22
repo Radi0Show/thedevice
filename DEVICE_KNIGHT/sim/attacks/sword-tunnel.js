@@ -85,10 +85,16 @@ export const swordTunnelHitbox = {
     if (e.timer === 3) destroy(e);
   },
 
-  collides(e, heart) {
+  collides(e, heart, state) {
     if (e.active !== 1) return false;
+    // PRE-STEP soul, like the swept probe and the proximity gate: the bar's
+    // one active frame connects against where the soul stood at the top of
+    // the frame — verify21j f5683: the recording hits with the soul's row
+    // at 212 where the live-position precise test's hit region ends at 211;
+    // the pre-step position (208) is inside it.
+    const hp = state?.soulPrev ?? heart;
     return masksOverlap(
-      heart.mask ?? HEART_MASK, heart.x, heart.y,
+      heart.mask ?? HEART_MASK, hp.x, hp.y,
       PXWHITE2_MASK, e.x, e.y, e.image_xscale, e.image_yscale, e.image_angle,
     );
   },
@@ -168,9 +174,12 @@ export const swordTunnelSword = {
       }
       if (e.timer < 10 + c / 2) {
         e.anglespeed = lerp(8, 0, e.timer / (10 + c / 2));
-        const heart = state.soul;
-        if (heart) {
-          const want = pointDirection(e.x, e.y, heart.x + 10 + e.randx, heart.y + 10 + e.randy);
+        // PRE-STEP soul position, same as the swept probe: the sword aims
+        // before the soul's own step moves it (verify21i f1491's finale
+        // turn is 0.2 degrees off with the live position).
+        const hp = state.soulPrev ?? state.soul;
+        if (hp) {
+          const want = pointDirection(e.x, e.y, hp.x + 10 + e.randx, hp.y + 10 + e.randy);
           e.image_angle += scrAnglechange(e.image_angle, want, e.anglespeed);
         }
         e.targetangle += e.anglespeed;
@@ -229,18 +238,22 @@ export const swordTunnelSword = {
     // turn sweep takes it; inventing a position would make it lunge at a soul
     // that is not there.
     if (!heart) return;
+    // THE SOUL'S PRE-STEP POSITION (state.soulPrev): the sword steps before
+    // the soul in the runner (newest-first), so its proximity gate and its
+    // swept probe both read the soul where it stood at the top of the
+    // frame — verify21i f1486's connect is 4px of exactly this.
+    const hp = state.soulPrev ?? heart;
     if (
-      heart &&
-      e.x > heart.x - 80 &&
-      e.x < heart.x + 80 &&
-      e.y < heart.y + 80 &&
-      e.y > heart.y - 80
+      e.x > hp.x - 80 &&
+      e.x < hp.x + 80 &&
+      e.y < hp.y + 80 &&
+      e.y > hp.y - 80
     ) {
       e.image_blend = RED;
       const remx = e.x;
       const remy = e.y;
       const steps = Math.max(Math.floor(e._speed / 8), 1);
-      const [bx0, by0, bx1, by1] = heartBBox(heart);
+      const [bx0, by0, bx1, by1] = heartBBox({ x: hp.x, y: hp.y, mask: heart.mask });
       for (let i = 0; i < steps; i++) {
         e.x += xadd * 8;
         e.y += yadd * 8;
@@ -268,6 +281,11 @@ export const swordTunnelSword = {
           const tipx = e.x + lengthdirX(37, e.image_angle);
           const tipy = e.y + lengthdirY(37, e.image_angle);
           if (collisionLineRect(e.x, e.y, tipx, tipy, bx0, by0, bx1, by1)) {
+            if (globalThis.process?.env?.KNIGHT_SWEEP_DEBUG) {
+              console.error(`[sweep] f=${globalThis.__simFrame} seq=${e.seq}`
+                + ` sample=(${e.x},${e.y}) tip=(${tipx},${tipy})`
+                + ` box=[${bx0},${by0},${bx1},${by1}] inv=${state.invTimer}`);
+            }
             e.tunnelHits = (e.tunnelHits ?? 0) + 1;
             state.tunnelHits = (state.tunnelHits ?? 0) + 1;
             // `event_user(5)` IS Other_15 — the swept probe does not just
@@ -333,7 +351,7 @@ export const swordTunnelSword = {
    */
   collides(e, heart) {
     return masksOverlap(
-      HEART_MASK, heart.x, heart.y,
+      heart.mask ?? HEART_MASK, heart.x, heart.y,
       DIAMOND_MASK, e.x, e.y, e.image_xscale, e.image_yscale, e.image_angle,
     );
   },
@@ -371,16 +389,22 @@ export const swordTunnelManager = {
   name: 'obj_sword_tunnel_manager',
 
   create(e, state) {
+    // A COLLIDEBULLET IN ITS OWN RIGHT. The object's parent chain (dumped via
+    // object_parents.csx) is obj_sword_tunnel_manager -> obj_regularbullet -> the
+    // collidebullet base — so the real game's bullet enumeration counts the
+    // MANAGER itself, sitting at (growtangle.x, cameray()) from its creation
+    // frame. The whole-fight differ pairs bullets by slot, and without this
+    // flag every bullet of the turn sat one slot early against the recording
+    // (turn 2's f450: oracle b0 is the manager, sim b0 was the first sword).
+    // maskOff keeps it out of the collision and graze loops: parked at the
+    // camera top it never touches the soul, and its own damage never fires.
+    e.isBullet = true;
+    e.maskOff = true;
     const gt = box(state);
 
     // `instance_create(obj_knight_enemy.x, obj_knight_enemy.y,
     // obj_knight_swordtunnelanim)` — the knight's performance for this attack.
     // It takes over his appearance entirely; see sword-tunnel-anim.js.
-    const knight = state.entities.find(
-      (x) => x.alive && x.type.name === 'obj_knight_enemy',
-    );
-    if (knight) spawn(state, swordTunnelAnim, { x: knight.x, y: knight.y });
-
     e.timer = -40 + gmlIrandom(state.gmlRng, 10);
     e.finishtimer = 0;
     // The Create reads the KNIGHT's difficulty, not its own, and difficulty 3
@@ -415,6 +439,20 @@ export const swordTunnelManager = {
     e.movedirection = gmlChoose(state.gmlRng, ['up', 'down']);
     e.tobymode = 0;
     e.tobytimer = 0;
+    // `tobyvolleyamount = 10 + irandom(6)` — ORIGINAL BUG: assigned in the
+    // create and read nowhere in the dump (the write-only-variable club).
+    // Dead mechanically, but the irandom still takes its two draws off the
+    // anchored stream — AFTER the three chooses, exactly where the dump
+    // rolls it (the old placement right after the timer roll shifted the
+    // chooses two positions).
+    gmlIrandom(state.gmlRng, 6);
+    // The knight's performance object is created at the END of the Create,
+    // after every roll — `instance_create(..., obj_knight_swordtunnelanim)`
+    // is the dump's last line.
+    const knight = state.entities.find(
+      (x) => x.alive && x.type.name === 'obj_knight_enemy',
+    );
+    if (knight) spawn(state, swordTunnelAnim, { x: knight.x, y: knight.y });
     e.difficulty = 0;
     e.stopsfxtimer = 0;
     e.tobyvolleymode = 0;
@@ -543,6 +581,11 @@ export const swordTunnelManager = {
         lower.damage = e.damage;
       }
 
+      if (globalThis.process?.env?.KNIGHT_TUNNEL_DEBUG) {
+        console.error(`[tun] f=${globalThis.__simFrame} toby=${e.tobytimer}`
+          + ` dir=${e.movedirection} sy=${e.swordy} sc=${e.swordcount}`
+          + ` set=${e.setcount} wait=${e.waitsetcount} vc=${e.verticalchange}`);
+      }
       if (e.movedirection === 'up') e.swordy -= e.verticalchange;
       if (e.movedirection === 'down') e.swordy += e.verticalchange;
 

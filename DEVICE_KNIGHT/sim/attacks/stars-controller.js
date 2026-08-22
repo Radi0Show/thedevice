@@ -56,16 +56,32 @@ export const starsController = {
     if (state.soul && !state.entities.some((x) => x.alive && x.type.name === 'obj_heart_follower')) {
       spawn(state, heartFollower, { x: state.soul.x, y: state.soul.y });
     }
-    // The controller's own `global.turntimer += 30`.
-    state.turntimer += 30;
   },
 
   step(e, state) {
+    // The init-block's `global.turntimer += 30` (and `+= 60` at difficulty
+    // >= 2) runs in the controller's FIRST STEP, not at creation: the dc is
+    // created during the knight's Step, its own first Step comes the next
+    // frame, and the oracle's diag shows the +30 landing exactly there
+    // (launch frame ends 239; the next frame 239 - 1 + 30 = 268). Paying it
+    // in create() armed the clock one frame early and two units high.
+    if (!e.turntimerPaid) {
+      e.turntimerPaid = true;
+      state.turntimer += 30;
+      if ((e.difficulty ?? 0) >= 2) state.turntimer += 60;
+    }
     if (e.init >= 3) return;
 
     e.btimer += 1;
 
-    if (state.turntimer <= e.endtimer + 1) {
+    // POST-DECREMENT READ. The dc's stop check sees the clock as of this
+    // frame's END: verify21j turn 11 (Stars d2, endtimer 210) spawns its
+    // last star at f4239 and stays silent at f4243, where the pre-decrement
+    // value is 211.9 (> 211, would spawn) and the post 210.9 (stops). The
+    // cone's own release check stays on the pre-decrement read the earlier
+    // turns pinned — the two objects genuinely read the clock at different
+    // effective moments, and each check carries the receipt that set it.
+    if (state.turntimer - 1 <= e.endtimer + 1) {
       e.init = 3;
       return;
     }
@@ -158,8 +174,12 @@ export const starsController = {
         speed = lerp(10, 5, e.size);
       } else {
         e.size = (e.size + (0.5 + Math.sin(e.made) * 0.5)) % 1;
+        const _u = gmlRandom(state.gmlRng, 1);
+        if (globalThis.process?.env?.KNIGHT_STAR_DEBUG) {
+          console.error(`[chain] made=${e.made} specialPrev=${e.special} u=${_u} sin=${Math.sin(_u)}`);
+        }
         e.special =
-          ((e.special + (0.5 + (0.5 + Math.sin(gmlRandom(state.gmlRng, 1)) * 0.3))) % 1) - 0.5;
+          ((e.special + (0.5 + (0.5 + Math.sin(_u) * 0.3))) % 1) - 0.5;
         direction = 180 + e.special * coneAngle;
         speed = lerp(10, 5, e.size);
       }
@@ -190,6 +210,10 @@ export const starsController = {
 
       d.direction = direction;
       d.speed = speed;
+      if (globalThis.process?.env?.KNIGHT_STAR_DEBUG) {
+        console.error(`[star] f=${globalThis.__simFrame} made=${e.made} size=${e.size}`
+          + ` special=${e.special} coneAngle=${coneAngle} dir=${direction} spd=${speed}`);
+      }
 
       e.made += 1;
       e.btimer = 0;

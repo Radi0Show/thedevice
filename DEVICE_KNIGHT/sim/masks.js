@@ -58,6 +58,67 @@ function build(m) {
 
 export const HEART_MASK = build(raw.heart);
 /**
+ * THE FIGHT SOUL'S REAL HITBOX — the full 20x20 spr_dodgeheart rect, NOT the
+ * heart-shaped precise mask.
+ *
+ * Found via the verify21g hitlog: every heart pairing in the fight logs the
+ * heart's collision mask as spr_dodgeheart (AxisAlignedRect, bbox [0..19],
+ * maskcount 0). The chain is obj_moveheart's Alarm_0:
+ *
+ *     heart = instance_create(x, y, obj_heart);
+ *     heart.sprite_index = sprite_index;
+ *     heart.mask_index = mask_index;        // <- obj_moveheart's OWN mask
+ *
+ * The fight's soul is created by scr_moveheart and inherits obj_moveheart's
+ * definition mask; the TESTER room's soul is created directly and keeps
+ * obj_heart's definition mask (spr_dodgeheartmask, the precise heart shape).
+ * TWO ROOMS, TWO HITBOXES — which retroactively explains the "tester room
+ * is different" wall mystery: the fight's rests (E 372 / W 250 / N 120 /
+ * S 242) and the tester's (E 374) all fall out of the SAME stored wall mask
+ * once each room's true heart bbox ([0..19] vs [2..17]) is used. The
+ * one-pixel wall dilation (BATTLEBG_FIGHT_MASK) was compensating for the
+ * wrong heart, not measuring a thicker wall.
+ *
+ * `axisRect` AFTER ALL — the eighth receipt settled it. This was
+ * deliberately left off the rect routine on the strength of seven receipts
+ * (f904/f947/f982/f898 hits, f903/f946/f986 misses) that the precise
+ * corner-sampling model reproduced — but none of the seven happened to
+ * discriminate the two routines. verify21j f3392 does: the first vortex
+ * sword's contact (sword at 247.2818/146.0177, angle 84.667, soul at
+ * 250/148) HITS in the recording, hits under the rectangle routine (raw
+ * positions, round bbox, floor-inverse into B — the same routine the
+ * 30,976-point graze probe and the 28,000-point growmeet fit calibrated
+ * for AAR-A x rotated-B), and misses under the precise model by a hair.
+ * The runner routes by MASK KIND, and spr_dodgeheart's AxisAlignedRect
+ * mask is exactly that kind. The seven old receipts ride along: turns 1-4
+ * of the whole-fight diff contain every one of them and stay row-exact
+ * under the flip.
+ */
+export const HEART_RECT = {
+  name: 'dodgeheart_rect',
+  w: 20,
+  h: 20,
+  originX: 0,
+  originY: 0,
+  bbox: [0, 0, 19, 19],
+  px: Array.from({ length: 20 }, () => new Array(20).fill(true)),
+  axisRect: true,
+};
+/**
+ * The same rect flagged for the RECTANGLE routine — the WALL path's model.
+ *
+ * place_meeting(obj_battlesolid) with the fight heart is an AAR-A against a
+ * (possibly rotated, fractionally scaled) precise ring — the graze probe's
+ * exact regime, and masksOverlapRectA reproduces the mid-grow ring's true
+ * coverage 28,000/28,000 against the growmeet probe (all four recorded
+ * grow states of the sword tunnel's box, knight-research
+ * traces/growmeet.csv). The DAMAGE path stays on HEART_RECT's precise flow:
+ * the collision-event path measurably differs from place_meeting (f982's
+ * trailing sliver), so the two routes are two real runner behaviours, not
+ * a convenience split.
+ */
+export const HEART_RECT_WALL = { ...HEART_RECT, name: 'dodgeheart_rect_wall', axisRect: 'always' };
+/**
  * `spr_dodgeheart_smallmask` — an 8x8 square at the soul's centre, against the
  * heart shape's 16x16. THE SWORD TUNNEL'S FINALE SWAPS TO IT: each dashing
  * sword does `with (obj_heart) mask_index = spr_dodgeheart_smallmask` as it
@@ -95,6 +156,50 @@ export const BATTLEBG_MASK = build(raw.battlebg);
  * [2..72] interior is T3-verified — this entry does not touch them.
  */
 export const BATTLEBG_STRETCH_HITBOX_MASK = build(raw.battlebgStretchHitbox);
+/**
+ * THE FIGHT'S DEFAULT BOX WALL — spr_battlebg_0 as the FIGHT behaves, which
+ * is one source pixel thicker than the stored mask on every side.
+ *
+ * Measured with mid-wall pushes against the real knight's ac-11 box
+ * ((320,190), scale 2, angle 0, image_index 0, mask spr_battlebg_0 — all
+ * confirmed in the same recording, traces/wallpush4 + wallpush-we):
+ *
+ *     north rest 120   (row-2 ink at 122; 119 blocked)
+ *     south rest 242   (row-17 ink at 259 = source row 71; 243 blocked)
+ *     west  rest 250   (col-2 ink at 252; 249 blocked)
+ *     east  rest 372   (col-17 ink at 389 = source col 71; 373 blocked)
+ *
+ * All four select free interior [3..71] — the stored mask's [2..72] misses
+ * every one by exactly one source pixel, and [3..71] is ALSO the stretch
+ * box's measured interior, so in the fight both wall sprites collide as the
+ * same effective ring. Corner pushes (the soul sliding along a wall into a
+ * corner) stop ~2px earlier still, consistent with the rounded corner arcs
+ * advancing under the same one-pixel dilation.
+ *
+ * THE TESTER ROOM IS DIFFERENT, and both measurements stand: the t3
+ * recording's box (same sprite, same scale, tester-created) rests the soul
+ * at x=374 — the stored [2..72] exactly. Why the two rooms differ is not
+ * established; each scene uses the mask its own oracle pinned. Built by
+ * one-pixel dilation of the stored ink so the corner arcs thicken with the
+ * walls.
+ */
+export const BATTLEBG_FIGHT_MASK = (() => {
+  const src = build(raw.battlebg);
+  const h = src.px.length;
+  const w = src.px[0].length;
+  const px = src.px.map((row, y) => row.map((v, x) => {
+    if (v) return true;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const yy = y + dy;
+        const xx = x + dx;
+        if (yy >= 0 && yy < h && xx >= 0 && xx < w && src.px[yy][xx]) return true;
+      }
+    }
+    return false;
+  }));
+  return { ...src, name: 'battlebg_fight_effective', px };
+})();
 export const FOUNTAIN_MASK = build(raw.fountain);
 export const TOOTH_MASK = build(raw.tooth);
 export const STAR_MASK = build(raw.star);
@@ -481,9 +586,47 @@ export function masksOverlap(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   // collides nothing at zero scale.
   if (!bsx || !bsy) return false;
   if (maskA.axisRect) {
+    // THE B-SIDE'S ROTATION SPLITS THE RECT-A FAMILY — forced by two
+    // receipts on opposite sides of any single rule:
+    //
+    //   f982  (tooth, angle 0, soul at fractional x): HITS in the recording,
+    //         hits under the floored-corner precise model, MISSES under the
+    //         raw-position rectangle routine;
+    //   f3392 (vortex sword, angle 84.667): HITS in the recording, hits
+    //         under the rectangle routine, MISSES under the precise model.
+    //
+    // The toothmeet probe (place_meeting, unrotated B) already measured
+    // floored-x semantics, and the growmeet fit (28,000 points, rotated B)
+    // measured the raw-position rectangle — the two datasets were never in
+    // conflict because they sit on opposite sides of this split. An A with
+    // `axisRect: 'always'` (the graze box, whose sprite has NO mask data at
+    // all, and the wall path) stays on the rectangle routine at every angle
+    // — its 30,976-point calibration includes unrotated pairs. The wall
+    // cannot tell the difference: its contacts happen at integer soul
+    // positions, where floored and raw agree.
+    const unrotated = ((bangle % 360) + 360) % 360 === 0;
+    if (unrotated && maskA.axisRect !== 'always') {
+      return masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle);
+    }
     return masksOverlapRectA(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle);
   }
   return masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle);
+}
+
+/**
+ * The collision rotation's [cos, sin]. EXACT values at the cardinals — the
+ * runner's trig lands true zeros and ones there (traces/trig-probe.csv:
+ * 90/270 return exactly 0) — and plain JS trig everywhere else, which the
+ * 30,976-point graze probe validated at non-cardinal angles. The receipt
+ * that forces the split is verify21j f9433 (see masksOverlapRectA).
+ */
+function collisionTrig(bangle) {
+  const a = ((bangle % 360) + 360) % 360;
+  if (a % 90 === 0) {
+    return [[1, 0], [0, 1], [-1, 0], [0, -1]][a / 90];
+  }
+  const r = (bangle * Math.PI) / 180;
+  return [Math.cos(r), Math.sin(r)];
 }
 
 function masksOverlapRectA(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
@@ -511,10 +654,16 @@ function masksOverlapRectA(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
   //      (pixel - (pos - origin)), B by inverse rotation about its raw
   //      position, floor-divided into source cells.
   //
-  // Cardinal-exact f32 trig and JS trig score identically on the probe; JS
-  // trig is kept.
-  const cos = Math.cos((bangle * Math.PI) / 180);
-  const sin = Math.sin((bangle * Math.PI) / 180);
+  // Cardinal-exact trig — the 30,976-point graze probe scored JS trig and
+  // cardinal-exact identically (its angles sat at 270/90/336/204 with
+  // geometry that never straddled a residue), and verify21j f9433 finally
+  // discriminates: a 900x1 slash at EXACT angle 180, line at y 120, soul
+  // band ending 119. With sin(pi)'s 1.22e-16 JS residue the inverse sample
+  // lands at v = 1 - 1.7e-14 -> mask row 1, ink, a hit the game does not
+  // have; with the runner's exact zero (traces/trig-probe: cardinals return
+  // exact values) v = 1 -> row 2, outside the 1x2 mask, miss — the
+  // recording's frame. Non-cardinal angles keep JS trig, as probed.
+  const [cos, sin] = collisionTrig(bangle);
 
   const [al, at, ar, ab] = maskA.bbox;
   const aox = maskA.originX ?? 0;
@@ -573,8 +722,17 @@ function masksOverlapRectA(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
 }
 
 function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
-  const px = Math.floor(bx);
-  const py = Math.floor(by);
+  // ROUND, not floor. verify21j f9093 discriminates: a tooth at
+  // x 428.9574890137 (ink reach +6 of origin) registers against the heart
+  // rect starting at 435 in the recording — floored, its rightmost ink cell
+  // is 434 and the hit comes a frame late; rounded to 429 it is 435 and the
+  // hit lands on the game's frame. Every earlier receipt (t6 toothmeet, the
+  // t4 contact sweep, 14 verified turns of fullfight hits) is indifferent
+  // between the two — the suites all pass either way — because a bullet
+  // crossing at several px/frame rarely puts the marginal pixel inside the
+  // [.5, 1) fraction window on the exact touching frame.
+  const px = Math.round(bx);
+  const py = Math.round(by);
   const [al, at, ar, ab] = maskA.bbox;
   const [bl, bt, br, bb] = maskB.bbox;
 
@@ -582,9 +740,9 @@ function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   // local (u,v) -> (u cos a + v sin a, -u sin a + v cos a); sampling uses
   // the inverse. Standard f64 trig — the bbox pre-check below, not trig
   // epsilon behaviour, is what decides the degenerate axis-aligned cases.
-  const r = (bangle * Math.PI) / 180;
-  const cos = Math.cos(r);
-  const sin = Math.sin(r);
+  // Same cardinal-exact trig as masksOverlapRectA — see the f9433 receipt
+  // there. Unrotated calls (the common case here) get 1/0 either way.
+  const [cos, sin] = collisionTrig(bangle);
 
   // B's world-space integer bounding box: rotate the corners of its scaled
   // bbox rectangle, then floor the min edge and ceil-1 the max edge. This is
@@ -672,6 +830,37 @@ function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
  * origin (125,27). This is Flurry's cut.
  */
 export const QUICKSLASH_SHAPE = { bbox: [2, 26, 241, 28], ox: 125, oy: 27, w: 250, h: 48 };
+/**
+ * The same RotatedRect as a pixel mask, for the GRAZE path. The splitslash
+ * grazes the box for its full 10 grazepoints in the recording (whole-fight
+ * f886: fresh +10, then 1/3 trickles) — the grazebox pairs with it like any
+ * collidebullet, and grazes() needs a registered mask once the strike sets
+ * sprite_index. A RotatedRect mask is its bbox, solid, rotated with the
+ * instance — which the calibrated sampler already handles.
+ */
+export const QUICKSLASH_MASK = (() => {
+  const [bx0, by0, bx1, by1] = QUICKSLASH_SHAPE.bbox;
+  const px = [];
+  for (let y = 0; y < QUICKSLASH_SHAPE.h; y++) {
+    const row = [];
+    for (let x = 0; x < QUICKSLASH_SHAPE.w; x++) {
+      row.push(x >= bx0 && x <= bx1 && y >= by0 && y <= by1);
+    }
+    px.push(row);
+  }
+  return {
+    name: 'rk_quickslash_rect',
+    w: QUICKSLASH_SHAPE.w,
+    h: QUICKSLASH_SHAPE.h,
+    originX: QUICKSLASH_SHAPE.ox,
+    originY: QUICKSLASH_SHAPE.oy,
+    bbox: QUICKSLASH_SHAPE.bbox,
+    px,
+  };
+})();
+// Registered here rather than in the literal: QUICKSLASH_SHAPE lives below
+// SPRITE_MASKS in this file, so the literal would read it uninitialised.
+SPRITE_MASKS.spr_rk_quickslash = QUICKSLASH_MASK;
 
 /** A sprite's bbox as a local rectangle about its origin, before rotation. */
 function localBBox(meta, sx, sy) {
@@ -779,6 +968,22 @@ export function scrPreciseHitRotatedRect(heart, e, meta, n = 3) {
  * Segment against an axis-aligned rectangle, by slab clipping.
  */
 export function collisionLineRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
+  // ENDPOINTS FLOORED, EDGES INCLUSIVE — two swept receipts on opposite
+  // sides of every uniform real-valued model pin this pair:
+  //
+  //   f1334: the probe tip at soul.y + 19.5 CONNECTS in the recording —
+  //     floor(195.5) = 195 touches the inclusive bottom edge;
+  //   f5549: a probe line at x = soul.x + 20 − 1.6e-6 (the runner-trig
+  //     cos(90) residue) MISSES — floored, its x stays past the inclusive
+  //     right edge through the soul's whole y-band, and the game connects
+  //     one frame later when the sample lands a full 8px step inside.
+  //
+  // The flooring matches the "instance positions floored" family every
+  // other calibrated collision routine here uses.
+  x1 = Math.floor(x1);
+  y1 = Math.floor(y1);
+  x2 = Math.floor(x2);
+  y2 = Math.floor(y2);
   const dx = x2 - x1;
   const dy = y2 - y1;
   let t0 = 0;
@@ -808,9 +1013,16 @@ export function collisionLineRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
 
 /** obj_heart's bounding box in world space, from spr_dodgeheartmask's bbox. */
 export function heartBBox(heart) {
-  const [l, t, r, b] = HEART_MASK.bbox;
-  // Inclusive bbox, so the far edge is one pixel past the stored index.
-  return [heart.x + l, heart.y + t, heart.x + r + 1, heart.y + b + 1];
+  // THE SOUL'S LIVE MASK, not a constant — the fight soul is the 20x20
+  // spr_dodgeheart rect ([0..19]), the tester soul the heart shape
+  // ([2..17]), and the sword tunnel's swept probe reads whichever is
+  // current (verify21h f1372: an edge contact the [2..17] box misses).
+  const [l, t, r, b] = (heart.mask ?? HEART_MASK).bbox;
+  // INCLUSIVE integer edges, [l..r] x [t..b] — the coordinates of the last
+  // included pixel, exactly as the runner's bbox fields hold them. The
+  // segment side is floored before the test (collisionLineRect); together
+  // the two conventions satisfy both swept receipts — see there.
+  return [heart.x + l, heart.y + t, heart.x + r, heart.y + b];
 }
 
 
@@ -830,7 +1042,7 @@ export const GRAZE_MASK = build({
 })
 // AxisAlignedRect in the game data (maskcount=0): takes the rectangle
 // collision routine, not the precise one. See masksOverlap.
-GRAZE_MASK.axisRect = true;
+GRAZE_MASK.axisRect = 'always';
 
 /**
  * The graze box AT ITS EQUIPPED SIZE.
@@ -869,7 +1081,7 @@ export function grazeMaskAt(factor) {
     bbox: [0, 0, side - 1, side - 1],
     rows: Array.from({ length: side }, () => '1'.repeat(side)),
   });
-  m.axisRect = true;
+  m.axisRect = 'always';
   grazeScaled.set(key, m);
   return m;
 }

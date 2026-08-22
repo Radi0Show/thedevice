@@ -65,7 +65,7 @@ export function tensionPercent(state) {
  * rotated-mask check the hit test uses — see the note there for why a bounding
  * box will not do for this fight's long diagonal bullets.
  */
-export function stepGraze(state, grazes) {
+export function stepGraze(state, grazes, only = null) {
   if (!state.soul) return;
   let grazeNoise = false;
   // The END-STEP lag — see runCollisions. The box tests at last frame's
@@ -81,12 +81,48 @@ export function stepGraze(state, grazes) {
 
   for (const e of state.entities) {
     if (!e.alive || !e.isBullet || e.type.name === 'obj_heart') continue;
+    if (only && !only(e)) continue;
 
-    // `if (!other.active && other.object_index != obj_sword_tunnel_sword) exit;`
     const active = e.active === 1 || e.active === true;
-    if (!active && e.type.name !== 'obj_sword_tunnel_sword') continue;
 
-    if (!grazes(e, cx, cy, grazeSize)) {
+    // THE PAIRING DECISION. With a recorded pairing table (verification
+    // runs — see tools/fullfight-trace.mjs --grazes) the oracle's own
+    // grazebox event log decides which bullets paired this frame; the
+    // runner's pair enumeration at hit frames is unsolved and this replays
+    // it instead. Matching is by frame + object + position within 0.05px
+    // (trig-ulp drift), each recorded row consumed once. Without the table
+    // (free play, every other scene) the geometric test stands.
+    let paired;
+    let rowInv = null;
+    let rowActive = null;
+    if (state.grazeReplay) {
+      const rows = state.grazeReplay.get(state.frame);
+      const match = rows?.find((r) => !r.used && r.type === e.type.name
+        && Math.abs(r.x - e.x) <= 0.05 && Math.abs(r.y - e.y) <= 0.05);
+      if (match) {
+        match.used = true;
+        // THE GATES' INPUTS RIDE THE ROW. On a hit frame the runner's
+        // dispatch order between this bullet's graze event and the frame's
+        // inv reset is per-slot-reuse state the sim cannot derive — measured
+        // both ways (f217: trickle paid at inv -133, the hit after; f2166:
+        // hit first, the graze blocked at inv 30; both colseq-pinned). The
+        // grazelog's own inv column IS that ordering resolved, so replayed
+        // rows gate on it rather than on the sim's phase-local clock.
+        rowInv = Number.isFinite(match.inv) ? match.inv : null;
+        // `active` rides too, for the same reason: the splitslash's strike
+        // (Other_15, fired from the HEART's pairing) zeroes the flag before
+        // the graze pairing of the same collision phase — verify21j f1084
+        // logs the cut's graze event at active 0, no pay, while the sim's
+        // damage pass runs after graze(old) and its own flag still read
+        // true, costing a phantom award (1.0 off the turn clock, invisible
+        // in tension at the 250 cap).
+        rowActive = Number.isFinite(match.active) ? match.active : null;
+      }
+      paired = Boolean(match);
+    } else {
+      paired = grazes(e, cx, cy, grazeSize);
+    }
+    if (!paired) {
       // NOTHING CLEARS `grazed` HERE. obj_grazebox's collision event only
       // ever SETS the flag; the dump has no generic clear-on-leave anywhere.
       // Re-arming is strictly per-object: obj_knight_pointing_star and
@@ -99,7 +135,20 @@ export function stepGraze(state, grazes) {
       continue;
     }
 
-    if (state.invTimer >= 0) continue;
+    // KNIGHT_GRAZE_DEBUG=1 mirrors the oracle's grazelog — logged at the
+    // PAIRING, before the active and inv gates, exactly where the oracle
+    // patch writes its row, so the two logs diff row-for-row.
+    if (typeof process !== 'undefined' && process.env?.KNIGHT_GRAZE_DEBUG) {
+      console.error(`[graze] f=${state.frame} ${e.type.name} grazed=${e.grazed}`
+        + ` (${e.x}, ${e.y}) a=${e.image_angle} box=(${cx}, ${cy}) inv=${state.invTimer}`);
+    }
+
+    // `if (!other.active && other.object_index != obj_sword_tunnel_sword) exit;`
+    // A replayed row's own active flag wins over the sim's — see rowActive.
+    const gateActive = rowActive !== null ? rowActive === 1 : active;
+    if (!gateActive && e.type.name !== 'obj_sword_tunnel_sword') continue;
+
+    if ((rowInv ?? state.invTimer) >= 0) continue;
 
     // `grazetpfactor` / `grazetimefactor` from obj_grazebox's Create. These
     // were both hardcoded to 1 on the note that this fight's loadout does not
@@ -109,15 +158,31 @@ export function stepGraze(state, grazes) {
     const gf = grazeFactors(gearOf(state));
     const tp = (e.grazepoints ?? 0) * gf.tp;
     const time = (e.timepoints ?? 0) * gf.time;
+    // TWO SEPARATE IFs, exactly as the event body reads — NOT if/else. A
+    // bullet at grazed == -1 (the teeth between spawn and the splitter's
+    // timer-7 arming) matches NEITHER branch and pays NOTHING. The else
+    // that used to be here dropped -1 into the burst branch: tension-
+    // invisible (pre-arm grazepoints are 0) but a full timepoint off the
+    // turn clock per event — four of them ended verify21g's turn 3 four
+    // frames early, with every traced column still matching.
+    // THE >= 10 GATE READS THE POST-DECREMENT CLOCK. The battlecontroller is
+    // the fight's OLDEST instance, so its Step (turntimer -= 1) runs LAST of
+    // the step phase — before the collision events where these cuts live.
+    // The sim decrements in the END step, after this pass, so the game's
+    // gate value is the sim's minus one. verify21j f4899 discriminates: a
+    // tooth's award lands with both clocks ending the prior frame at
+    // 10.0666 — the game's gate reads 9.0666 and pays nothing, and the turn
+    // (which that award would have shortened) tears down at f4908 on the
+    // recording's frame only if the sim refuses it too.
     if (e.grazed === 1) {
       scrTensionheal(state, tp / 30);
-      if (state.turntimer >= 10) state.turntimer -= time / 30;
+      if (state.turntimer - 1 >= 10) state.turntimer -= time / 30;
       state.grazeTimer = Math.max(state.grazeTimer ?? 0, 2);
-    } else {
+    } else if (e.grazed === 0) {
       e.grazed = 1;
       state.grazeCount = (state.grazeCount ?? 0) + 1;
       scrTensionheal(state, tp);
-      if (state.turntimer >= 10) state.turntimer -= time;
+      if (state.turntimer - 1 >= 10) state.turntimer -= time;
       state.grazeTimer = 10;
       // `with (obj_battlecontroller) grazenoise = 1;` — a FLAG, not a play.
       // The controller's Step turns it into ONE `snd_graze` and clears it, so

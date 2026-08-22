@@ -48,6 +48,13 @@ export const soul = {
     e.remove_slow_z_buffer = 40;
   },
 
+  /** The inv decrement — see the note at the step's commit point. Unclamped
+   *  in the original: it goes negative and stays there between hits. Do not
+   *  "fix" this to a floor of zero. */
+  motion(e, state) {
+    state.invTimer -= 1;
+  },
+
   step(e, state) {
     const input = state.input;
 
@@ -212,9 +219,27 @@ export const soul = {
     // ---- view boundary clamp ----------------------------------------------
     // __view_get(e__VW.XView, 0) / YView. The view is 640x480; the soul is
     // clamped to a 640x320 region measured from the view origin.
+    //
+    // A FRESH SHAKE'S FIRST OFFSET IS PEEKED. obj_shake's first view-set
+    // happens in its own Step, and in the game the heart steps after it —
+    // so on a shake's birth frame the heart's clamps already ride the
+    // offset. The sim's heart steps before the (spawn-ordered) shake, so a
+    // shake that has not yet run (active === 0) contributes its incoming
+    // +shakex/+shakey here. Inert inside a box turn (the walls bind first);
+    // the receipt is the ROAR's edge-pinned soul, verify21j f11756: floor
+    // at 464 (view.y + 4) on the frame the shake was born the previous
+    // collision phase.
+    let shx = 0;
+    let shy = 0;
+    for (const sh of state.entities) {
+      if (sh.alive && sh.type.name === 'obj_shake' && sh.active === 0) {
+        shx = sh.shakex;
+        shy = sh.shakey;
+      }
+    }
 
-    if (e.x + px >= state.view.x + 640 - SPRITE_WIDTH) {
-      px = state.view.x + 640 - SPRITE_WIDTH - e.x;
+    if (e.x + px >= state.view.x + shx + 640 - SPRITE_WIDTH) {
+      px = state.view.x + shx + 640 - SPRITE_WIDTH - e.x;
     }
     if (e.x + px <= 0) {
       px = -e.x;
@@ -222,17 +247,23 @@ export const soul = {
     if (e.y + py <= 0) {
       py = -e.y;
     }
-    if (e.y + py >= state.view.y + 320 - SPRITE_HEIGHT + e.boundaryup) {
-      py = state.view.y + 320 - SPRITE_HEIGHT - e.y + e.boundaryup;
+    if (e.y + py >= state.view.y + shy + 320 - SPRITE_HEIGHT + e.boundaryup) {
+      py = state.view.y + shy + 320 - SPRITE_HEIGHT - e.y + e.boundaryup;
     }
 
     // Single commit point, after every resolution pass.
     e.x += px;
     e.y += py;
 
-    // global.inv -= 1. Unclamped in the original — it goes negative and stays
-    // there between hits. Do not "fix" this to a floor of zero.
-    state.invTimer -= 1;
+    // `global.inv -= 1` lives in the MOTION slot below, not here: the
+    // runner steps newest-first, so the heart's decrement lands AFTER every
+    // attack object's step — a step-phase hit (the splitslash's playerstrike
+    // payoff at f1094, the tunnel sword's swept-probe damage at f1322) sets
+    // invc*30 and the SAME frame's decrement takes one off before anything
+    // else reads it, while collision-phase hits trace the full value. The
+    // sim's soul steps early (oldest-first), so the decrement moves to the
+    // motion phase — after all steps, before collisions — which reproduces
+    // both orderings without per-attack constants.
 
     state.heartx = e.x + 2 - state.view.x;
     state.hearty = e.y + 2 - state.view.y;
