@@ -94,7 +94,7 @@ ready:
 
 Different contract from the knight: eram-sim does not navigate to its own
 page — selecting DEVICE_MANTLE transitions **inside the television on
-DEVICE_ROOM**, same browser page, no iframe. The sim is built for it:
+DEVICE_MENU**, same browser page, no iframe. The sim is built for it:
 `runBoard(canvas, level, opts)` takes any canvas and a `base` path, every
 fetch is base-relative, audio is injectable (`opts.audio`), and
 `opts.onComplete` hands control back. At merge time:

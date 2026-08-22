@@ -39,7 +39,7 @@ script, commit here.
 
 - `DEVICE_KNIGHT/` — knight-sim's `web/ sim/ render/ input/ assets/`
 - `DEVICE_MANTLE/` — eram-sim's `sim/ assets/` ONLY (no page of its own:
-  DEVICE_ROOM's television mounts it in-page via `mountEram`, see
+  DEVICE_MENU's television mounts it in-page via `mountEram`, see
   INTEGRATION.md § 2a-2)
 
 ## How production actually deploys

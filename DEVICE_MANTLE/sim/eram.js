@@ -1,7 +1,7 @@
 // THE EMBED SURFACE — the one function a host page calls to run the whole
 // sword route on its own canvas.
 //
-// This is the contract DEVICE_ROOM will use (thedevice's INTEGRATION.md
+// This is the contract DEVICE_MENU will use (thedevice's INTEGRATION.md
 // § Connect eram-sim): the host hands over a canvas and a base path,
 // everything the sim fetches is relative to that base, audio can be
 // injected or created here, and the campaign chains all seven levels

@@ -10,7 +10,7 @@ ledger of every borrowed line and the rule against adding more.
 
 **The chain:** `/` is Chapter 5's weird-route television running its own
 `shd_crt2` shader, asking for the cartridge and taking your two settings →
-`/DEVICE_ROOM/`, Chapter 3's `room_board_sword_intro`, where Kris plugs the
+`/DEVICE_MENU/`, Chapter 3's `room_board_sword_intro`, where Kris plugs the
 controller in → the board comes up **in the screen** → choosing a device
 plays `obj_tvturnoff_manager` backwards and drops you into it.
 

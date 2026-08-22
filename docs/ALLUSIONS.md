@@ -203,9 +203,9 @@ Not included, and honestly labelled: the board's sword, its enemies, the
 rank tally and the surrounding game-show set. The room, its walls, its
 sprites and the way it moves are the whole of what this is.
 
-## DEVICE_ROOM — the room the game is played in
+## DEVICE_MENU — the room the game is played in
 
-`/DEVICE_ROOM/` is `room_board_sword_intro`: the television, the console on
+`/DEVICE_MENU/` is `room_board_sword_intro`: the television, the console on
 the floor, and Kris with a controller in his hands. In Chapter 3 the board
 game is what is ON that screen; here what boots is this website.
 

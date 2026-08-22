@@ -79,7 +79,7 @@
   <p>The requested device does not exist on this server.</p>
   <noscript>
     <p style="margin-top:14px">Without JavaScript the sequence cannot speak, but the rooms are still here:
-    <a href="../DEVICE_ROOM/">DEVICE_ROOM</a> ·
+    <a href="../DEVICE_MENU/">DEVICE_MENU</a> ·
     <a href="../DEVICE_KNIGHT/">DEVICE_KNIGHT</a> ·
     <a href="../DEVICE_INDEX/">DEVICE_INDEX</a> ·
     <a href="../DEVICE_CONTACT/">DEVICE_CONTACT</a></p>
@@ -102,7 +102,7 @@ import { runIntro } from '../shared/gm-intro.js';
    THE FRONT DOOR IS A SEQUENCE, AND IT LEADS SOMEWHERE.
 
    The interrogation asks its three questions and then hands over to
-   DEVICE_ROOM — the room with the television in it. The site itself lives
+   DEVICE_MENU — the room with the television in it. The site itself lives
    in that television: you plug the controller in and it boots. So this
    page no longer holds a menu; it holds the thing that comes before one.
    ===================================================================== */
@@ -130,7 +130,7 @@ window.addEventListener('resize', fitIntro);
 
 /** Everything here ends the same way: in the room. */
 function toRoom(){
-  location.href = '../DEVICE_ROOM/';
+  location.href = '../DEVICE_MENU/';
 }
 
 async function runInterrogation(){

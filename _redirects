@@ -1,0 +1,5 @@
+# The room page was renamed DEVICE_ROOM -> DEVICE_MENU (the boot scroller
+# always said "BOOTING DEVICE_MENU"; now the destination matches). Anything
+# already linked or bookmarked at the old path still lands.
+/DEVICE_ROOM/* /DEVICE_MENU/:splat 301
+/DEVICE_ROOM /DEVICE_MENU/ 301
