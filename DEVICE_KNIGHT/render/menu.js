@@ -475,6 +475,42 @@ export function drawMenu(ctx, state, sprites) {
     drawBattleMsg(ctx, state, font);
   }
 
+  // ...AND WHENEVER THE MENU IS SHUT. The line above only fires in the
+  // button-row branch, so the flavour line was drawn ONLY while the menu was
+  // open — and the messages that matter most are set after it closes.
+  //
+  // `obj_writer` is an INSTANCE in the game. It draws itself for as long as it
+  // lives and does not care what the menu is doing, which is the whole reason
+  // the knight's ACT gate is `actcon == 1 && !instance_exists(obj_writer)`:
+  // the writer outlives the command phase by design.
+  //
+  // In this sim the director does not even reach the ACT writer until the menu
+  // has closed (`if (state.menu.open) return;`), so an ACT's text was
+  // published to state.battlemsg at exactly the moment the only thing drawing
+  // it stopped being called. Selecting HoldBreath queued the right three lines
+  // and typed them out with nothing on screen — reported as the correct text
+  // not appearing.
+  //
+  // ...AND ONLY WHILE ITS WRITER IS ALIVE. `state.battlemsg` is a STRING that
+  // persists — `global.battlemsg[0]` does too — but in the game the text on
+  // screen belongs to an `obj_writer` INSTANCE, and it disappears when that
+  // instance is destroyed. Drawing the string for as long as it is set put the
+  // dead message under the attack bar: the two share the band (the bar's rows
+  // are 365/403/441, the message's lines 376/404/432) and they OVERLAPPED.
+  //
+  // They never coexist in the game, and the knight's own gate is why:
+  //
+  //     if (actcon == 1 && !instance_exists(obj_writer)) scr_nextact();
+  //
+  // scr_nextact reaches scr_attackphase, which is what creates the bar — so
+  // the bar cannot exist until the writer is gone. `state.pendingAct` IS that
+  // writer here; the director nulls it on the confirm that would destroy the
+  // instance, and refuses to build a bar while it lives.
+  //
+  // Not while a submenu is up either: the item and spell lists occupy the same
+  // band, which is why the branch above is the narrow one.
+  if (!menu.open && state.pendingAct) drawBattleMsg(ctx, state, font);
+
   ctx.restore();
 }
 
