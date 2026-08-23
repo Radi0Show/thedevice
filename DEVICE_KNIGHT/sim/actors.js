@@ -61,6 +61,63 @@ export const knightActor = {
    * the generator deletes itself at `turntimer < 20`.
    */
   endStep(e, state) {
+    // THE BOB IS SET IN THE DRAW, WHICH RUNS AFTER EVERY STEP.
+    //
+    //     if (state == 0 || state == 3) { image_index = 0;
+    //                                     y = ystart + (cos(siner2 / 8) * 8); }
+    //
+    // Computing it in the knight's own step read the entity list too early:
+    // on the frame obj_knight_swordtunnelanim destroys itself, the anim's Step
+    // has not run yet when the knight's has, so the knight still saw it alive,
+    // took the `exit` path and left `y` FROZEN for one frame. The game's Draw
+    // runs after all Steps, sees the anim gone, and recomputes — a 15.6 pixel
+    // difference on the single frame the tunnel ends, five times a fight.
+    //
+    // endStep is the phase that matches: everything else has moved. The gates
+    // are the Draw's own, in its order — invisible instances have no Draw at
+    // all, con 2 exits above this, and the sword-tunnel anim exits above it
+    // too.
+    {
+      const kb = state.knight;
+      // `if (chargeupcon == 2) { chargeuptimer++; ...draw...; if
+      // (chargeuptimer == 10) { chargeupcon = 3; image_alpha = 0; } exit; }`
+      //
+      // In endStep because it is Draw logic and the Draw runs after every
+      // Step: obj_knight_roaring2's Create sets con 2 during the controller's
+      // step, and a tick in the knight's own step happens before that, so the
+      // burn-out ran one frame behind for its whole ten-frame life.
+      if (kb && kb.chargeupcon === 2) {
+        kb.chargeuptimer = (kb.chargeuptimer ?? 0) + 1;
+        if (kb.chargeuptimer === 10) {
+          kb.chargeupcon = 3;
+          e.image_alpha = 0;
+          e.fog = false;
+        }
+        return;
+      }
+      // `if (!i_ex(obj_knight_roaring2)) siner2++;` — the FIRST line of the
+      // Draw, so it runs above both exits (the sword tunnel and the charge-up
+      // still tick it) but not at all while he is invisible.
+      //
+      // It lives in endStep with the y below it because the increment must
+      // come AFTER every Step: obj_knight_rotating_slash's Step pins
+      // `obj_knight_enemy.siner2 = 0` on every one of its frames, and the
+      // Draw then ticks it to 1. Incremented during the knight's own step it
+      // raced that pin and the bob kept swinging where the game holds it.
+      if (e.visible !== false
+        && !state.entities.some((x) => x.alive && x.type.name === 'obj_knight_roaring2')) {
+        e.siner2 += 1;
+      }
+      const drawRuns = kb
+        && e.visible !== false
+        && kb.chargeupcon !== 2
+        && !state.entities.some(
+          (x) => x.alive && x.type.name === 'obj_knight_swordtunnelanim',
+        );
+      if (drawRuns && (kb.animState === 0 || kb.animState === 3)) {
+        e.y = e.ystart + Math.cos(e.siner2 / 8) * 8;
+      }
+    }
     if (state.currentAc !== 0) return;
     if (!state.soul || !state.soul.alive) return;
     if (state.soul.x > state.view.x + 165) state.soul.x = state.view.x + 165;
@@ -73,7 +130,13 @@ export const knightActor = {
     e.image_yscale = 2;
     e.image_alpha = 1;
     e.depth = 88;
-    e.siner2 = 0;
+    // ONE, NOT ZERO. The Knight's Draw has already run once — and so has its
+    // `siner2++` — before the first frame this trace covers, so a counter
+    // started at 0 puts the whole bob one frame behind the game's for the
+    // rest of the fight. Measured off the draw log: with 0 the sim's y at
+    // frame N is exactly the game's at N-1, all fight; with 1 they agree to
+    // float noise.
+    e.siner2 = 1;
     e.aetimer = 0;
     e.ystart = KNIGHT.ystart;
     e.isActor = true;
@@ -89,7 +152,147 @@ export const knightActor = {
     // phase-4 finale holds him still while his own attack draws him. Running
     // the counter through it left him bobbing under a knight that is supposed
     // to be locked in place.
-    if (!roaring) e.siner2 += 1;
+    // ...AND ONLY WHILE THE DRAW EVENT RUNS. `siner2++` is the first line of
+    // obj_knight_enemy's Draw, ABOVE both `exit`s — so it keeps ticking during
+    // the sword tunnel and the charge-up — but an INVISIBLE instance has no
+    // Draw event at all, and the Stars cone hides him for ~250 frames a turn,
+    // six times.
+    //
+    // Ungated, the bob ran on through every Stars turn and came back out of
+    // phase: the draw log measured the Knight's y as much as 15.9 PIXELS from
+    // where the game puts it. That is not a rounding difference, it is him
+    // sitting visibly wrong on screen, and no traced column could see it —
+    // the knight's y is not among the 176.
+
+
+    // THE SELECTION FLASH, and it is REAL game behaviour -- the note that
+    // used to sit in the renderer calling it "a deliberate addition, nothing
+    // in the dump ever sets becomeflash" was a bad negative grep, the fourth
+    // in this project. obj_battlecontroller's Draw, inside the enemy-select
+    // block (bmenuno 1/3/11/12/13), does:
+    //
+    //     with (global.monsterinstance[global.bmenucoord[bmenuno][charturn]])
+    //     {
+    //         if (flash == 0) fsiner = 0;
+    //         flash = 1;
+    //         becomeflash = 1;
+    //     }
+    //
+    // and every enemy's own Draw counts `fsiner += 1` each frame and, while
+    // flashing, draws ITSELF at
+    //
+    //     (-cos(fsiner / 5) * 0.4) + 0.6
+    //
+    // so the highlight is the enemy PULSING IN OPACITY between 0.2 and 1.0
+    // over ~31 frames -- not a halo, not a tint. `fsiner` is zeroed on the
+    // 0 -> 1 edge only, so the pulse always starts near transparent and
+    // rises, and re-entering the menu restarts it from the same phase.
+    //
+    // THE KNIGHT REALLY DOES FLASH -- this is not a deviation, and calling it
+    // one was a THIRD bad negative grep on the same behaviour. His own Draw
+    // contains no flash code, which is what two greps of that file reported;
+    // the call is three levels down, in a shared helper:
+    //
+    //     knight Draw -> scr_enemy_drawidle_generic(1/6) -> draw_monster_body_part:
+    //
+    //         draw_sprite_ext(spr, idx, x, y, xs, ys, ang, blend, image_alpha);
+    //         if (flash == 1)
+    //             draw_sprite_ext_flash(spr, idx, x, y, xs, ys, ang, blend,
+    //                                   (-cos(fsiner / 5) * 0.4) + 0.6);
+    //
+    // and draw_sprite_ext_flash is `d3d_set_fog(true, arg7, 0, 1)` around the
+    // same draw -- so the overlay is fogged to IMAGE_BLEND, which is white for
+    // the Knight. CLAUDE.md's rule that a negative grep only counts over the
+    // WHOLE dump applies to helper indirection too, not just to filenames.
+    //
+    // TWO CONSEQUENCES, both of which the old model got wrong: `fsiner`
+    // advances inside scr_enemy_drawidle_generic, which is gated on
+    // `state == 0` -- so it counts while IDLE, not while flashing -- and the
+    // flash draw lives on that same idle path, so a Knight who is mid-HURT
+    // shows no highlight at all.
+    //
+    // These live on `state.knight`, NOT on the entity, because that is where
+    // the Knight's other Draw-state variables are (whiteflash, hurttimer,
+    // stronghurtanim) and it is what the renderer reads. The entity and
+    // state.knight are two different objects here; writing to the wrong one
+    // is silent, which is exactly what verify-selectflash caught.
+    if (k) {
+      // `becomeflash` IS A ONE-FRAME LATCH, and dropping it cost 88 frames of
+      // highlight. The two halves live in different objects and run in this
+      // order:
+      //
+      //     obj_battlecontroller Draw:  flash = 1; becomeflash = 1;
+      //     obj_knight_enemy Draw tail: if (becomeflash == 0) flash = 0;
+      //                                 becomeflash = 0;
+      //
+      // The Knight DRAWS the flash and only afterwards clears it, so on the
+      // frame you leave the enemy row the controller stops renewing the latch
+      // but `flash` is still 1 when the sprite goes down — the highlight
+      // outlives the menu state by exactly one frame. Modelled instantaneously
+      // it died a frame early EVERY time, which the replay token exposes as a
+      // 3-on/1-off pattern against the sim's 2-on/2-off: the recorded inputs
+      // step in and out of the row repeatedly, so the missing frame recurs
+      // three times per turn, all fight.
+      //
+      // The clear runs FIRST here, against LAST frame's latch, because that is
+      // where it sits relative to the controller in the real frame order.
+      // WHETHER THE DRAW EVENT RUNS AT ALL, which gates everything below.
+      // `siner`, `fsiner` and the becomeflash tail all live INSIDE
+      // obj_knight_enemy's Draw, so none of them tick on a frame the event
+      // never reaches: an invisible instance (the Stars cone hides him), the
+      // sword-tunnel anim's `exit`, or the charge-up's con-2 `exit`, which
+      // returns before scr_enemy_drawidle_generic. con 3 does NOT exit, so the
+      // roar still ticks them — which is why the oracle's index keeps climbing
+      // through it.
+      //
+      // Ticking regardless is what made `siner` drift: the draw calls all
+      // matched while the index they carried wandered by hundreds.
+      const drawRuns = e.visible !== false
+        && k.chargeupcon !== 2
+        && !state.entities.some(
+          (x) => x.alive && x.type.name === 'obj_knight_swordtunnelanim',
+        );
+      if (drawRuns) {
+        if (!k.becomeflash) k.flash = 0;
+        k.becomeflash = 0;
+      }
+      // THREE MENU STATES, not two. There are TWO flash sites in
+      // obj_battlecontroller's Draw and only the first is the enemy row:
+      //
+      //   * the enemy-select block (bmenuno 1/3/11/12/13) flashes
+      //     `monsterinstance[bmenucoord[bmenuno][charturn]]` — the FIGHT row
+      //     and ACT's enemy picker;
+      //   * the ACT OPTION GRID (bmenuno 9) flashes
+      //     `monsterinstance[bmenucoord[11][charturn]]` — index 11 HARDCODED,
+      //     i.e. whichever enemy the ACT picker landed on. So the highlight
+      //     carries through from choosing the target to choosing the act.
+      //
+      // Missing the second left two frames per ACT unflashed, which the draw
+      // log showed as a 5-frame burst in the game against the sim's 3.
+      const selecting = !!(state.menu?.open
+        && (state.menu.submenu === 'enemy'
+          || state.menu.submenu === 'actpick'
+          || state.menu.submenu === 'actgrid'));
+      if (selecting) {
+        if (!k.flash) k.fsiner = 0;
+        k.flash = 1;
+        k.becomeflash = 1;
+      }
+      // `fsiner += 1` is the first line of scr_enemy_drawidle_generic's
+      // `state == 0` branch, so it runs while IDLE whether or not anything is
+      // flashing. It matters only while flashing, and the controller zeroes it
+      // on entry, so the visible pulse is the same either way -- but a Knight
+      // knocked into state 3 mid-menu stops advancing it, and that is the
+      // behaviour worth being right about.
+      if (drawRuns && k.animState === 0) {
+        k.fsiner = (k.fsiner ?? 0) + 1;
+        // `siner += arg0` on the same line of scr_enemy_drawidle_generic, with
+        // arg0 = 1/6 from the Knight's call. spr_roaringknight_idle has ONE
+        // frame so it changes nothing on screen, but it is the image_index
+        // every one of his draws passes and the draw log compares it.
+        k.siner = (k.siner ?? 0) + (1 / 6);
+      }
+    }
 
     // `if (i_ex(obj_knight_swordtunnelanim)) exit;` — during Sword Tunnel a
     // separate object performs the whole animation, and this Draw stops dead:
@@ -108,17 +311,50 @@ export const knightActor = {
     // `blockanim` swaps the idle for `spr_roaringknight_block_ol` for 15
     // frames instead. It only fires while `damagereduction < 0.1`, so in this
     // fight that is the 0.04 opening and nothing else.
-    // The Draw applies `x + shakex` at every draw site rather than moving the
-    // instance. Nothing in this renderer reads a `shakex` field, so it goes
-    // onto the position — the visible result is identical and it needs no new
-    // plumbing through the generic blit.
+    // THE SHAKE IS NOT ON THE INSTANCE. `obj_knight_enemy.x` never includes
+    // it: the Draw adds `x + shakex` at the sites that shake (the hurt strobe
+    // and the whiteflash copy) and draw_monster_body_part uses plain `x`.
+    //
+    // This used to fold shakex into the position, on the reasoning that
+    // nothing read a shakex field so the visible result was identical. That
+    // stopped being true when render/knightdraw.js started adding shakex at
+    // the strobe sites the way the Draw does — the strobe then got it TWICE —
+    // and it was never quite right anyway: anything reading the knight's x
+    // (attacks spawn at it, the Stars cone lerps to it) saw a shaken value the
+    // game never exposes.
     //
     // `+ hurtspriteoffx / + hurtspriteoffy` are in every one of those draw
     // sites too and are NOT translated, deliberately: `scr_enemy_object_init`
     // sets both to 0 and a whole-dump grep finds no other assignment. They are
     // write-only, the same family as `linex` and `splitbox`. Adding fields
     // that are provably always zero would only invite someone to "fix" them.
-    e.x = KNIGHT.x + (k?.shakex ?? 0);
+    e.x = KNIGHT.x;
+
+    // THE FAILED PACIFY'S COLOUR FLASH — obj_pacifyspell's `fail` path.
+    // con 6 walks image_blend toward c_blue at 0.12 a frame for 8 frames,
+    // then con 8 walks it back to c_white at 0.16 for 8 more, then con 9
+    // sets white and the object destroys. `merge_color` is a per-channel
+    // lerp, and GameMaker packs colours BGR — c_blue is 0xFF0000 in that
+    // order, not 0x0000FF.
+    if (state.pacifyFail) {
+      const pf = state.pacifyFail;
+      const merge = (a, b, amt) => {
+        const ch = (v, n) => (v >> n) & 255;
+        const mix = (n) => Math.round(ch(a, n) + (ch(b, n) - ch(a, n)) * amt) & 255;
+        return mix(0) | (mix(8) << 8) | (mix(16) << 16);
+      };
+      const C_BLUE = 16711680;
+      const C_WHITE = 16777215;
+      if (pf.con === 6) {
+        e.image_blend = merge(e.image_blend ?? C_WHITE, C_BLUE, 0.12);
+        pf.alarm -= 1;
+        if (pf.alarm <= 0) { pf.con = 8; pf.alarm = 8; }
+      } else if (pf.con === 8) {
+        e.image_blend = merge(e.image_blend ?? C_WHITE, C_WHITE, 0.16);
+        pf.alarm -= 1;
+        if (pf.alarm <= 0) { e.image_blend = C_WHITE; state.pacifyFail = null; }
+      }
+    }
     // THE ENDING STROBES SLOWER. The normal strong-hurt alternates on %2;
     // the win's block reads `(hurttimer % 3) == 0` for the idle frame — two
     // ball frames for every idle one, so he reads as losing the shape rather
@@ -145,16 +381,19 @@ export const knightActor = {
     // the "appears, then appears again" report. `fog` is the GPU replace, not
     // a multiply tint (see render/draw/gm.js).
     if (k?.chargeupcon === 2) {
-      k.chargeuptimer = (k.chargeuptimer ?? 0) + 1;
+      // The `chargeuptimer++` moved to endStep — see there. It is Draw logic,
+      // and running it here ticked it before obj_knight_roaring2's Create had
+      // set con 2, so the ten-frame burn-out ran a full step behind: the sim
+      // opened at alpha 1.0 where the game opens at 0.9 and never showed the
+      // final 0.0 frame at all.
       e.sprite_index = 'spr_roaringknight_idle';
       e.image_index = 0;
       e.fog = true;
       e.image_alpha = (10 - k.chargeuptimer) / 10;
-      if (k.chargeuptimer >= 10) {
-        k.chargeupcon = 3;
-        e.image_alpha = 0;
-        e.fog = false;
-      }
+      // `if (chargeuptimer == 10)`, and it is checked AFTER the draw — so the
+      // alpha-0 frame at 10 is drawn before con flips. `>=` only differed
+      // while the timer arrived already past 10, which is exactly the bug
+      // above; it is written as the game writes it now that it cannot.
       return;
     }
     e.fog = false;

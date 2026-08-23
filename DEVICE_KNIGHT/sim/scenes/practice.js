@@ -812,12 +812,28 @@ const director = {
         if (textSoundChar(dlg.text, w.pos - 1)) cue(state, 'snd_txtsus', 1, 1);
         if (w.pos > visible) w.halted = true;
       }
+      // PUBLISH THE CRAWL. render/dialogue.js reveals the balloon's text with
+      // `revealed(formatted, dlg.timer)`, and NOTHING was ever writing
+      // dlg.timer — it is set to 0 when a line is queued and never moved. So
+      // `revealed(text, 0)` returned no characters and every balloon in the
+      // fight drew as an EMPTY WHITE BUBBLE: the box, the tail and the voice
+      // blips all correct, not one letter of Susie's dialogue on screen.
+      //
+      // A dead write and a dead read facing each other — the same shape as
+      // `state.pinnedShuffle` and obj_heroparent's shake request, and again
+      // invisible to the suites, because the typing state the sim actually
+      // keeps (the writer's `pos`) was right the whole time.
+      //
+      // `pos` is 1-based and starts at 2 with one character showing, so the
+      // revealed count is `pos - 1`.
+      dlg.timer = Math.max(0, w.pos - 1);
       // button2 — the skip. Whole line at once, never a faster crawl:
       // `pos = string_length(mystring) + 1`, and the draw's own scan of the
       // now-complete text is what sets halt.
       if (b2 && !w.halted) {
         w.pos = visible + 3;
         w.halted = true;
+        dlg.timer = Math.max(0, w.pos - 1);
       }
       // button1 on a halted writer destroys it; the knight's step sees the
       // death next frame. The FINAL balloon short-circuits: `talked` is
@@ -1013,6 +1029,25 @@ const director = {
     if (e.bar && (state.knight?.endCutscene ?? 0) > 0) {
       // The ending froze it — keep it visible at its last value and step
       // nothing. See the freeze note at the end-cutscene trigger above.
+      //
+      // ...UNTIL THE TEARDOWN DESTROYS IT. The endcon-2 block runs
+      // `with (obj_attackpress) instance_destroy();`, so the bar is frozen
+      // only for the first 46 frames of the ending and then GONE. The freeze
+      // used to run to the end of the recording because the recording ENDED
+      // at the ending's first frame -- there was no data past it, so "frozen
+      // forever" and "frozen then destroyed" looked identical. The extended
+      // recording separates them: oracle_end.csv has ap 1 through f12051 and
+      // 0 from f12052, and the main trace's `bar` column goes to '-' on that
+      // same frame.
+      //
+      // stepEndCutscene nulls state.fightBar at the teardown too, but this
+      // branch republished it from e.bar a few lines later and put it back --
+      // the null had to happen where the bar actually lives.
+      if ((state.knight?.endcon ?? 0) >= 2) {
+        e.bar = null;
+        state.fightBar = null;
+        return;
+      }
       state.fightBar = e.bar;
       return;
     }
