@@ -445,20 +445,65 @@ export async function createRenderer(canvas) {
       // reimplementation and could have been perfect while the screen was
       // wrong — the exact failure mode the log exists to remove. One list,
       // one consumer for pixels, one for the CSV.
-      for (const d of knightDrawCalls(state, e)) {
+      const calls = knightDrawCalls(state, e);
+      // AN EMPTY LIST MUST MEAN "DELIBERATELY INVISIBLE", NOT "FELL THROUGH".
+      //
+      // This handler used to end in `return false`, which let the generic
+      // entity blit draw the Knight whatever state he was in. Now it owns the
+      // drawing outright, so a state knightDrawCalls has no branch for
+      // produces NO draw at all and he simply disappears — with no error, no
+      // failing suite, and the fight apparently dead behind him.
+      //
+      // The Draw really does have exits, and they are enumerated here: an
+      // invisible instance (the Stars cone), the sword-tunnel anim's `exit`,
+      // and the charge-up's con-2 `exit` (con 3 draws at alpha 0 instead).
+      // If none of those is true and the list is still empty, that is a GAP
+      // in the translation, not the game hiding him — fall back to the blit
+      // that used to be here rather than showing the player an empty arena.
+      if (!calls.length) {
+        const hidden = e.visible === false
+          || (k?.chargeupcon ?? 0) >= 2
+          || state.entities.some(
+            (x) => x.alive && x.type?.name === 'obj_knight_swordtunnelanim',
+          );
+        if (!hidden) return false;
+      }
+      for (const d of calls) {
         const entry = sprites.get(d.sprite);
         if (!entry || !entry.frames.length) continue;
         const idx = Math.abs(Math.floor(d.index)) % entry.frames.length;
         // `d3d_set_fog(true, colour, 0, 1)` renders the sprite as a solid
         // silhouette in that colour. GameMaker packs colours BGR.
         const img = d.fog >= 0
-          ? fogged(entry.frames[idx], [d.fog & 255, (d.fog >> 8) & 255, (d.fog >> 16) & 255])
+          ? fogged(entry.frames[idx], rgbOf(d.fog))
           : entry.frames[idx];
-        blit(img, entry.meta.ox, entry.meta.oy, d.x, d.y, d.xs, d.ys, d.ang, d.alpha, d.blend);
+        // `blend` TRAVELS AS A GAMEMAKER INTEGER because that is what the draw
+        // log compares against the oracle — but blit() hands it to tinted(),
+        // which REQUIRES an [r, g, b] array and throws a TypeError on anything
+        // else, deliberately and loudly.
+        //
+        // That threw on the FIRST knight draw of every run: the Knight's
+        // image_blend is normally unset, so the old code passed undefined and
+        // blit skipped the tint entirely, while these records default it to
+        // c_white. The throw killed the requestAnimationFrame loop, which is
+        // why the screen FROZE at the end of the intro with no Knight and no
+        // fight — nothing else in the app was broken, the loop had simply
+        // stopped being called.
+        //
+        // c_white is a no-op multiply, so it passes null and skips the work.
+        blit(img, entry.meta.ox, entry.meta.oy, d.x, d.y, d.xs, d.ys, d.ang, d.alpha,
+          d.blend === C_WHITE_GM ? null : rgbOf(d.blend));
       }
       return true;
     },
   };
+
+  /** GameMaker's c_white. A multiply by it changes nothing, so it means "no tint". */
+  const C_WHITE_GM = 16777215;
+  /** GameMaker packs colours BGR, so red is the LOW byte. */
+  function rgbOf(c) {
+    return [c & 255, (c >> 8) & 255, (c >> 16) & 255];
+  }
 
   /** Frame-seeded random for the charge trails (the 30Hz Draw-random rule). */
   function frandCanvas(frame, salt) {
