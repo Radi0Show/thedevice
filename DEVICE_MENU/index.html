@@ -66,6 +66,65 @@
   }
   #eyes span{ display:inline-block; width:7px; height:11px; background:#ff9bd5; }
   #eyes span + span{ margin-left:12px; background:#ffff00; }
+
+  /* THE TOUCH OVERLAY — the knight's control language (translucent
+     circles, a gradient cross), gated to coarse pointers. It is not
+     always-on chrome: it wakes when a thumb touches the screen and fades
+     back out after a few idle seconds, so the room stays the picture. */
+  #touch { display: none; }
+  @media (pointer: coarse) {
+    #touch {
+      display: block;
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+    }
+    #touch.awake { opacity: 1; }
+  }
+  #touch .pad, #touch .btn {
+    position: absolute;
+    pointer-events: auto;
+    touch-action: none;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    background: rgba(255, 255, 255, 0.06);
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #dpad {
+    left: max(18px, env(safe-area-inset-left));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    width: 148px;
+    height: 148px;
+  }
+  #dpad::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(rgba(255,255,255,0.14), rgba(255,255,255,0.14)) 50% 0 / 34% 100% no-repeat,
+      linear-gradient(rgba(255,255,255,0.14), rgba(255,255,255,0.14)) 0 50% / 100% 34% no-repeat;
+    border-radius: inherit;
+  }
+  #touch .btn {
+    width: 64px;
+    height: 64px;
+    color: rgba(255, 255, 255, 0.55);
+    font: bold 20px/60px ui-monospace, Menlo, monospace;
+    text-align: center;
+  }
+  #touch .btn.down { background: rgba(255, 255, 255, 0.22); }
+  #btnZ {
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 74px);
+  }
+  #btnX {
+    right: calc(max(20px, env(safe-area-inset-right)) + 74px);
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
 </style>
 </head>
 <body>
@@ -80,13 +139,20 @@
 <div id="eyes"><span></span><span></span></div>
 
 <div id="flash"></div>
+
+<div id="touch">
+  <div id="dpad" class="pad"></div>
+  <div id="btnZ" class="btn">Z</div>
+  <div id="btnX" class="btn">X</div>
+</div>
+
 <div id="failed">
   <p>* THE ROOM DID NOT LOAD.</p>
   <a href="../">&larr; THE DEVICE</a>
 </div>
 
 <script type="module">
-  import { runRoom } from '../shared/room.js?v=snd1';
+  import { runRoom } from '../shared/room.js?v=snd2';
   import { loadPrefs, savePrefs } from '../shared/device.js';
 
   const canvas = document.getElementById('room');
@@ -154,5 +220,74 @@
     }, 20000);
   }
 </script>
+
+<script type="module">
+  // THE THUMB SPEAKS KEYBOARD. The room's input is its keydown handler, so
+  // the overlay dispatches real KeyboardEvents — the room cannot tell a
+  // thumb from an arrow key, and the board menu's up/down/Z work unchanged
+  // once the television has the keys. Per-pointer bookkeeping so one thumb
+  // can hold the pad while the other taps Z.
+  const touchRoot = document.getElementById('touch');
+  const coarse = matchMedia('(pointer: coarse)').matches;
+  if (coarse) {
+    const kd = (key) => window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+    const ku = (key) => window.dispatchEvent(new KeyboardEvent('keyup', { key }));
+
+    // wake on any touch, sleep after idle
+    let sleepT = 0;
+    const wake = () => {
+      touchRoot.classList.add('awake');
+      clearTimeout(sleepT);
+      sleepT = setTimeout(() => touchRoot.classList.remove('awake'), 3200);
+    };
+    window.addEventListener('pointerdown', wake);
+    window.addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') wake(); });
+
+    // the pad: direction from the touch point's angle off centre, with a
+    // small dead zone; a moving thumb re-aims without lifting
+    const pad = document.getElementById('dpad');
+    let padDir = null;
+    const DIRS = { r: 'ArrowRight', l: 'ArrowLeft', u: 'ArrowUp', d: 'ArrowDown' };
+    const aim = (e) => {
+      const r = pad.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      if (Math.hypot(dx, dy) < r.width * 0.12) return padDir; // dead zone
+      return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u');
+    };
+    const setDir = (dir) => {
+      if (dir === padDir) return;
+      if (padDir) ku(DIRS[padDir]);
+      padDir = dir;
+      if (padDir) kd(DIRS[padDir]);
+    };
+    pad.addEventListener('pointerdown', (e) => {
+      pad.setPointerCapture(e.pointerId);
+      setDir(aim(e));
+      e.preventDefault();
+    });
+    pad.addEventListener('pointermove', (e) => {
+      if (pad.hasPointerCapture(e.pointerId)) setDir(aim(e));
+    });
+    const drop = (e) => { if (pad.hasPointerCapture?.(e.pointerId)) setDir(null); };
+    pad.addEventListener('pointerup', drop);
+    pad.addEventListener('pointercancel', drop);
+
+    // the buttons: press and release map to the key's down and up
+    for (const [id, key] of [['btnZ', 'z'], ['btnX', 'x']]) {
+      const el = document.getElementById(id);
+      el.addEventListener('pointerdown', (e) => {
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('down');
+        kd(key);
+        e.preventDefault();
+      });
+      const up = () => { el.classList.remove('down'); ku(key); };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+    }
+  }
+</script>
 </body>
+
 </html>

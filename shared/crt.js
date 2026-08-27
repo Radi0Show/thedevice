@@ -205,13 +205,21 @@ export async function runCrt(canvas, opts = {}) {
   }
 
   /* ---------------- input ---------------- */
+  const confirmScroll = () => {
+    if (!scrollDone) { scrollDone = true; opts.onConfirm?.(); }
+  };
+  const onPointer = () => { if (scroll) confirmScroll(); };
+  window.addEventListener('pointerdown', onPointer);
+
   const onKey = (e) => {
     if (scroll) {
-      // the scroller has one input: get on with it
+      // the scroller has two inputs, and they are the same input: get on
+      // with it (Z/Enter, or a tap anywhere — the phone's whole screen is
+      // the button)
       const sk = e.key.toLowerCase();
       if (sk === 'z' || sk === 'enter') {
         e.preventDefault();
-        if (!scrollDone) { scrollDone = true; opts.onConfirm?.(); }
+        confirmScroll();
       }
       return;
     }
@@ -246,7 +254,7 @@ export async function runCrt(canvas, opts = {}) {
     get row() { return row; },
     get time() { return state.time; },
     questions,
-    stop() { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); },
+    stop() { cancelAnimationFrame(raf); window.removeEventListener('keydown', onKey); window.removeEventListener('pointerdown', onPointer); },
   };
   return window.__crt;
 }

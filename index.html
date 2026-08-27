@@ -96,7 +96,7 @@
 </div>
 
 <script type="module">
-  import { runCrt } from './shared/crt.js?v=boot3';
+  import { runCrt } from './shared/crt.js?v=boot4';
   import { loadPrefs, savePrefs, applyPrefs } from './shared/device.js';
 
   const canvas = document.getElementById('crt');
@@ -173,6 +173,10 @@
     if (k === 'x') { e.preventDefault(); go(); return; }
     if (!setOn && (k === 'z' || k === 'enter')) { e.preventDefault(); bringTheSetOn(); }
   });
+  // A TAP IS Z. On a phone there is no Z to press: touching the 404 brings
+  // the set on, and the scroller's own pointer listener (crt.js) takes the
+  // next tap into the room. The same tap is the audio gesture.
+  window.addEventListener('pointerdown', () => { if (!setOn) bringTheSetOn(); });
 </script>
 </body>
 </html>
