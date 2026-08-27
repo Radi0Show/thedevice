@@ -177,6 +177,32 @@
     font-size: 15px;
     line-height: 40px;
   }
+
+  /* SIDEWAYS — ported from knight-sim web/index.html (f30d0f4), minus its
+     #credit rule (the hub page has no credit element). THE TOUCH CSS HERE
+     MUST TRACK UPSTREAM's web/index.html: the vendor script never copies
+     that file, so every touch-layout change upstream needs mirroring — this
+     block lagging a vendor is exactly how landscape shipped missing once. */
+  @media (pointer: coarse) and (orientation: landscape) {
+    #dpad {
+      left: max(12px, env(safe-area-inset-left));
+      bottom: auto;
+      top: 55%;
+      transform: translateY(-50%);
+    }
+    #btnZ {
+      right: max(16px, env(safe-area-inset-right));
+      bottom: auto;
+      top: calc(55% - 58px);
+      transform: translateY(-50%);
+    }
+    #btnX {
+      right: calc(max(16px, env(safe-area-inset-right)) + 40px);
+      bottom: auto;
+      top: calc(55% + 30px);
+      transform: translateY(-50%);
+    }
+  }
 </style>
 </head>
 <body>
