@@ -125,6 +125,30 @@
     right: calc(max(20px, env(safe-area-inset-right)) + 74px);
     bottom: max(18px, env(safe-area-inset-bottom));
   }
+
+  /* SIDEWAYS — the knight's landscape geometry, mirrored: the pad keeps
+     its size but centres on the left edge (that is where a thumb sits in
+     a landscape grip), and Z/X flank the right edge's centre. */
+  @media (pointer: coarse) and (orientation: landscape) {
+    #dpad {
+      left: max(12px, env(safe-area-inset-left));
+      bottom: auto;
+      top: 55%;
+      transform: translateY(-50%);
+    }
+    #btnZ {
+      right: max(16px, env(safe-area-inset-right));
+      bottom: auto;
+      top: calc(55% - 58px);
+      transform: translateY(-50%);
+    }
+    #btnX {
+      right: calc(max(16px, env(safe-area-inset-right)) + 40px);
+      bottom: auto;
+      top: calc(55% + 30px);
+      transform: translateY(-50%);
+    }
+  }
 </style>
 </head>
 <body>
@@ -152,7 +176,7 @@
 </div>
 
 <script type="module">
-  import { runRoom } from '../shared/room.js?v=snd2';
+  import { runRoom } from '../shared/room.js?v=snd3';
   import { loadPrefs, savePrefs } from '../shared/device.js';
 
   const canvas = document.getElementById('room');
