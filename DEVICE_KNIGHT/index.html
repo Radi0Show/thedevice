@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>DEVICE_KNIGHT</title>
 <meta name="description" content="A frame-accurate browser recreation of the Roaring Knight fight from DELTARUNE Chapter 3. Free, non-commercial, keyboard-first.">
 <meta property="og:type" content="website">
@@ -21,6 +21,16 @@
      no longer has to impersonate web/index.html's URL position. Paths in
      this page are plain document-relative. -->
 
+<!-- PWA install (mirrored from upstream f28...: the manifest and icons are
+     vendored under web/, and the manifest's relative start_url/scope keep
+     the installed app inside web/'s standalone page). The tab keeps the
+     site's own SOUL favicon; the home-screen icon is the game's. -->
+<link rel="manifest" href="web/manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BlackKnife">
+<link rel="apple-touch-icon" href="web/icon-180.png">
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <style>
   /* The letterbox, verbatim from the sim's own web/index.html: the game is
@@ -136,6 +146,11 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.25);
     background: rgba(255, 255, 255, 0.06);
+    /* a held X was long-press-selecting its own label; the tap-highlight
+       flash goes for the same reason (upstream's phone-reported fix) */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
   }
   #dpad {
     left: max(18px, env(safe-area-inset-left));
