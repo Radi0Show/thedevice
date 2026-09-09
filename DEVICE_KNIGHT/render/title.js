@@ -25,7 +25,21 @@ function centred(ctx, font, text, y, color, scale = 1) {
   drawText(ctx, font, text, (W - w) / 2, y, { color: rgb(color), xscale: scale, yscale: scale });
 }
 
-export function drawTitle(ctx, title, sprites, attacks) {
+
+
+function centredSegments(ctx, font, segs, y, scale = 1) {
+  let total = 0;
+  for (const seg of segs) total += textWidth(font, seg[0]) * scale;
+  let x = (W - total) / 2;
+  for (const [text, color] of segs) {
+    drawText(ctx, font, text, x, y, { color: rgb(color), xscale: scale, yscale: scale });
+    x += textWidth(font, text) * scale;
+  }
+}
+
+
+
+export function drawTitle(ctx, title, sprites, attacks, opts = {}) {
   const font = loadFont();
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -45,7 +59,8 @@ export function drawTitle(ctx, title, sprites, attacks) {
     return;
   }
 
-  centred(ctx, font, 'BLACK KNIFE SIMULATOR', 60, c_white, 1.6);
+
+  centredSegments(ctx, font, opts.title ?? [['BLACK KNIFE SIMULATOR', c_white]], 60, 1.6);
 
   const heart = sprites.get('spr_heart');
   const picked = attacks[title.attackIndex];
@@ -128,13 +143,6 @@ export function drawTitle(ctx, title, sprites, attacks) {
   }
 
 
-  centred(ctx, font, title.pickingAttack
-    ? 'Z  choose      X  back'
-    : 'arrows / WASD  move      Z  choose', 440, DIM, 0.75);
-
-
-  centred(ctx, font, 'R  restart      ESC / START  exit      touch: hold R  exit',
-    462, DIM, 0.6);
 
 
   drawText(ctx, font, `v${VERSION}`, 8, 462, {

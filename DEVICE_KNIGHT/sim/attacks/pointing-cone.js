@@ -37,7 +37,7 @@ function gtMaxX(gt) {
 export const pointingCone = {
   name: 'obj_knight_pointing_cone',
 
-  stepOrder: -1,
+  stepOrder: -2,
 
   create(e, state) {
 

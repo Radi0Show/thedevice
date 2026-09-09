@@ -82,7 +82,8 @@ export function gmlRandom(r, x) {
 }
 
 export function gmlRandomRange(r, lo, hi) {
-  return lo + (gmlU32(r) / 4294967296) * (hi - lo);
+  const f = gmlU32(r) / 4294967296;
+  return Math.min(lo, hi) + f * Math.abs(hi - lo);
 }
 
 export function gmlIrandom(r, n) {

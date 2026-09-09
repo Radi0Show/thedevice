@@ -1,23 +1,18 @@
 
 
-
 import { cue } from './audio.js';
 import { grazeFactors } from './equipment.js';
 import { gearOf } from './damage.js';
 
 export const MAX_TENSION = 250;
 
-
 export function scrTensionheal(state, amount) {
   state.tension = Math.min(state.tension + amount, MAX_TENSION);
 }
 
-
 export function tensionPercent(state) {
   return Math.floor((state.tension / MAX_TENSION) * 100);
 }
-
-
 
 export function stepGraze(state, grazes, only = null) {
   if (!state.soul) return;
@@ -30,17 +25,39 @@ export function stepGraze(state, grazes, only = null) {
 
   state.grazeSize = grazeSize;
 
-  for (const e of state.entities) {
+  const replaying = state.grazeReplay
+    && (state.grazeReplayLast == null || state.frame <= state.grazeReplayLast);
+
+  let pass = state.entities;
+  if (replaying) {
+    const ordered = state.grazeReplay.get(state.frame) ?? [];
+    const rank = new Map();
+    const claimed = new Set();
+    ordered.forEach((r, idx) => {
+      for (const e of state.entities) {
+        if (claimed.has(e) || !e.alive || !e.isBullet || e.type.name === 'obj_heart') continue;
+        if (r.type !== (e.type.gmlName ?? e.type.name)) continue;
+        if (Math.abs(r.x - e.x) > 0.05 || Math.abs(r.y - e.y) > 0.05) continue;
+        rank.set(e, idx);
+        claimed.add(e);
+        break;
+      }
+    });
+    if (rank.size) {
+      pass = [...state.entities].sort((a, b) => (rank.has(a) ? rank.get(a) : Infinity)
+        - (rank.has(b) ? rank.get(b) : Infinity));
+    }
+  }
+  for (const e of pass) {
     if (!e.alive || !e.isBullet || e.type.name === 'obj_heart') continue;
     if (only && !only(e)) continue;
 
     const active = e.active === 1 || e.active === true;
 
-
     let paired;
     let rowInv = null;
     let rowActive = null;
-    if (state.grazeReplay) {
+    if (replaying) {
       const rows = state.grazeReplay.get(state.frame);
 
       const match = rows?.find((r) => !r.used && r.type === (e.type.gmlName ?? e.type.name)
@@ -61,19 +78,16 @@ export function stepGraze(state, grazes, only = null) {
       continue;
     }
 
-
     if (typeof process !== 'undefined' && process.env?.KNIGHT_GRAZE_DEBUG) {
       console.error(`[graze] f=${state.frame} ${e.type.name} grazed=${e.grazed}`
         + ` (${e.x}, ${e.y}) a=${e.image_angle} box=(${cx}, ${cy}) inv=${state.invTimer}`);
     }
-
 
     const gateActive = rowActive !== null ? rowActive === 1 : active;
 
     if (!gateActive && e.type.name !== 'obj_sword_tunnel_sword') continue;
 
     if ((rowInv ?? state.invTimer) >= 0) continue;
-
 
     const gf = grazeFactors(gearOf(state));
     const tp = (e.grazepoints ?? 0) * gf.tp;
@@ -93,7 +107,6 @@ export function stepGraze(state, grazes, only = null) {
       grazeNoise = true;
     }
   }
-
 
   if (grazeNoise) cue(state, 'snd_graze');
 

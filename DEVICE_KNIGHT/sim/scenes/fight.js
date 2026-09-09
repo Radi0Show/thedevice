@@ -284,9 +284,6 @@ export function launchAttack(state, entry) {
         dc.side = gmlChoose(state.gmlRng, [-1, 1]);
       }
 
-      if (ac === 1 && state.gmlRng) {
-        for (let pad = 0; pad < 2; pad++) gmlRandom(state.gmlRng, 1);
-      }
       return dc;
     }
 

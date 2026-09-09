@@ -1,6 +1,5 @@
 
 
-
 import { runPhase, runAlarms, reap } from './entity.js';
 import { traceRow } from './trace.js';
 import { spriteMaskHit, SPRITE_MASKS, masksOverlap, GRAZE_MASK, grazeMaskAt } from './masks.js';
@@ -15,11 +14,7 @@ export { traceHeader, traceRow, real, int } from './trace.js';
 export { createRng, rngNext, rngRandom, rngIrandom, rngRange, rngChoose, rngSnapshot, rngRestore } from './rng.js';
 export { FPS, MS_PER_FRAME, drain } from './clock.js';
 
-
-
 export const PHASES = ['animation', 'beginStep', 'alarm', 'step', 'motion', 'collision', 'endStep'];
-
-
 
 function runMotion(state) {
   state.eventPhase = 'motion';
@@ -27,9 +22,7 @@ function runMotion(state) {
   for (const e of state.entities) {
     if (!e.alive) continue;
 
-
     if (e.type.motion) e.type.motion(e, state);
-
 
     if (e.componentMotion) {
       if (!e.hspeed && !e.vspeed) continue;
@@ -58,7 +51,6 @@ function runMotion(state) {
     if (!e.speed && !e.gravity) continue;
     state.counters.motionSteps += 1;
 
-
     const SNAP_EPS = 1e-12;
     const PI32 = Math.fround(Math.PI);
     const r = Math.fround(Math.fround(Math.fround(e.direction) * PI32) / 180);
@@ -80,18 +72,16 @@ function runMotion(state) {
       hs = Math.fround(hs + Math.fround(Math.fround(e.gravity) * Math.fround(gc)));
       vs = Math.fround(vs + Math.fround(Math.fround(e.gravity) * -Math.fround(gsn)));
       e.speed = Math.sqrt(hs * hs + vs * vs);
-      let dir = (Math.atan2(-vs, hs) * 180) / Math.PI;
+
+      let dir = (Math.fround(Math.atan2(-vs, hs)) * 180) / Math.PI;
       if (dir < 0) dir += 360;
       e.direction = dir;
     }
-
 
     e.x = e.x + hs;
     e.y = e.y + vs;
   }
 }
-
-
 
 function grazes(e, gx, gy, sizeFactor = 1) {
   const mask = e.mask ?? SPRITE_MASKS[e.sprite_index] ?? null;
@@ -108,9 +98,7 @@ function runCollisions(state) {
   const heart = state.soul;
   if (!heart || !heart.alive) return;
 
-
   if (!state.grazePrev) state.grazePrev = { x: heart.x + 10, y: heart.y + 10 };
-
 
   const bornNow = (b) => b.bornFrame === state.frame;
   stepGraze(state, grazes, (b) => !bornNow(b));
@@ -159,12 +147,9 @@ function runCollisions(state) {
 
 }
 
-
-
 function runAnimation(state) {
   for (const e of state.entities) {
     if (!e.alive || !e.image_speed) continue;
-
 
     const n = state.spriteFrames?.[e.sprite_index] ?? 0;
 
@@ -178,8 +163,6 @@ function runAnimation(state) {
   }
 }
 
-
-
 export function stepFrame(state, input) {
 
   state.prevInput = state.input;
@@ -187,13 +170,11 @@ export function stepFrame(state, input) {
 
   state.invAtFrameStart = state.invTimer;
 
-
   for (const e of state.entities) {
     if (!e.alive) continue;
     e.xprevious = e.x;
     e.yprevious = e.y;
   }
-
 
   state.roaringActive = state.entities.some(
     (e) => e.alive && e.type.name === 'obj_knight_roaring2',
@@ -212,7 +193,6 @@ export function stepFrame(state, input) {
   runPhase(state, 'endStep');
 
   runPhase(state, 'draw');
-
 
   stepDmgNumbers(state, state.rng ? () => rngNext(state.rng) : undefined);
 
@@ -236,16 +216,13 @@ export function stepFrame(state, input) {
     if (state.heartBurst.burst > 10) state.heartBurst = null;
   }
 
-
   if (state.soul && state.soul.alive) {
     state.grazePrev = { x: state.soul.x + 10, y: state.soul.y + 10 };
   } else {
     state.grazePrev = null;
   }
 
-
   reap(state);
-
 
   if (state.keepAlive) {
     state.partyHp = freshParty();
@@ -259,7 +236,6 @@ export function stepFrame(state, input) {
 
   return state;
 }
-
 
 export function runFrames(state, frames, inputAt) {
   for (let i = 0; i < frames; i++) {

@@ -1,10 +1,8 @@
 
 
-
-
 const BASE = new URL('../assets/audio/', import.meta.url).href;
 
-export function createAudio() {
+export function createAudio({ overrides } = {}) {
 
   const buffers = new Map();
 
@@ -13,7 +11,6 @@ export function createAudio() {
   let enabled = true;
 
   let available = null;
-
 
   let ctx = null;
   function audioCtx() {
@@ -24,14 +21,16 @@ export function createAudio() {
     return ctx;
   }
 
+  const streams = new Set();
 
   const resume = () => {
     const c = audioCtx();
     if (c && c.state === 'suspended') c.resume().catch(() => {});
+
+    for (const el of streams) if (el.paused) el.play().catch(() => {});
   };
   window.addEventListener('keydown', resume, { passive: true });
   window.addEventListener('pointerdown', resume, { passive: true });
-
 
   fetch(`${BASE}index.json`)
     .then((r) => (r.ok ? r.json() : null))
@@ -44,13 +43,13 @@ export function createAudio() {
       } else {
         available = new Map();
       }
+
+      if (overrides) for (const [k, v] of Object.entries(overrides)) available.set(k, v);
       preloadAll();
     })
     .catch(() => {
       available = new Map();
     });
-
-
 
   function preloadAll() {
     if (!available) return;
@@ -72,8 +71,9 @@ export function createAudio() {
     const c = audioCtx();
     if (!c) return null;
 
-
-    const p = fetch(`${BASE}${available.get(name)}`)
+    const file = available.get(name);
+    const url = /^(?:[a-z]+:)?\/\//i.test(file) || file.startsWith('/') ? file : `${BASE}${file}`;
+    const p = fetch(url)
       .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error('404'))))
       .then((buf) => c.decodeAudioData(buf))
       .then((decoded) => {
@@ -90,7 +90,6 @@ export function createAudio() {
     pending.set(name, p);
     return null;
   }
-
 
   const loops = new Map();
 
@@ -116,12 +115,9 @@ export function createAudio() {
     loops.delete(name);
   }
 
-
   let musicVol = 1;
   let sfxVol = 1;
   const liveGains = new Set();
-
-
 
   const MASTER = 0.5;
 
@@ -137,7 +133,57 @@ export function createAudio() {
     }
   }
 
+  function fireStream(name, pitch, gain, loop) {
+    const c = audioCtx();
+    const file = available?.get(name);
+    if (!c || !file) return null;
+    const url = /^(?:[a-z]+:)?\/\//i.test(file) || file.startsWith('/') ? file : `${BASE}${file}`;
+    const el = new Audio();
+    el.src = url;
+    el.loop = !!loop;
+    el.preload = 'auto';
+    el.playbackRate = pitch ?? 1;
+
+    let node;
+    try {
+      node = c.createMediaElementSource(el);
+    } catch {
+      return null;
+    }
+
+    const g = c.createGain();
+    const entry = { g, base: gain ?? 1, loop: !!loop };
+    g.gain.value = levelFor(entry);
+    liveGains.add(entry);
+    node.connect(g).connect(c.destination);
+
+    streams.add(el);
+    el.play().catch(() => {   });
+
+    return {
+      playbackRate: {
+        get value() { return el.playbackRate; },
+        set value(v) { el.playbackRate = v; },
+      },
+      addEventListener: (...a) => el.addEventListener(...a),
+      stop() {
+        streams.delete(el);
+        liveGains.delete(entry);
+        try { el.pause(); } catch {   }
+
+        el.removeAttribute('src');
+        try { el.load(); } catch {   }
+        try { node.disconnect(); g.disconnect(); } catch {   }
+      },
+    };
+  }
+
   function fire(name, pitch, gain, loop) {
+
+    if (name.startsWith('mus_')) {
+      const streamed = fireStream(name, pitch, gain, loop);
+      if (streamed) return streamed;
+    }
     const buf = buffer(name);
     const c = audioCtx();
     if (!buf || !c) {
@@ -159,8 +205,6 @@ export function createAudio() {
     src.start();
     return src;
   }
-
-
 
   function play(cues) {
     if (!enabled || !cues.length) return;
@@ -196,7 +240,6 @@ export function createAudio() {
       fire(c.name, c.pitch, c.gain, false);
     }
   }
-
 
   function stopAll() {
     for (const name of [...loops.keys()]) stopLoop(name);

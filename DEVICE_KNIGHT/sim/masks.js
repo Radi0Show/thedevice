@@ -1,7 +1,5 @@
 
 
-
-
 import { MASK_DATA as raw } from './data/masks.js';
 
 function build(m) {
@@ -19,7 +17,6 @@ function build(m) {
 
 export const HEART_MASK = build(raw.heart);
 
-
 export const HEART_RECT = {
   name: 'dodgeheart_rect',
   w: 20,
@@ -31,16 +28,12 @@ export const HEART_RECT = {
   axisRect: true,
 };
 
-
 export const HEART_RECT_WALL = { ...HEART_RECT, name: 'dodgeheart_rect_wall', axisRect: 'always' };
-
 
 export const HEART_SMALL_MASK = build(raw.heartsmall);
 export const BATTLEBG_MASK = build(raw.battlebg);
 
-
 export const BATTLEBG_STRETCH_HITBOX_MASK = build(raw.battlebgStretchHitbox);
-
 
 export const BATTLEBG_FIGHT_MASK = (() => {
   const src = build(raw.battlebg);
@@ -63,9 +56,7 @@ export const FOUNTAIN_MASK = build(raw.fountain);
 export const TOOTH_MASK = build(raw.tooth);
 export const STAR_MASK = build(raw.star);
 
-
 export const STAR_FULL_MASK = build(raw.starfull);
-
 
 export const DIAMOND_MASK = build(raw.diamondbullet);
 export const PXWHITE2_MASK = build(raw.pxwhite2);
@@ -74,29 +65,20 @@ export const SWORDOL_MASK = build(raw.swordol);
 export const STARCHILD_TRAIL_MASK = build(raw.starchildtrail);
 export const QUICKSLASH_MARKER_MASK = build(raw.quickslashmarker);
 
-
 export const SMALLBULLET_MASK = build(raw.smallbullet);
-
 
 export const STREAMDIAMOND_MASK = build(raw.streamdiamond);
 
-
 export const WEIRDSHAPE_MASK = build(raw.weirdshape);
-
 
 export const DIAMONDFORM_MASK = build(raw.diamondform);
 
-
 export const SLASHTUNNEL_MASK = build(raw.slashtunnel);
-
 
 export const CRESCENT_MASK = build(raw.crescenthitbox);
 
-
-export const DIAMONDSWORD_MASK = build(raw.diamondsword);
-export const DIAMONDBULLET_M_MASK = build(raw.diamondbullet_m);
-
-
+export const DIAMONDSWORD_MASK = { ...build(raw.diamondsword), rotRect: true };
+export const DIAMONDBULLET_M_MASK = { ...build(raw.diamondbullet_m), rotRect: true };
 
 export const SPRITE_MASKS = {
   spr_pxwhite2: PXWHITE2_MASK,
@@ -120,8 +102,6 @@ export const SPRITE_MASKS = {
   spr_knight_diamondbullet_m: DIAMONDBULLET_M_MASK,
 };
 
-
-
 const probeCache = new Map();
 function probeMask(n) {
   let m = probeCache.get(n);
@@ -141,8 +121,6 @@ function probeMask(n) {
   return m;
 }
 
-
-
 function rint(x) {
   const f = Math.floor(x);
   const d = x - f;
@@ -150,8 +128,6 @@ function rint(x) {
   if (d > 0.5) return f + 1;
   return f % 2 === 0 ? f : f + 1;
 }
-
-
 
 export function collisionRectanglePrecise(x1, y1, x2, y2, e, mask) {
   if (!mask) return false;
@@ -216,8 +192,6 @@ export function scrPreciseHit(heart, e, mask, n = 3) {
   return collisionRectanglePrecise(hx - half, hy - half, hx + half, hy + half, e, mask);
 }
 
-
-
 export function enginePairHit(heart, e, mask) {
   if (!mask) return false;
 
@@ -226,7 +200,6 @@ export function enginePairHit(heart, e, mask) {
     mask, e.x, e.y, e.image_xscale ?? 1, e.image_yscale ?? 1, e.image_angle ?? 0,
   );
 }
-
 
 export function spriteMaskHit(e, heart) {
   const m = SPRITE_MASKS[e.sprite_index];
@@ -237,10 +210,6 @@ export function spriteMaskHit(e, heart) {
   );
 }
 
-
-
-
-
 function rintHalfEven(x) {
   const f = Math.floor(x);
   const d = x - f;
@@ -249,11 +218,40 @@ function rintHalfEven(x) {
   return f % 2 === 0 ? f : f + 1;
 }
 
+function maskHitsRotatedRect(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle) {
+  const rotated = ((bangle % 360) + 360) % 360 !== 0;
+  const px = rotated ? bx : Math.round(bx);
+  const py = rotated ? by : Math.round(by);
+  const [cos, sin] = collisionTrig(bangle);
+  const [bl, bt, br, bb] = maskB.bbox;
+  const [al, at, ar, ab] = maskA.bbox;
 
+  const lx0 = (bl - maskB.originX) * bsx;
+  const lx1 = (br + 1 - maskB.originX) * bsx;
+  const ly0 = (bt - maskB.originY) * bsy;
+  const ly1 = (bb + 1 - maskB.originY) * bsy;
+  const corner = (u, v) => ({ x: px + u * cos + v * sin, y: py - u * sin + v * cos });
+  const corners = [corner(lx0, ly0), corner(lx1, ly0), corner(lx1, ly1), corner(lx0, ly1)];
+
+  for (let j = at; j <= ab; j++) {
+    const row = maskA.px[j];
+    for (let i = al; i <= ar; i++) {
+      if (!row[i]) continue;
+      const cx = ax + i;
+      const cy = ay + j;
+      if (aabbHitsOBB(cx, cy, cx + 1, cy + 1, corners)) return true;
+    }
+  }
+  return false;
+}
 
 export function masksOverlap(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
 
   if (!bsx || !bsy) return false;
+
+  if (maskB.rotRect) {
+    return maskHitsRotatedRect(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle);
+  }
   if (maskA.axisRect) {
 
     const unrotated = ((bangle % 360) + 360) % 360 === 0;
@@ -264,8 +262,6 @@ export function masksOverlap(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   }
   return masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle);
 }
-
-
 
 function collisionTrig(bangle) {
   const a = ((bangle % 360) + 360) % 360;
@@ -307,19 +303,23 @@ function masksOverlapRectA(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0) {
       if (wy > maxy) maxy = wy;
     }
   }
-  const left = Math.max(Math.ceil(aLeft), rintHalfEven(bx + minx));
-  const right = Math.min(Math.floor(aRight), rintHalfEven(bx + maxx) - 1);
-  const top = Math.max(Math.ceil(aTop), rintHalfEven(by + miny));
-  const bottom = Math.min(Math.floor(aBottom), rintHalfEven(by + maxy) - 1);
-  if (left > right || top > bottom) return false;
 
-  for (let py = top; py <= bottom; py++) {
-    for (let px = left; px <= right; px++) {
-      const acx = Math.floor(px - (ax - aox));
-      if (acx < 0 || acx >= maskA.w) continue;
-      const acy = Math.floor(py - (ay - aoy));
-      if (acy < 0 || acy >= maskA.h) continue;
-      if (!maskA.px[acy][acx]) continue;
+  const left = rintHalfEven(bx + minx);
+  const right = rintHalfEven(bx + maxx) - 1;
+  const top = rintHalfEven(by + miny);
+  const bottom = rintHalfEven(by + maxy) - 1;
+  if (left > right || top > bottom) return false;
+  if (aRight < left || aLeft > right || aBottom < top || aTop > bottom) return false;
+
+  for (let cy = at; cy <= ab; cy++) {
+    const rowA = maskA.px[cy];
+    if (!rowA) continue;
+    const py = ay - aoy + cy;
+    if (py < top || py > bottom) continue;
+    for (let cx = al; cx <= ar; cx++) {
+      if (!rowA[cx]) continue;
+      const px = ax - aox + cx;
+      if (px < left || px > right) continue;
 
       const dx = px - bx;
       const dy = py - by;
@@ -345,9 +345,7 @@ function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   const [al, at, ar, ab] = maskA.bbox;
   const [bl, bt, br, bb] = maskB.bbox;
 
-
   const [cos, sin] = collisionTrig(bangle);
-
 
   const lx0 = (bl - maskB.originX) * bsx;
   const lx1 = (br + 1 - maskB.originX) * bsx;
@@ -371,7 +369,6 @@ function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   const right = Math.ceil(px + maxx) - 1;
   const top = Math.floor(py + miny);
   const bottom = Math.ceil(py + maxy) - 1;
-
 
   const aox = maskA.originX ?? 0;
   const aoy = maskA.originY ?? 0;
@@ -401,13 +398,7 @@ function masksOverlapPrecise(maskA, ax, ay, maskB, bx, by, bsx, bsy, bangle = 0)
   return false;
 }
 
-
-
-
-
-
 export const QUICKSLASH_SHAPE = { bbox: [2, 26, 241, 28], ox: 125, oy: 27, w: 250, h: 48 };
-
 
 export const QUICKSLASH_MASK = (() => {
   const [bx0, by0, bx1, by1] = QUICKSLASH_SHAPE.bbox;
@@ -432,7 +423,6 @@ export const QUICKSLASH_MASK = (() => {
 
 SPRITE_MASKS.spr_rk_quickslash = QUICKSLASH_MASK;
 
-
 function localBBox(meta, sx, sy) {
   const [bl, bt, br, bb] = meta.bbox;
   return {
@@ -443,7 +433,6 @@ function localBBox(meta, sx, sy) {
     y1: (bb + 1 - meta.oy) * sy,
   };
 }
-
 
 export function rotatedRectCorners(meta, x, y, sx, sy, angleDeg) {
   const r = (angleDeg * Math.PI) / 180;
@@ -460,7 +449,6 @@ export function rotatedRectCorners(meta, x, y, sx, sy, angleDeg) {
 
   return [pts[0], pts[1], pts[3], pts[2]];
 }
-
 
 function aabbHitsOBB(rx0, ry0, rx1, ry1, corners) {
   const axes = [
@@ -501,8 +489,6 @@ function aabbHitsOBB(rx0, ry0, rx1, ry1, corners) {
   return true;
 }
 
-
-
 export function scrPreciseHitRotatedRect(heart, e, meta, n = 3) {
   const half = n / 2;
   const hx = heart.x + 10;
@@ -517,8 +503,6 @@ export function scrPreciseHitRotatedRect(heart, e, meta, n = 3) {
   );
   return aabbHitsOBB(hx - half, hy - half, hx + half, hy + half, corners);
 }
-
-
 
 export function collisionLineRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
 
@@ -536,16 +520,12 @@ export function collisionLineRect(x1, y1, x2, y2, rx0, ry0, rx1, ry1) {
   return false;
 }
 
-
 export function heartBBox(heart) {
 
   const [l, t, r, b] = (heart.mask ?? HEART_MASK).bbox;
 
   return [heart.x + l, heart.y + t, heart.x + r, heart.y + b];
 }
-
-
-
 
 export const GRAZE_MASK = build({
   name: 'spr_grazemask',
@@ -558,8 +538,6 @@ export const GRAZE_MASK = build({
 })
 
 GRAZE_MASK.axisRect = 'always';
-
-
 
 const grazeScaled = new Map();
 export function grazeMaskAt(factor) {

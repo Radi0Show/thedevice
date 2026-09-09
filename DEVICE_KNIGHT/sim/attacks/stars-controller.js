@@ -3,7 +3,7 @@
 
 import { spawn } from '../entity.js';
 import { cue } from '../audio.js';
-import { scrMovetowards, scrEaseOut, lerp } from '../gml.js';
+import { lerp } from '../gml.js';
 import { gmlRandomRange, gmlChoose, gmlRandom } from '../rng.js';
 import { pointingStar } from './pointing-star.js';
 import { heartFollower } from './pointing-starchild.js';
@@ -11,7 +11,7 @@ import { heartFollower } from './pointing-starchild.js';
 export const starsController = {
   name: 'obj_dbulletcontroller',
 
-  stepOrder: -2,
+  stepOrder: -1,
 
   create(e, state) {
     e.btimer = 0;
@@ -55,11 +55,7 @@ export const starsController = {
       if (!cone) return;
 
 
-      let coneAngle = cone.angle;
-      if ((cone.angle ?? 0) < (cone.target_angle ?? 60) && (cone.con ?? 0) >= 2) {
-        const nextLerp = scrMovetowards(cone.angle_lerp ?? 0, 1, 0.025);
-        coneAngle = lerp(0, cone.target_angle ?? 60, scrEaseOut(nextLerp, 6));
-      }
+      const coneAngle = cone.angle;
 
 
       if ((e.difficulty ?? 0) === 2 && state.gmlRng) {
