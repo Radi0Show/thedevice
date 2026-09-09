@@ -22,9 +22,8 @@
     font-weight:bold; color:#fff; text-transform:uppercase;
     -webkit-font-smoothing:none; cursor:default;
   }
-  /* 640x480, scaled by a WHOLE number of device pixels — a fractional
-     factor gives some source columns n device pixels and their neighbours
-     n+1, which is exactly how a 16px sprite ends up lopsided. */
+
+
   #board {
     position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
     width:min(100vw, calc(100vh * 4 / 3));
@@ -74,9 +73,7 @@
   import { runBoard } from '../shared/board.js';
   const canvas = document.getElementById('board');
 
-  // Integer scaling, measured in DEVICE pixels — see the note in the style
-  // block. Below 1x there is no whole multiple to land on, so it falls back
-  // to filling rather than cropping the screen.
+
   function fit() {
     const dpr = window.devicePixelRatio || 1;
     const f = Math.min((innerWidth * dpr) / 640, (innerHeight * dpr) / 480);

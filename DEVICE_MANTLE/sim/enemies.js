@@ -1,75 +1,25 @@
-// THE BOARD'S ENEMIES — every kind the three sword levels place, at the
-// game's own cadence.
-//
-// One spawner object carries the whole roster: `obj_board_enemy_spawner`'s
-// user event 0 is a 21-branch dispatch on its own image_index, resolved
-// into the level data by tools/build-levels.py. The sword levels place
-// indices 0 (monster), 2 (yellow spear monster), 4 (flower), 6 (bluefish),
-// 10 (lizard) and 13 (bluebird).
-//
-// LIFETIME — this is the part that was wrong before and is now read from
-// obj_board_camera's Step directly: THE MOMENT A SHIFT BEGINS, EVERY ENEMY
-// AND PROJECTILE IS DESTROYED (`with (obj_board_enemy_parent)
-// instance_destroy()`, plus the long per-projectile list). At con 98 — the
-// frame the shift lands — every spawner still alive that stands inside the
-// PLAYER's bounds (128..480, 64..288) fires again. Enemies are strictly
-// per-screen; only a KILLED spawner stays gone (the death handler destroys
-// it with its enemy).
-//
-// CADENCE. Monster, bluefish and lizard run at HALF RATE: their Steps open
-//
-//     updatetimer++;
-//     if (updatetimer == 2) { updatetimer = 0; exit; }
-//
-// so they act on every other frame — and everything inside (delay, timers,
-// pixel-walks) counts acting frames, not real ones. The bluebird has the
-// same gate with inverted polarity. THE FLOWER HAS NO GATE and runs every
-// frame. Projectiles move only every third frame (their own
-// `updatetimer == 3` pattern) at spd 8 (pellet) / 20 (spear).
-//
-// WHO CAN HURT YOU is three separate rules, none of them "violence" alone:
-//   monster  — aggressive starts as obj_board_controller.violence, and the
-//              monster's own Step forces `aggressive = true` (and, in level
-//              1, active_hitbox = true, spd 3, image_speed 0.2) whenever
-//              swordlv > 1. Type-0 monsters NEVER show the angry sprite:
-//              the angry art is the spear telegraph (bulletimer >
-//              shoot_wait_time), and only type 1 increments bulletimer.
-//   flower   — level 1: armed only while swordlv > 1. Level 2: armed the
-//              moment Kris HAS the sword, and sword_immunity_lv drops to 0.
-//   bluefish — aggressive = violence at spawn (level 2: also once Kris has
-//              the sword). In level 1 nothing ever arms the pond fish: they
-//              dash, and the dash cannot hurt. That is the game's code.
-//   lizard   — aggressive = violence; `if (!aggressive) dontmove = true` —
-//              a docile lizard does not act at all.
-//   bluebird — aggressive = violence, never overridden: in level 1 it is a
-//              flying decoration you can (barely) kill.
-//
-// The contact hitbox is spr_hitbox_10px_center at per-kind scale, centred:
-// monster/lizard/bluebird 20x20, bluefish 10x10, flower 2.5x2.5 (the
-// flower's threat is its pellets, not its body).
-//
-// Constants cited inline; nothing tuned.
+
+
 
 export const CELL = 32;
-const AGGRO = 90;                 // distance_to_become_aggressive
-const DEAGGRO = AGGRO - 20;       // the chase re-check gives up at 70
-const SIZE = 32;                  // 16x16 art at scale 2
+const AGGRO = 90;
+const DEAGGRO = AGGRO - 20;
+const SIZE = 32;
 
-/** Enemy bounds from the tail of scr_board_enemy_hurt_state — applied on
- *  EVERY acting frame, and tighter than the player's own 128..480/64..288. */
+
+
 const BOUNDS = { x1: 160, x2: 448, y1: 96, y2: 256 };
 
-/** The player's bounds — the rect the spawn test uses. */
+
 export const SPAWN_BOUNDS = { x1: 128, x2: 480, y1: 64, y2: 288 };
 
-/** obj_board_enemy_contact_hitbox's Create. */
+
 export const CONTACT_DAMAGE = 2;
 
 const HITBOX = { monster: 20, lizard: 20, bluebird: 20, bluefish: 10, flower: 2.5,
   silentcat: 20, singingcat: 20, black_deer: 20, firebar: 0 };
 
-// hitdir/movedir compass, matching the game: 0=right,1=up,2=left,3=down for
-// enemy movedir; kris.facing is 0=down,1=right,2=up,3=left for knockback.
+
 const MOVE = [[1, 0], [0, -1], [-1, 0], [0, 1]];
 const FACE = [[0, 1], [1, 0], [0, -1], [-1, 0]];
 
@@ -83,27 +33,25 @@ export function createEnemies(level, opts = {}) {
   const onCandy = opts.onCandy ?? (() => {});
   const snd = opts.snd ?? (() => {});
   let violence = opts.violence ?? false;
-  // obj_board_controller.violence is LIVE state, not a spawn-time
-  // snapshot: level 2's manager flips it on once Kris has the sword, and
-  // every later per-screen spawn reads the new value.
+
   const violent = () => violence || (level.number === 2 && hasSword());
 
   const enemies = [];
   const projectiles = [];
-  const fx = [];                       // defeat splashes
+  const fx = [];
   const killedSpawners = new Set();
 
   const boxHits = (set, x, y, w = SIZE, h = SIZE) => set.some((s) =>
     x < s.x + s.w && x + w > s.x && y < s.y + s.h && y + h > s.y);
 
-  /** GameMaker's distance_to_object: gap between bounding boxes, 0 on overlap. */
+
   function bboxDist(e, kris) {
     const dx = Math.max(0, Math.max(e.x - (kris.x + SIZE), kris.x - (e.x + SIZE)));
     const dy = Math.max(0, Math.max(e.y - (kris.y + SIZE), kris.y - (e.y + SIZE)));
     return Math.hypot(dx, dy);
   }
 
-  /* ---------------- spawning ---------------- */
+
 
   function spawnVisible(spawners) {
     for (let i = 0; i < spawners.length; i++) {
@@ -111,7 +59,7 @@ export function createEnemies(level, opts = {}) {
       if (killedSpawners.has(i) || !sp.kind) continue;
       if (sp.x < SPAWN_BOUNDS.x1 || sp.x > SPAWN_BOUNDS.x2
         || sp.y < SPAWN_BOUNDS.y1 || sp.y > SPAWN_BOUNDS.y2) continue;
-      if (!(sp.kind in HITBOX)) continue;      // cats/deer never placed here
+      if (!(sp.kind in HITBOX)) continue;
       const e = {
         kind: sp.kind, variant: sp.variant ?? 0,
         spawnerIndex: i,
@@ -119,10 +67,10 @@ export function createEnemies(level, opts = {}) {
         hp: sp.hp ?? 1, maxhp: sp.hp ?? 1,
         immunity: sp.immunity ?? 1,
         blend: sp.blend ?? null,
-        silverfish: sp.silverfish ?? false,   // spawner 7: the armored fish
-        dontmove: sp.dontmove ?? false,       // spawner cc type 1: turret lizard
+        silverfish: sp.silverfish ?? false,
+        dontmove: sp.dontmove ?? false,
         damage: CONTACT_DAMAGE,
-        ut: 0,                     // updatetimer
+        ut: 0,
         state: 'move',
         movecon: 0, movetimer: 0, moveType: 0, movedir: Math.floor(rng() * 4),
         isMovingTimer: 0, path: null, pathI: 0,
@@ -134,14 +82,14 @@ export function createEnemies(level, opts = {}) {
         bulletimer: 0, bubbletimer: 0,
       };
       if (e.kind === 'monster') {
-        // monster Create: bulletimer = choose(0,-10,10); level-1 slowdown.
+
         e.bulletimer = [0, -10, 10][Math.floor(rng() * 3)];
         if (level.number === 1 && e.variant === 0) e.spd = swordlv() > 1 ? 3 : 2;
       }
       if (e.kind === 'flower') {
         e.bubbletimer = -10 + Math.floor(rng() * 21);
         e.imageSpeed = 0.05;
-        e.telegraph = 0;           // 0 idle, >0 telegraph frames left
+        e.telegraph = 0;
       }
       if (e.kind === 'bluefish') {
         e.dashcon = 0; e.dashtimer = 0; e.spd = 3;
@@ -150,39 +98,36 @@ export function createEnemies(level, opts = {}) {
         e.spd = sp.spd ?? 5;
         e.lastattack = 4; e.jumpedRecently = 0;
         e.bulletimer = [-30, -20, 10][Math.floor(rng() * 3)];
-        e.jump = null;             // {startx,starty,tx,ty,t} while airborne
+        e.jump = null;
       }
       if (e.kind === 'silentcat') {
-        // Dormant until both singing cats are dead (killedacatbefore == 2),
-        // then wakes one-by-one and HOMES with accelerating velocity.
+
         e.aggressive = false; e.activeHitbox = false;
         e.hspd = 0; e.vspd = 0; e.homing = 0; e.wake = false; e.waketimer = 0;
         e.xstart = e.x;
       }
       if (e.kind === 'singingcat') {
         e.spd = 2; e.noteDir = 0; e.bubbletimer = 0;
-        e.aggressive = true; e.activeHitbox = true;   // sings regardless
+        e.aggressive = true; e.activeHitbox = true;
       }
       if (e.kind === 'black_deer') {
-        e.spd = 1; e.activeHitbox = false;            // hp 999, harmless walker
+        e.spd = 1; e.activeHitbox = false;
       }
       if (e.kind === 'firebar') {
-        // obj_fire_bar_base: five flames at len 0/20/40/60/80 spinning at
-        // 12 deg per acting frame (its pieces rotate every 5th frame at
-        // place_speed 12 — the composite cadence is kept).
+
         e.place = 0; e.activeHitbox = false;
       }
       if (e.kind === 'bluebird') {
         e.movetimer = -1; e.movespd = 1; e.con = 0; e.yoffset = -10;
         e.destx = e.x; e.desty = e.y; e.startx = e.x; e.starty = e.y;
-        e.distance = 0; e.randprev = 0; e.ut = 1;   // inverted polarity
+        e.distance = 0; e.randprev = 0; e.ut = 1;
         e.imageSpeed = 0;
       }
       enemies.push(e);
     }
   }
 
-  /** The camera's shift-start cleanup: everything dies, spawners persist. */
+
   function clearScreen() {
     enemies.length = 0;
     projectiles.length = 0;
@@ -195,10 +140,8 @@ export function createEnemies(level, opts = {}) {
     for (const f of fx) { f.x += dx; f.y += dy; }
   }
 
-  /* ---------------- pathfinding (mp_grid_path stand-in) ----------------
-     A* over the same 32px cells, 4-directional, blocked where a Kris-solid
-     covers the cell. Labelled approximation: the route has the same shape
-     as mp_grid_path's, not necessarily the identical tie-break. */
+
+
   function cellBlocked(cx, cy) {
     const x = cx * CELL, y = cy * CELL;
     return boxHits(solids, x + 1, y + 1, CELL - 2, CELL - 2);
@@ -238,9 +181,9 @@ export function createEnemies(level, opts = {}) {
     return null;
   }
 
-  /* ---------------- shared: sword collision + hurt state ---------------- */
 
-  /** scr_board_enemy_sword_collision, called on the enemy's acting frame. */
+
+
   function swordCollide(e, kris) {
     const hb = kris.swordhitbox;
     if (!hb || !hb.box || e.hurttimer !== 0) return;
@@ -248,7 +191,7 @@ export function createEnemies(level, opts = {}) {
     if (!(b.x < e.x + SIZE && b.x + b.w > e.x && b.y < e.y + SIZE && b.y + b.h > e.y)) return;
     const lv = swordlv();
     if (lv < e.immunity || e.blend === 'gray') {
-      // The blade rings off: hurttimer only, no knockback, no damage.
+
       snd('snd_board_sword_metal');
       e.hitdir = -1;
       e.hurttimer = 10;
@@ -263,8 +206,8 @@ export function createEnemies(level, opts = {}) {
     if (e.hp !== 999) e.hp -= 1;
   }
 
-  /** scr_board_enemy_hurt_state, on the enemy's acting frame.
-      Returns true if the enemy died and was removed. */
+
+
   function hurtState(e, kris, idx) {
     if (e.hurttimer > 0) {
       e.hurttimer -= 1;
@@ -273,13 +216,12 @@ export function createEnemies(level, opts = {}) {
       if (e.hurttimer === 9 && e.hp <= 0) {
         fx.push({ x: e.x + 16, y: e.y + 16, t: 0, candy: rollCandy(kris) });
         snd('snd_board_kill');
-        onKill(e);                       // kris.xp += xp_given (1)
+        onKill(e);
         killedSpawners.add(e.spawnerIndex);
         enemies.splice(idx, 1);
         return true;
       }
-      // Knocked back up to 20px per acting frame while hurttimer > 6,
-      // one pixel at a time, stopping at the first wall.
+
       if (e.hurttimer > 6 && e.hitdir >= 0 && !(e.kind === 'lizard' && e.jump)) {
         const [kx, ky] = FACE[e.hitdir];
         for (let n = 0; n < 20; n++) {
@@ -288,13 +230,13 @@ export function createEnemies(level, opts = {}) {
         }
       }
     }
-    // The clamp runs every call, hurt or not.
+
     e.x = Math.min(BOUNDS.x2, Math.max(BOUNDS.x1, e.x));
     e.y = Math.min(BOUNDS.y2, Math.max(BOUNDS.y1, e.y));
     return false;
   }
 
-  /** The candy roll, verbatim from scr_board_enemy_hurt_state. */
+
   function rollCandy(kris) {
     let rate = 5;
     if (kris.myhealth < 8) rate += 20;
@@ -310,15 +252,13 @@ export function createEnemies(level, opts = {}) {
     return false;
   }
 
-  /* ---------------- the monster ---------------- */
+
 
   function stepMonster(e, kris, i) {
     e.ut += 1;
     if (e.ut === 2) { e.ut = 0; return false; }
 
-    // room_board_1_sword rederives all of this every frame — for EVERY
-    // monster, no variant gate (the game's room block has none; gating on
-    // variant 0 left the spear monsters without a hitbox post-sword).
+
     if (level.number === 1) {
       if (swordlv() > 1) { e.imageSpeed = 0.2; e.spd = 3; e.activeHitbox = true; }
       else { e.imageSpeed = 0.1; e.spd = 2; }
@@ -340,7 +280,7 @@ export function createEnemies(level, opts = {}) {
       if (e.movecon === 0) {
         if (kris.atdoorway || !chase) e.moveType = 0;
         if (e.moveType === 1) {
-          // mp_grid_path to Kris's cell (his y biased +18, per the source).
+
           const tx = Math.floor(kris.x / CELL), ty = Math.floor((kris.y + 18) / CELL);
           const fx0 = Math.floor((e.x + 16) / CELL), fy0 = Math.floor((e.y + 16) / CELL);
           const p = findPath(fx0, fy0, tx, ty);
@@ -349,7 +289,7 @@ export function createEnemies(level, opts = {}) {
         }
         if (e.moveType === 0) {
           e.movedir = Math.floor(rng() * 4);
-          // the repeat(4) blocked-direction rotation
+
           for (let r = 0; r < 4; r++) {
             if (e.movedir === 0 && boxHits(solids, e.x + 32, e.y)) e.movedir = 1;
             if (e.movedir === 1 && boxHits(solids, e.x, e.y - 32)) e.movedir = 2;
@@ -362,8 +302,7 @@ export function createEnemies(level, opts = {}) {
       if (e.movecon === 1) {
         e.movetimer += 1;
         if (e.moveType === 0 && !telegraphing) {
-          // The wander: spd 1px steps, bounce off walls and the enemy
-          // bounds, stop on the next cell boundary and re-check aggro.
+
           let stop = false;
           for (let n = 0; n < e.spd && !stop; n++) {
             const [mx, my] = MOVE[e.movedir];
@@ -380,8 +319,7 @@ export function createEnemies(level, opts = {}) {
             }
           }
         } else if (e.moveType === 1) {
-          // The chase: walk the path at spd, re-path on the spd-keyed
-          // timer, give up at DEAGGRO.
+
           e.isMovingTimer += 1;
           if (telegraphing || e.delay > 0) e.isMovingTimer -= 1;
           else if (e.path) {
@@ -410,13 +348,12 @@ export function createEnemies(level, opts = {}) {
     swordCollide(e, kris);
     if (hurtState(e, kris, i)) return true;
 
-    // The spear, type 1 only (obj_board_enemy_monster Step's bullet block).
+
     if (e.variant === 1 && e.movecon === 1 && e.hurttimer === 0 && kris.leftdoorway && chase) {
       e.bulletimer += 1;
       if (e.bulletimer >= 30) {
         e.bulletimer = [-20, -10, 0][Math.floor(rng() * 3)];
-        // The probe rectangles, in source order — the LAST that contains
-        // Kris wins: down, left, right, up.
+
         let dir = e.movedir;
         const k = kris;
         const inRect = (x1, y1, x2, y2) =>
@@ -443,10 +380,10 @@ export function createEnemies(level, opts = {}) {
     return false;
   }
 
-  /* ---------------- the flower (no updatetimer — full rate) ---------------- */
+
 
   function stepFlower(e, kris, i) {
-    // Arming, per room.
+
     if (level.number === 2) {
       e.immunity = 0;
       if (!e.activeHitbox && hasSword()) { e.activeHitbox = true; e.aggressive = true; }
@@ -462,7 +399,7 @@ export function createEnemies(level, opts = {}) {
 
     if (kris.leftdoorway && e.aggressive) {
       e.bubbletimer += 1;
-      if (e.bubbletimer === 16) e.telegraph = 14;             // telegraph art
+      if (e.bubbletimer === 16) e.telegraph = 14;
       if (e.telegraph > 0) e.telegraph -= 1;
       if (e.hurttimer === 0 && e.bubbletimer >= 30) {
         e.bubbletimer = [-30, -16, -60][Math.floor(rng() * 3)];
@@ -480,7 +417,7 @@ export function createEnemies(level, opts = {}) {
     return hurtState(e, kris, i);
   }
 
-  /* ---------------- the bluefish ---------------- */
+
 
   function stepBluefish(e, kris, i) {
     e.ut += 1;
@@ -495,7 +432,7 @@ export function createEnemies(level, opts = {}) {
     if (e.state === 'move' && e.hurttimer === 0) {
       if (e.movecon === 0) {
         if (e.dashcon === 1) {
-          // Recovery after a dash: ~15 acting frames.
+
           e.dashtimer += 1;
           if (e.dashtimer === 8) e.imageIndex = 0;
           if (e.dashtimer > 15) { e.dashcon = 0; e.dashtimer = 0; }
@@ -503,9 +440,7 @@ export function createEnemies(level, opts = {}) {
           if (e.moveType === 0) {
             e.spd = 3;
             let dashing = false;
-            // Row-aligned: needs aggressive. Column-aligned: needs
-            // swordlv > 1. The line test resolves to obj_nothing in the
-            // sword rooms — alignment alone is enough.
+
             if (myCellY === krisCellY && !kris.atdoorway && e.aggressive) {
               e.movedir = e.x < kris.x ? 0 : 2;
               dashing = true;
@@ -537,7 +472,7 @@ export function createEnemies(level, opts = {}) {
           if (boxHits(e.wallSet, e.x, e.y)
             || e.x < BOUNDS.x1 || e.x > BOUNDS.x2 || e.y < BOUNDS.y1 || e.y > BOUNDS.y2) {
             if (e.moveType === 1) {
-              // A dash ends on the wall: snap to the cell and recover.
+
               e.x -= mx; e.y -= my;
               e.x = Math.round(e.x / 32) * 32; e.y = Math.round(e.y / 32) * 32;
               e.movecon = 0; e.moveType = 0; e.dashcon = 1;
@@ -556,7 +491,7 @@ export function createEnemies(level, opts = {}) {
     return hurtState(e, kris, i);
   }
 
-  /* ---------------- the lizard ---------------- */
+
 
   function stepLizard(e, kris, i) {
     e.ut += 1;
@@ -585,8 +520,7 @@ export function createEnemies(level, opts = {}) {
           }
         }
         if (rand === 3) {
-          // The jump: pick a free cell in the 11x3 grid at (128,128), red
-          // reticle, arc over ~32 acting frames.
+
           const cells = [];
           for (let cx = 0; cx < 11; cx++) {
             for (let cy = 0; cy < 3; cy++) {
@@ -623,7 +557,7 @@ export function createEnemies(level, opts = {}) {
         }
       }
       if (e.movecon === 2 && e.hurttimer === 0) {
-        // The idle shuffle: face-flips for 15 acting frames.
+
         e.movetimer += 1;
         if (e.movetimer % 6 === 0) e.faceRight = rng() < 0.5;
         if (e.movetimer === 15) { e.movecon = 0; e.movetimer = 0; }
@@ -650,14 +584,12 @@ export function createEnemies(level, opts = {}) {
     swordCollide(e, kris);
     if (hurtState(e, kris, i)) return true;
 
-    // A hit knocks it out of whatever it was doing (except mid-jump).
+
     if (e.hurttimer > 0 && e.movecon !== 0 && e.movecon !== 3) {
       e.movetimer = 0; e.movecon = 0; e.jump = null;
     }
 
-    // The pellet: type 0, at rest, player on screen. A dontmove lizard
-    // still FIRES — the game's own gate is `bulletimer >= 28 && !dontmove
-    // || bulletimer >= 50 && dontmove` (a slower turret, not a statue).
+
     if (e.hurttimer === 0 && e.movecon !== 3 && e.variant === 0 && kris.leftdoorway) {
       e.bulletimer += 1;
       if (e.bulletimer >= (dontmove ? 50 : 28)) {
@@ -679,21 +611,21 @@ export function createEnemies(level, opts = {}) {
     return false;
   }
 
-  /* ---------------- the bluebird ---------------- */
+
 
   const BIRD_SPOTS = [[448, 256], [160, 256], [160, 96], [448, 96], [256, 160], [352, 192]];
 
   function stepBluebird(e, kris, i) {
     e.ut += 1;
     if (e.ut === 2) e.ut = 0;
-    else return false;                    // inverted: acts every 2nd frame
+    else return false;
 
-    // Only hittable near the ground (yoffset > -15).
+
     if (e.yoffset > -15) swordCollide(e, kris);
     if (hurtState(e, kris, i)) return true;
 
     if (e.movetimer < 0) {
-      // Grounded: crouch, hop, and pick the next spot at -1.
+
       const t = e.movetimer;
       if (t > -50 && t < -30) { e.imageIndex += (t + 30) / -20 * 0.2 + 0.2; e.yoffset = Math.round(((t + 30) / -20) * -24 / 2) * 2; }
       if (t >= -30 && t < -20) e.imageIndex = 1;
@@ -728,12 +660,12 @@ export function createEnemies(level, opts = {}) {
     return false;
   }
 
-  /* ---------------- the cats, the deer, the fire bar ---------------- */
 
-  let killedCats = 0;                    // obj_board_controller.killedacatbefore
+
+  let killedCats = 0;
 
   function stepSilentcat(e, kris, i) {
-    swordCollide(e, kris);               // only bites while aggressive in-game;
+    swordCollide(e, kris);
     if (hurtState(e, kris, i)) { killedCats += 0; return true; }
     e.ut += 1;
     if (e.ut === 2) e.ut = 0; else return false;
@@ -767,7 +699,7 @@ export function createEnemies(level, opts = {}) {
   function stepSingingcat(e, kris, i) {
     e.ut += 1;
     if (e.ut === 2) { e.ut = 0; return false; }
-    // wanders like a monster at spd 2
+
     if (e.hurttimer === 0) {
       if (e.movecon === 0) {
         e.movedir = Math.floor(rng() * 4);
@@ -797,12 +729,12 @@ export function createEnemies(level, opts = {}) {
     swordCollide(e, kris);
     const wasAlive = enemies.includes(e);
     if (hurtState(e, kris, i)) {
-      // killedacatbefore++, and the silent cats stir
+
       killedCats += 1;
       for (const o of enemies) if (o.kind === 'silentcat') { o.justgo = true; }
       return true;
     }
-    // the song: a rotating note every 5 acting frames
+
     e.bubbletimer += 1;
     if (e.bubbletimer >= 5 && kris.leftdoorway && e.hurttimer === 0) {
       e.bubbletimer = 0;
@@ -820,16 +752,15 @@ export function createEnemies(level, opts = {}) {
 
   function stepBlackDeer(e, kris, i) {
     if (e.playerControlled) {
-      // the host drives it; hazards still land (hp 1 hands control back)
+
       if (hurtState(e, kris, i)) return true;
       return false;
     }
     e.ut += 1;
     if (e.ut === 2) { e.ut = 0; return false; }
-    swordCollide(e, kris);               // hp 999: the blade only stuns it
+    swordCollide(e, kris);
     if (hurtState(e, kris, i)) return true;
-    // A slow wanderer (its full switch-pushing puzzle is not reproduced;
-    // labelled in the docs).
+
     if (e.movecon === 0) { e.movedir = Math.floor(rng() * 4); e.movecon = 1; e.movetimer = 0; }
     if (e.movecon === 1) {
       const [mx, my] = MOVE[e.movedir];
@@ -845,11 +776,11 @@ export function createEnemies(level, opts = {}) {
   }
 
   function stepFirebar(e) {
-    // pieces rotate every 5th frame at 12 degrees — composite: 2.4/frame
+
     e.place += 2.4;
   }
 
-  /* ---------------- projectiles ---------------- */
+
 
   function stepProjectiles() {
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -862,10 +793,10 @@ export function createEnemies(level, opts = {}) {
       }
       p.ut += 1;
       if (p.ut === 3) p.ut = 0;
-      else continue;                     // moves every third frame
+      else continue;
       p.px = p.x; p.py = p.y;
       if (p.kind === 'note') {
-        // the spiral: x = savex + lengthdir(len, place); len += len_speed
+
         const rad = p.angle * Math.PI / 180;
         p.x = p.savex + Math.cos(rad) * p.len;
         p.y = p.savey - Math.sin(rad) * p.len;
@@ -874,11 +805,11 @@ export function createEnemies(level, opts = {}) {
       }
       const rad = p.angle * Math.PI / 180;
       p.x += Math.cos(rad) * p.spd;
-      p.y -= Math.sin(rad) * p.spd;      // GM y is inverted in lengthdir
+      p.y -= Math.sin(rad) * p.spd;
     }
   }
 
-  /* ---------------- the public surface ---------------- */
+
 
   function step(kris) {
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -905,16 +836,14 @@ export function createEnemies(level, opts = {}) {
     }
   }
 
-  /** The hazard Kris is touching, if any: enemy contact boxes first, then
-   *  live projectiles. Returns {damage, px, py, projectile?} or null. */
-  // `hb` is Kris's HURTBOX (his lower-half mask, built by the board), not
-  // his full cell. Every hazard box is its sprite's bbox at xscale 2.
+
+
+
   function touching(hb) {
     const hbR = hb.x + (hb.w ?? SIZE), hbB = hb.y + (hb.h ?? SIZE);
     for (const e of enemies) {
       if (e.kind === 'firebar') {
-        // five flames at len 0..80, damage 1.
-        // spr_board_fire bbox [4,8,9,12] origin (7,7) x2 -> low-riding 12x10
+
         for (let n = 0; n < 5; n++) {
           const len = n * 20;
           const fx0 = e.x + Math.cos(e.place * Math.PI / 180) * len;
@@ -935,8 +864,7 @@ export function createEnemies(level, opts = {}) {
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
       if (!p.active) continue;
-      // spear [3,6,12,9] o(8,8) -> 20x8; note [10,10,12,12] o(12,12) at
-      // xscale 1 -> 3x3; smallbullet (pellets) [3,3,4,4] o(4,4) -> 4x4
+
       const [pw, ph] = p.kind === 'spear' ? [10, 4] : p.kind === 'note' ? [1.5, 1.5] : [2, 2];
       if (hb.x < p.x + pw && hbR > p.x - pw
         && hb.y < p.y + ph && hbB > p.y - ph) {
@@ -947,7 +875,7 @@ export function createEnemies(level, opts = {}) {
     return null;
   }
 
-  /** The post-hit stun: the game stuns the monster NEAREST Kris. */
+
   function stun(kris) {
     let best = null, bestd = Infinity;
     for (const e of enemies) {
@@ -963,17 +891,16 @@ export function createEnemies(level, opts = {}) {
     killedSpawners.clear();
   }
 
-  /* ---------------- drawing ---------------- */
+
 
   function draw(g, S) {
-    // S = the sprite atlas: S.frame(name, index) -> canvas/image or null.
+
     for (const p of projectiles) {
       const name = p.kind === 'spear' ? 'spr_board_spear'
         : p.kind === 'note' ? 'spr_musical_notes' : 'spr_board_smallbullet';
       const f = S.frame(name, Math.floor(p.t / 3) % 2);
       if (!f) continue;
-      // notes are image_xscale 1 in their Create (24px art drawn as-is);
-      // everything else on the board is the usual x2
+
       const scale = p.kind === 'note' ? 1 : 2;
       g.save();
       g.translate(Math.round(p.x), Math.round(p.y));
@@ -984,7 +911,7 @@ export function createEnemies(level, opts = {}) {
     for (const e of enemies) {
       let name, flip = false, tint = null;
       if (e.kind === 'monster') {
-        // The angry art is the spear telegraph, not the chase.
+
         const angry = e.variant === 1 && e.bulletimer > 22;
         name = angry ? 'spr_board_monster_angery_outline_docile' : 'spr_board_monster_outline_docile';
         if (e.blend === 'yellow') tint = '#ffff00';
@@ -994,7 +921,7 @@ export function createEnemies(level, opts = {}) {
         name = e.telegraph > 0 ? 'spr_board_flower_telegraph_alt' : 'spr_board_flower_alt';
         if (level.number === 2) name = e.telegraph > 0 ? 'spr_board_flower_telegraph' : 'spr_board_flower';
       } else if (e.kind === 'bluefish') {
-        // spawner 7's fish is the SILVERFISH — its own armored sprite set
+
         const pre = e.silverfish ? 'spr_board_silverfish_' : 'spr_board_bluefish_';
         name = [pre + 'r', pre + 'u', pre + 'l', pre + 'd'][e.movedir];
       } else if (e.kind === 'lizard') {
@@ -1029,7 +956,7 @@ export function createEnemies(level, opts = {}) {
       g.drawImage(img, Math.round(e.x) - (meta ? meta.ox * 2 : 0),
         Math.round(e.y) + dy - (meta ? meta.oy * 2 : 0),
         img.width * 2, img.height * 2);
-      // The hurt overlay: hurt_sprite every second hurt frame.
+
       if (e.hurttimer > 0 && e.hurttimer % 2 === 0) {
         const hurtName = {
           monster: 'spr_board_monster_hurt', flower: 'spr_board_flower_hurt',
@@ -1049,8 +976,8 @@ export function createEnemies(level, opts = {}) {
     }
   }
 
-  /** The defeat splash, for anything outside the roster that dies to the
-   *  sword (trees, ferns, the party). */
+
+
   function splashAt(x, y) {
     fx.push({ x, y, t: 0, candy: false });
     snd('snd_board_kill');

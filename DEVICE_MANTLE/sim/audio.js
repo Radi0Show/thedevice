@@ -1,7 +1,5 @@
-// THE BOARD'S SOUND. Extracted from the game per the project's asset
-// posture (all extracted audio may ship). Browsers gate playback behind a
-// user gesture, so the context resumes on the first keypress — the sim's
-// first input is also its audio grant, same pattern as knight-sim.
+
+
 
 const FILES = {
   snd_board_sword1: 'snd_board_sword1.wav',
@@ -62,7 +60,7 @@ export function createAudio(base) {
     try {
       const buf = await fetch(`${base}audio/${file}`).then((r) => r.arrayBuffer());
       buffers.set(name, await ctx.decodeAudioData(buf));
-    } catch { /* a missing cue stays silent */ }
+    } catch {   }
   }
   const ready = Promise.all([
     ...Object.entries(FILES).map(([n, f]) => load(n, f)),
@@ -88,7 +86,7 @@ export function createAudio(base) {
     src.start();
   }
 
-  /** choose(snd_board_sword1, 2, 3) — the swing. */
+
   function swing() {
     play(['snd_board_sword1', 'snd_board_sword2', 'snd_board_sword3'][Math.floor(Math.random() * 3)]);
   }
@@ -97,7 +95,7 @@ export function createAudio(base) {
     if (currentSong === name) return;
     stopMusic();
     const buf = buffers.get(name);
-    if (!buf) { currentSong = name; return; }   // remember intent even if not decoded yet
+    if (!buf) { currentSong = name; return; }
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.loop = true;
@@ -110,7 +108,7 @@ export function createAudio(base) {
   }
 
   function stopMusic() {
-    if (musicSrc) { try { musicSrc.stop(); } catch { /* already stopped */ } }
+    if (musicSrc) { try { musicSrc.stop(); } catch {   } }
     musicSrc = null;
     currentSong = null;
   }

@@ -1,27 +1,5 @@
-// obj_knight_pointing_star's Draw event, ported whole.
-//
-// The star is not a sprite blit. It is three things layered:
-//
-//   * a COLOUR RAMP — `merge_color(c_gray, c_red, timer/30)`. A star charges
-//     from grey to red over 30 frames, which is the attack's entire tell for
-//     when it is about to fire. Drawing it in flat white removes the tell.
-//   * a PULSING GLOW — frame 1 of the sprite, one notch larger, at
-//     `(sin(timer*3) + 1) * 0.25` alpha, so it throbs against the backdrop.
-//   * BEAM SPIKES at con 2/3 — `scr_draw_beam_color` wedges radiating out,
-//     drawn additively. Difficulty 0/1 gets a fixed three-spike star with
-//     three shorter sub-spikes; difficulty 2 gets six spikes that ROTATE with
-//     the star's `side` and pinch inward as `_offset` eases 66 -> 5.
-//
-// The early exit at the top is the one that matters for reading the attack:
-//
-//     if (instance_exists(obj_knight_pointing_cone) && con == 0) exit;
-//
-// (the dump renders this as `instance_exists(548 && con == 0)` — decompiler
-// damage to the operator precedence, not real code). While the cone is up and
-// the star has not been released, the star does NOT draw itself: the cone
-// draws it into `starsurf` through `event_user(0)`, as a plain white blob
-// behind the scanline grate. That is why the accumulating stars look
-// completely different from the fired ones.
+
+
 
 import { scrEaseIn } from '../../sim/gml.js';
 import {
@@ -34,15 +12,12 @@ export function drawPointingStar(ctx, e, state, deps) {
   const coneUp = state.entities.some(
     (x) => x.alive && x.type.name === 'obj_knight_pointing_cone',
   );
-  if (coneUp && e.con === 0) return true; // the cone draws it — see header
+  if (coneUp && e.con === 0) return true;
 
   const entry = sprites.get(e.sprite_index);
   if (!entry || !entry.frames.length) return false;
 
-  // `(sprite_width + 16) / sprite_get_width(...)` — sprite_width already
-  // includes image_xscale, so this is "grow by 16 screen pixels", not "scale by
-  // 16". A small star grows proportionally more, which is what makes the
-  // accumulating cloud read as a mass of light.
+
   const w = entry.frames[0].width;
   const h = entry.frames[0].height;
   const xs = e.image_xscale + 16 / w;
@@ -57,8 +32,7 @@ export function drawPointingStar(ctx, e, state, deps) {
     let prog = clamp01(e.timer / 30);
     if (e.con === 2) {
       a = clamp01(prog - alpha);
-      // The `(timer % 2) * 0.75` is a per-frame STROBE on the beam length,
-      // not a smooth ramp — the spikes flicker as they extend.
+
       length = 50 * clamp01(prog - (e.timer % 2) * 0.75) + 50;
     }
     let offset = 66;
@@ -73,8 +47,7 @@ export function drawPointingStar(ctx, e, state, deps) {
       offset = e.con === 3 ? 5 : 66 + (5 - 66) * prog;
       beamcolor = color;
       if (e.timer >= 30) {
-        // A late KICK on the length: the spikes lunge outward just before the
-        // star bursts.
+
         const p2 = scrEaseIn(clamp01((e.timer - 30) / 10), 4);
         length += 50 - p2 * 50;
       }
@@ -102,22 +75,17 @@ export function drawPointingStar(ctx, e, state, deps) {
     drawSpriteExt(ctx, entry, 0, e.x, e.y, xs, ys, e.image_angle, color, 1);
   }
   if (e.con === 3 || e.con === 4) {
-    // Frame 2 is the BURSTING star. The glow copy throbs at double rate.
+
     const g = (Math.sin(e.timer * 6) + 1) * 0.25;
     drawSpriteExt(ctx, entry, 2, e.x, e.y, xs + 0.1, ys + 0.1, e.image_angle, c_white, g);
     drawSpriteExt(ctx, entry, 2, e.x, e.y, xs, ys, e.image_angle, c_white, 1);
   }
 
-  return true; // fully drawn — there is no draw_self() in this event
+  return true;
 }
 
-/**
- * `obj_knight_pointing_star`'s Other_10, which the cone calls through
- * `event_user(0)` for every star while it is still accumulating. Deliberately
- * plain: a flat white copy of frame 0, grown by the same 16px. The character
- * comes from what the cone does to the surface afterwards — see the grate in
- * render/draw/pointing-cone.js.
- */
+
+
 export function drawStarUserEvent0(ctx, e, sprites) {
   const entry = sprites.get(e.sprite_index);
   if (!entry || !entry.frames.length) return;

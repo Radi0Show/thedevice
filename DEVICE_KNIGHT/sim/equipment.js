@@ -1,81 +1,12 @@
-// EQUIPMENT — one weapon and two armour slots per character.
-//
-// EVERY NUMBER BELOW IS GENERATED from `scr_weaponinfo` and `scr_armorinfo`
-// by parsing their case blocks, not retyped from a table. That matters: the
-// handoff spec this replaces had four values wrong, and three of them were
-// wrong in the direction that flatters the item.
-//
-// ── What the spec got wrong, all confirmed against the dump ───────────────
-//
-// 1. **THE RIBBONS COST YOU TP.** The spec lists Pink/TwinRibbon as pure
-//    graze-area upgrades. `obj_grazebox`'s Create:
-//
-//        grazetpfactor -= (scr_armorcheck_equipped_party(3) * 0.2);   PinkRibbon
-//        grazetpfactor -= (scr_armorcheck_equipped_party(9) * 0.25);  TwinRibbon
-//        grazetimefactor -= (scr_armorcheck_equipped_party(3) * 0.2); PinkRibbon
-//
-//    A bigger box that pays LESS per graze. The spec's "Turbo-TP variant",
-//    which puts TwinRibbon on Ralsei to farm tension, produces 25% less TP
-//    per graze than no ribbon at all — it is backwards.
-//
-// 2. **LodeStone is +5%, not +10%.** `* 0.05`, against TensionBow's `* 0.1`.
-//
-// 3. **TwinRibbon's area is +25% and PinkRibbon's +20%** — the spec had the
-//    area right but called TwinRibbon's `grazesize` 25 when the field says
-//    20 for both; the 25 is the SIZE FACTOR in grazebox, a different number
-//    from the item's own `grazesize`. Modelled from grazebox, which is what
-//    actually runs.
-//
-// 4. **BounceBlade is df 1**, which the spec flagged as a guess at 2.
-//
-// ── The ribbon rule is DATA, not a special case ───────────────────────────
-//
-// "Susie refuses ribbons" is `armorchar2temp = 0` on every ribbon. There is
-// no rule to enforce — the char flags already say it, and `allowed` below is
-// generated straight from them. Hardcoding a `susieRefusesRibbons` boolean
-// would be a second source of truth that can disagree with the first.
-//
-// `scr_armorcheck_equipped_party(id)` returns a COUNT of how many members
-// wear it, so every graze factor scales with the number wearing — two
-// TensionBows is +20%.
 
-// ── The special-effect audit (player request: "make sure all special armor
-// and weapons do their special things") ─────────────────────────────────────
-//
-// Every battle-side equipment conditional in the dump was swept
-// (scr_armor/weaponcheck callers + direct chararmor/charweapon reads).
-// The complete list for THIS fight:
-//
-//   IMPLEMENTED, verbatim:
-//   - ShadowMantle 23: x0.33 taken, the two-of-three redirect, and the
-//     reset chain's slot-2 precedence quirk (sim/damage.js knightTarget).
-//   - Graze set (grazebox AND the tracking-slash extra graze): TensionBow
-//     +10% TP, LodeStone +5% TP, SilverWatch +10% time, PinkRibbon
-//     -20% TP/-20% time/+20% size, TwinRibbon -25% TP/+25% size, size
-//     capped at 3 (grazeFactors below).
-//   - BlueRibbon 26: heals BY the wearer get + ceil(amount/8) PER equipped
-//     ribbon (scr_heal_amount_modify_by_equipment; stacks across slots).
-//   - Devilsknife 7 on Susie: Rude Buster 125 -> 100 (scr_spellinfo).
-//   - Stats (at/df/mag): every piece, summed base + slots = battleat/df/mag.
-//
-//   AUDITED NO-OPS for this fight, so nobody "fixes" them in later:
-//   - Elements: the knight's bullets all carry element 5, the mantle's own —
-//     and scr_damage routes the mantle by ID, skipping the generic
-//     scr_element_damage_reduction. No other chapter armour resists
-//     element 5, so the generic path cannot fire here. The element fields
-//     ride along as data.
-//   - Silver Card / Dealmaker money bonuses: no money in the sim.
-//   - White Ribbon "Cuteness", CheerScarf "Smiley", MechaSaber "Annoying",
-//     AutoAxe "BadIdea", Spookysword/Brave Ax/DaintyScarf flavour abilities:
-//     no battle-side reads in the dump for this encounter (ACT/overworld
-//     flavour); their stats still apply.
-//   - TwistedSwd/ThornRing "Trance": reads only on charweapon[4] (Noelle),
-//     who is not in this party.
 
-/** ShadowMantle's DF is `global.chapter`, and this fight is chapter 3. */
+
+
+
+
 export const CHAPTER = 3;
 
-/** `scr_weaponinfo`. `allowed` is [Kris, Susie, Ralsei] from char1..3. */
+
 export const WEAPONS = {
   1: { name: "Wood Blade", allowed: [0] },
   2: { name: "Mane Ax", allowed: [] },
@@ -104,7 +35,7 @@ export const WEAPONS = {
   25: { name: "FlexScarf", at: 4, magic: 1, allowed: [2] },
   26: { name: "BlackShard", at: 16, allowed: [0] },};
 
-/** `scr_armorinfo`. */
+
 export const ARMOR = {
   1: { name: "Amber Card", df: 1, allowed: [0, 1, 2] },
   2: { name: "Dice Brace", df: 2, allowed: [0, 1, 2] },
@@ -134,24 +65,13 @@ export const ARMOR = {
   26: { name: "BlueRibbon", df: 1, magic: 1, allowed: [0, 2], ability: "Heal+" },
   27: { name: "TennaTie", df: 5, magic: -2, allowed: [0, 1, 2] },};
 
-/**
- * `obj_grazebox`'s Create, verbatim. These are the ONLY graze modifiers in
- * the game — there is no generic "grazeTPMult" field on the items.
- *
- *     grazetpfactor   += count(15) * 0.1    TensionBow
- *                     += count(24) * 0.05   LodeStone
- *                     -= count(3)  * 0.2    PinkRibbon
- *                     -= count(9)  * 0.25   TwinRibbon
- *     grazetimefactor += count(14) * 0.1    SilverWatch
- *                     -= count(3)  * 0.2    PinkRibbon
- *     grazesizefactor += count(3)  * 0.2    PinkRibbon
- *                     += count(9)  * 0.25   TwinRibbon    capped at 3
- */
+
+
 const GRAZE_TP = { 15: 0.1, 24: 0.05, 3: -0.2, 9: -0.25 };
 const GRAZE_TIME = { 14: 0.1, 3: -0.2 };
 const GRAZE_SIZE = { 3: 0.2, 9: 0.25 };
 
-/** How many party members have armour `id` equipped. */
+
 export function partyWearing(loadout, id) {
   let n = 0;
   for (const c of loadout) {
@@ -167,30 +87,28 @@ export function grazeFactors(loadout) {
   for (const [id, v] of Object.entries(GRAZE_TP)) tp += partyWearing(loadout, +id) * v;
   for (const [id, v] of Object.entries(GRAZE_TIME)) time += partyWearing(loadout, +id) * v;
   for (const [id, v] of Object.entries(GRAZE_SIZE)) size += partyWearing(loadout, +id) * v;
-  // `if (grazesizefactor > 3) grazesizefactor = 3;`
+
   if (size > 3) size = 3;
   return { tp, time, size };
 }
 
 const num = (v) => (v === 'CHAPTER' ? CHAPTER : (v ?? 0));
 
-/** `armordftemp = global.chapter` for the mantle — resolved here. */
+
 export function itemOf(kind, id) {
   const raw = (kind === 'weapon' ? WEAPONS : ARMOR)[id];
   if (!raw) return null;
   return { ...raw, df: num(raw.df === 'CHAPTER' ? 'CHAPTER' : raw.df) };
 }
 
-/** `armorchar<N>temp` — the char flags ARE the equip rule. */
+
 export function canEquip(kind, id, slot) {
   const it = (kind === 'weapon' ? WEAPONS : ARMOR)[id];
   return !!it && (it.allowed ?? []).includes(slot);
 }
 
-/**
- * Total stats for one character. `battleat`, `battledf`, `battlemag` in the
- * game are exactly this: base plus the sum of what is equipped.
- */
+
+
 export function statsOf(base, entry) {
   const eq = [];
   const w = itemOf('weapon', entry.weapon);
@@ -211,16 +129,11 @@ export function statsOf(base, entry) {
     at,
     df,
     magic,
-    // BlueRibbon (26) — "Heal+". The real math is scr_heal_amount_modify_by_
-    // equipment, verbatim: each equipped ribbon ADDS `ceil(amount / 8)` to a
-    // heal PERFORMED BY the wearer — slot-checked separately, so two ribbons
-    // stack to two ceils. (An earlier pass flattened this to a x1.125
-    // multiplier, which drops the ceil and cannot stack.)
+
     healRibbons: (entry.armor ?? []).filter((a) => a === 26).length,
-    // Devilsknife (7) — "Buster TP DOWN". 125 -> 100, i.e. 50% -> 40%.
+
     rudeBusterCost: entry.weapon === 7 ? 100 : 125,
-    // ShadowMantle (23). `scr_damage` checks the ID directly rather than any
-    // element field, and skips the generic element path when it applies.
+
     mantle: (entry.armor ?? []).includes(23),
     equipped: eq,
   };

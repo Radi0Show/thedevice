@@ -9,3 +9,6 @@
 # shell once. tools/vendor-*.sh refresh them; INTEGRATION.md § 1 and 2a-2.
 
 .DS_Store
+
+# Local dev-server launch config for the Claude app; not part of the site.
+/.claude/

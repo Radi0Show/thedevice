@@ -49,7 +49,7 @@
     font-size:17px; text-align:center;
   }
   #failed a { color:#5a5a5a; text-decoration:none; }
-  /* ---------- PRELUDE: the page you weren't supposed to find ---------- */
+
   #prelude{
     position:fixed; inset:0; z-index:100;
     background:#fff; color:#000;
@@ -63,14 +63,7 @@
 </style>
 </head>
 <body>
-<!--
-  ENTRY 00.
 
-  THE MENU PRECEDES THE DEVICE.
-  THE DEVICE PRECEDES THE DARKNESS.
-
-  (three of the slots are lies.)
--->
 <div id="prelude">
   <h1>Not Found</h1>
   <p>The requested device does not exist on this server.</p>
@@ -83,10 +76,7 @@
   </noscript>
 </div>
 
-<!-- The corner label, key legend and footer are gone from THIS page by
-     request — the boot is bare. The fan-project/attribution footer still
-     ships on every other page of the site (the room, both sims, contact),
-     which is where it needs to be; do not strip it from those. -->
+
 <canvas id="crt" width="640" height="480"
         aria-label="A television booting up."></canvas>
 
@@ -100,15 +90,8 @@
   import { loadPrefs, savePrefs, applyPrefs } from './shared/device.js';
 
   const canvas = document.getElementById('crt');
-  /* FILL THE DISPLAY, BARS ON THE SHORT AXIS — what the game does in
-     fullscreen. The frame keeps its 4:3 and grows until one axis runs out,
-     so a widescreen gets black down either side and nothing is cropped.
 
-     This deliberately gives up whole-pixel scaling. At a fractional factor
-     `image-rendering: pixelated` hands some source columns n device pixels
-     and their neighbours n + 1, so a one-pixel stem is fat on one letter
-     and thin on the next. The real game makes the same trade at the same
-     place: filling the screen wins over an exact pixel grid. */
+
   function fit() {
     const f = Math.min(innerWidth / 640, innerHeight / 480);
     canvas.style.width = `${640 * f}px`;
@@ -118,24 +101,17 @@
   fit();
 
   const prefs = loadPrefs();
-  // The boot no longer asks its two questions. The stored preferences (and
-  // their SAFE defaults — flicker effects off unless opted in, and
-  // prefers-reduced-motion always honoured) still apply; they are just not
-  // a gate any more.
+
   applyPrefs(prefs);
 
-  /* THE SET COMES ON, AND THEN YOU WALK IN. */
+
   function go() {
     prefs.seenIntro = true;
     savePrefs(prefs);
     location.href = 'DEVICE_MENU/';
   }
 
-  // THE SET HUMS, AND THAT IS ALL. The weird-route scene's ocean loop is
-  // gone by request: the boot is the tube's own static, nothing over it.
-  // (assets/crt/ocean.ogg stays in the repo — the room may want it.)
-  // The hum starts on the Z press below, which is also the user gesture
-  // browsers demand before any audio may play.
+
   const hum = new Audio('assets/room/tvstatic.wav');
   hum.loop = true;
   hum.volume = 0.16;
@@ -143,9 +119,7 @@
     hum.play().catch(() => {});
   }
 
-  // THE 404 PAGE WAITS FOR Z. No timer: the page you were not supposed to
-  // find sits there until you answer it. Z (or Enter) brings the set on;
-  // X anywhere is still "get on with it".
+
   let setOn = false;
   async function bringTheSetOn() {
     if (setOn) return;
@@ -157,8 +131,7 @@
       await runCrt(canvas, {
         fontBase: 'assets/gonermaker/',
         shader: 'assets/crt/shd_crt2.frag',
-        // the cartridge-boot scroller: rows of the line drifting across
-        // the set until Z is pressed — no timed advance.
+
         scroll: { text: 'BOOTING DEVICE_MENU . . .' },
         onConfirm: () => { go(); },
       });
@@ -173,9 +146,7 @@
     if (k === 'x') { e.preventDefault(); go(); return; }
     if (!setOn && (k === 'z' || k === 'enter')) { e.preventDefault(); bringTheSetOn(); }
   });
-  // A TAP IS Z. On a phone there is no Z to press: touching the 404 brings
-  // the set on, and the scroller's own pointer listener (crt.js) takes the
-  // next tap into the room. The same tap is the audio gesture.
+
   window.addEventListener('pointerdown', () => { if (!setOn) bringTheSetOn(); });
 </script>
 </body>

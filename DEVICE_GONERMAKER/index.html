@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--
-  ENTRY 00.
 
-  THE MENU PRECEDES THE DEVICE.
-  THE DEVICE PRECEDES THE DARKNESS.
-
-  (three of the slots are lies.)
--->
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,7 +19,7 @@
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../shared/device.css">
 <style>
-  /* ---------- PRELUDE: the page you weren't supposed to find ---------- */
+
   #prelude{
     position:fixed; inset:0; z-index:100;
     background:#fff; color:#000;
@@ -38,12 +31,8 @@
   #prelude p{ font-size:15px; }
   #prelude a{ color:#00e; }
 
-  /* ---------- THE INTERROGATION ----------
-     A 320x240 room, exactly like the one the sequence runs in, scaled by a
-     whole number of device pixels. `pixelated` at a fractional scale gives
-     some source columns n device pixels and their neighbours n+1 — which is
-     precisely how a 1px font stem ends up fat on one letter and thin on the
-     next. The scale is computed in JS; this is the pre-script fallback. */
+
+
   #intro{ position:fixed; inset:0; background:#000; }
 
   #introCanvas{
@@ -64,8 +53,8 @@
   }
   #skipBtn:hover, #skipBtn:focus-visible{ color:#ffff00; outline:none; }
 
-  /* The one piece of chrome the game has no equivalent for: people need to
-     know the keys before the first question. */
+
+
   #introKeys{
     position:fixed; bottom:12px; left:0; right:0; z-index:5;
     text-align:center; font-size:11px; color:#2e2e2e; letter-spacing:.08em;
@@ -86,7 +75,7 @@
   </noscript>
 </div>
 
-<!-- ======================= THE INTERROGATION ======================= -->
+
 <div id="intro">
   <button id="skipBtn" type="button">[ SKIP ]</button>
   <canvas id="introCanvas" width="320" height="240"
@@ -98,14 +87,8 @@
 import { loadPrefs, savePrefs, applyPrefs, reduceMotion } from '../shared/device.js';
 import { runIntro } from '../shared/gm-intro.js';
 
-/* =====================================================================
-   THE FRONT DOOR IS A SEQUENCE, AND IT LEADS SOMEWHERE.
 
-   The interrogation asks its three questions and then hands over to
-   DEVICE_MENU — the room with the television in it. The site itself lives
-   in that television: you plug the controller in and it boots. So this
-   page no longer holds a menu; it holds the thing that comes before one.
-   ===================================================================== */
+
 
 const store = loadPrefs();
 applyPrefs(store);
@@ -116,9 +99,8 @@ const reconfigure = params.get('reconfigure') === '1';
 const introCanvas = document.getElementById('introCanvas');
 let abortIntro = null;
 
-/* An INTEGER scale, measured in DEVICE pixels — see the note in the style
-   block. Below 1x there is no whole multiple to land on, so it falls back
-   to filling: showing the whole frame slightly soft beats cropping it. */
+
+
 function fitIntro(){
   const dpr = window.devicePixelRatio || 1;
   const fit = Math.min((window.innerWidth * dpr) / 320, (window.innerHeight * dpr) / 240);
@@ -128,7 +110,7 @@ function fitIntro(){
 }
 window.addEventListener('resize', fitIntro);
 
-/** Everything here ends the same way: in the room. */
+
 function toRoom(){
   location.href = '../DEVICE_MENU/';
 }
@@ -145,8 +127,7 @@ async function runInterrogation(){
   try {
     answers = await runIntro(introCanvas, io);
   } catch (err) {
-    // If the sequence cannot draw, a visitor should still reach the room
-    // rather than sit on a black screen.
+
     console.error('the interrogation could not run:', err);
     answers = { photosensitive: true, soundOn: store.soundOn };
   }
@@ -158,8 +139,8 @@ async function runInterrogation(){
   toRoom();
 }
 
-/* The button hands the abort to the running sequence, which fades out the
-   way it would have anyway; sound is left as it was, which is on. */
+
+
 document.getElementById('skipBtn').addEventListener('click', () => {
   if (abortIntro) { abortIntro(); return; }
   store.flickerOK = false;
@@ -168,10 +149,8 @@ document.getElementById('skipBtn').addEventListener('click', () => {
   toRoom();
 });
 
-/* =====================================================================
-   BOOT — the "not found" page holds for a beat, then the void takes it.
-   A visitor who has already answered goes straight through to the room.
-   ===================================================================== */
+
+
 console.log('%c* WHY ARE YOU LOOKING HERE?', 'color:#ff9bd5; font-family:monospace; font-size:14px;');
 console.log('%c* THE MENU PRECEDES THE DEVICE.', 'color:#5a5a5a; font-family:monospace;');
 
@@ -183,13 +162,6 @@ setTimeout(()=>{
   else runInterrogation();
 }, reduceMotion ? 250 : (skipStraightThrough ? 300 : 850));
 </script>
-<!--
-  ENTRY 07.
 
-  IF YOU ARE READING THE SOURCE,
-  YOU ARE THE KIND OF PERSON THIS WAS BUILT FOR.
-
-  CREDIT YOUR DATAMINERS. BUY THE REAL GAME.
--->
 </body>
 </html>

@@ -1,14 +1,5 @@
-// obj_knight_circle's Draw — an additive gradient bloom at an aim point.
-//
-// `draw_circle_color(x, y, circle_size, color_1, color_2, false)` with
-// color_1 = 0 (black) and color_2 = rgb(r, g, b): a disc that is dark in the
-// middle and coloured at the rim. Drawn with `bm_add`, which on canvas is
-// `globalCompositeOperation = 'lighter'`.
-//
-// `draw_in_box` renders it into a surface the size of the arena and blits that
-// at the box's top-left, so the bloom is CLIPPED to the battle box — the
-// version rotating slash uses. ROARING's sets the flag false and draws it
-// free over the whole screen.
+
+
 
 export function drawKnightCircle(ctx, e, state, deps) {
   const { boxRect } = deps;

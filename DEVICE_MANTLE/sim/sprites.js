@@ -1,6 +1,5 @@
-// THE SPRITE ATLAS. Every frame the extraction wrote, loaded lazily by
-// name, with the manifest's dims and origins — GameMaker positions
-// everything relative to the origin and the PNGs cannot carry it.
+
+
 
 export async function loadAtlas(base) {
   const manifest = await fetch(`${base}sprites/manifest.json`).then((r) => r.json());
@@ -13,7 +12,7 @@ export async function loadAtlas(base) {
     const key = `${name}_${index}`;
     if (cache.has(key)) return cache.get(key);
     if (missing.has(key)) return null;
-    // Kick off the load; frames resolve within a frame or two of first use.
+
     const img = new Image();
     img.onload = () => cache.set(key, img);
     img.onerror = () => { missing.add(key); cache.delete(key); };
@@ -22,7 +21,7 @@ export async function loadAtlas(base) {
     return null;
   }
 
-  /** Preload every frame of the named sprites; resolves when done. */
+
   async function preload(names) {
     const jobs = [];
     for (const name of names) {
@@ -41,7 +40,7 @@ export async function loadAtlas(base) {
     await Promise.all(jobs);
   }
 
-  /** image_blend: multiply by a colour, keeping the alpha. */
+
   function tinted(img, css) {
     const key = `${img.src}|${css}`;
     let c = tintCache.get(key);

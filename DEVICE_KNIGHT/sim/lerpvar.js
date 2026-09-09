@@ -1,24 +1,5 @@
-// obj_lerpvar — GameMaker-side tweening, and it is a real INSTANCE rather than
-// a coroutine, which is why it belongs in sim/ and not in the renderer.
-//
-// `scr_lerpvar(varname, a, b, maxtime)` creates one of these pointed at the
-// caller. Every Step it advances its own clock and writes
-// `lerp(a, b, time / maxtime)` straight into the target's variable, then
-// destroys itself on the last frame.
-//
-// It is NOT cosmetic here. ROARING's roar phase spawns its stars at
-// `image_xscale = 0.1` and lerps them to 1.2 or 1.6 over 32 frames, and
-// `sprite_width` is width x image_xscale — which is exactly what the star's
-// offscreen cull measures. A star whose scale does not grow is culled at the
-// wrong frame.
-//
-// ORDERING: the tween is created during the caller's Step, so its own first
-// Step lands on the following frame. The first value written is therefore
-// `lerp(a, b, 1/maxtime)`, never `a` — the clock increments before the write.
-//
-// `pointa` may be a STRING in the original, meaning "read the target's current
-// value when you start" (deferred, not at create time). Supported here for
-// fidelity; roaring always passes a number.
+
+
 
 import { destroy } from './entity.js';
 import { lerp, scrEaseOut, scrEaseIn, scrEaseInout } from './gml.js';
@@ -41,7 +22,7 @@ export const lerpvar = {
   },
 
   step(e, state) {
-    // `i_ex(target)` — a tween whose target has been destroyed goes with it.
+
     if (!e.target || e.target === -1 || !e.target.alive) {
       destroy(e);
       return;
@@ -69,7 +50,7 @@ export const lerpvar = {
         scrEaseIn(e.time / e.maxtime, e.easetype),
       );
     } else if (e.easeinout === 'inout') {
-      // The underbox's spin lurch is the first caller of this arm (curve 2).
+
       e.target[e.varname] = lerp(
         e.pointa,
         e.pointb,
@@ -83,10 +64,8 @@ export const lerpvar = {
   },
 };
 
-/**
- * `scr_lerpvar(...)`, with the caller passed explicitly since JS has no `id`.
- * Returns the tween so a caller can adjust it, as the original's return does.
- */
+
+
 export function scrLerpvar(
   state, spawnFn, target, varname, pointa, pointb, maxtime, easetype, easeinout,
 ) {

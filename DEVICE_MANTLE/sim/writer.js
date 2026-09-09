@@ -1,30 +1,12 @@
-// THE BOARD'S TEXT BOXES — obj_board_writer + typer 100, and the
-// shopwriter's bare centered text.
-//
-// The box: black, 384x85, sliding in at movespeed 16 — from above to y 48
-// or from below to y 218, the side picked by where Kris stands (y < 192
-// puts the box at the bottom). snd_board_lift (vol .5, pitch 1.2) on open.
-//
-// The text: typer 100 — fnt_8bit, white, hspace 16, vspace 20, snd_text
-// per character. Commands honoured from the game's strings:
-//   \n        newline
-//   ^n        pause (n tenths of the game's beat — n*10 frames here)
-//   /         end of page: hold for Z (the blinking triangle)
-//   %         close
-//   \cX       colour: W white, I ice-blue (the ice door's key flash)
-// The writer's `rate` stretches the per-character interval (the ice door
-// uses 6). Exact obj_writer pacing internals are approximated; labelled.
-//
-// The shopwriter (obj_board_shopwriter): no box — centered text typed at 2
-// frames a character at board row 2 (+12), snd_board_text_main per glyph
-// and snd_board_text_main_end at the end.
+
+
 
 const COLORS = { W: '#ffffff', I: '#5AAFFF', Y: '#ffff00' };
 
 export function createWriter(font, S, snd) {
-  let box = null;        // the active board_writer
+  let box = null;
 
-  /** Open a text box. pages: array of raw strings with the game's codes. */
+
   function open(pages, opts = {}) {
     const side = opts.side ?? null;
     box = {
@@ -36,13 +18,13 @@ export function createWriter(font, S, snd) {
       skippable: opts.skippable ?? true,
       triangle: opts.triangle ?? true,
       triSiner: 0,
-      autoClose: opts.autoClose ?? 0,   // frames to hold at page end, then close
+      autoClose: opts.autoClose ?? 0,
       onClose: opts.onClose ?? null,
     };
     return box;
   }
 
-  /** Split a raw string into typed items: chars, pauses, colours, waits. */
+
   function parse(s) {
     const items = [];
     for (let i = 0; i < s.length; i++) {
@@ -56,8 +38,7 @@ export function createWriter(font, S, snd) {
     return wrap(items);
   }
 
-  // Word-wrap to the box: 384 wide, 18px margins, hspace 16 -> 21 glyphs a
-  // line. A space that would let the next word overflow becomes a newline.
+
   const LINE_MAX = 21;
   function wrap(items) {
     let col = 0, lastSpace = -1, colAtSpace = 0;
@@ -117,14 +98,14 @@ export function createWriter(font, S, snd) {
       box.char += 1;
       if (it.ch !== undefined) {
         if (it.ch !== ' ' && it.ch !== '\n' && box.textsound) snd(box.textsound, { volume: 0.6 });
-        return true;                     // one glyph per rate-tick
+        return true;
       }
       if (it.pause) { box.pause = it.pause; return true; }
-      if (it.color) continue;            // colours apply at draw time
+      if (it.color) continue;
       if (it.wait) { box.waitZ = true; box.triSiner = 0; return true; }
       if (it.close) { close(); return false; }
     }
-    box.waitZ = true;                    // page ran out without '/': hold
+    box.waitZ = true;
     return true;
   }
 
@@ -147,13 +128,13 @@ export function createWriter(font, S, snd) {
       if (it.ch === undefined) continue;
       if (it.ch === '\n') { cx = 128 + 18; cy += 20; continue; }
       g.save();
-      // fnt_8bit glyphs are white; tint via canvas filter-free multiply.
+
       if (color !== '#ffffff') {
         g.globalCompositeOperation = 'source-over';
       }
       drawGlyph(g, it.ch, cx, cy, color);
       g.restore();
-      cx += 16;                          // hspace 16 (typer 100)
+      cx += 16;
     }
     if (box.waitZ && box.triangle && box.triSiner % 30 < 20) {
       const tri = S.frame('spr_custommenu_arrow_nooutline', 0);
@@ -161,8 +142,7 @@ export function createWriter(font, S, snd) {
     }
   }
 
-  // Coloured glyphs go through a small reusable buffer (the font's art is
-  // white; source-in fills it with the colour).
+
   const glyphBuf = document.createElement('canvas');
   glyphBuf.width = 32; glyphBuf.height = 24;
   const glyphG = glyphBuf.getContext('2d');
@@ -183,7 +163,7 @@ export function createWriter(font, S, snd) {
   };
 }
 
-/** The shopwriter: bare centered typed text, no box. */
+
 export function createShopwriter(font, snd) {
   let sw = null;
 
@@ -215,7 +195,7 @@ export function createShopwriter(font, snd) {
     if (sw.color === '#ffffff') {
       font.draw(g, shown, 320 - Math.round(w / 2) + 4, sw.y);
     } else {
-      // black (the tease and "Having fun?") — tint through a buffer
+
       const buf = document.createElement('canvas');
       buf.width = 384; buf.height = 24;
       const bg = buf.getContext('2d');

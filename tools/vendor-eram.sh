@@ -10,21 +10,50 @@
 # So this ships sim/ and assets/ ONLY: eram-sim's index.html is bug-test
 # scaffolding and deliberately stays home.
 #
+# The copy is then COMMENT-STRIPPED in place, exactly as the knight's is.
+#
 # Usage:  tools/vendor-eram.sh [path-to-eram-sim]   (default ~/eram-sim)
 
 set -eu
 
 SRC="${1:-$HOME/eram-sim}"
-DEST="$(cd "$(dirname "$0")/.." && pwd)/DEVICE_MANTLE"
+TOOLS="$(cd "$(dirname "$0")" && pwd)"
+DEST="$(cd "$TOOLS/.." && pwd)/DEVICE_MANTLE"
 
-for d in sim assets; do
+VENDORED="sim assets"
+
+for d in $VENDORED; do
   [ -d "$SRC/$d" ] || { echo "error: $SRC/$d not found — is $SRC an eram-sim checkout?" >&2; exit 1; }
 done
 
+# See vendor-knight.sh: rsync when present, rm+cp on shells that have none.
+mirror() {
+  _src="$1"; _dest="$2"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete "$_src/" "$_dest/"
+  else
+    [ -n "$_dest" ] || { echo "error: empty destination" >&2; exit 1; }
+    rm -rf "$_dest"
+    mkdir -p "$_dest"
+    cp -R "$_src/." "$_dest/"
+  fi
+}
+
 mkdir -p "$DEST"
-for d in sim assets; do
-  rsync -a --delete "$SRC/$d/" "$DEST/$d/"
+for d in $VENDORED; do
+  mirror "$SRC/$d" "$DEST/$d"
 done
+
+# Strip comments from the COPY only — eram-sim's own source keeps every one of
+# them. The mirror above re-copies from source first, so this is idempotent.
+if command -v node >/dev/null 2>&1; then
+  STRIP_DIRS=""
+  for d in $VENDORED; do STRIP_DIRS="$STRIP_DIRS $DEST/$d"; done
+  # shellcheck disable=SC2086
+  node "$TOOLS/strip-tree.mjs" $STRIP_DIRS
+else
+  echo "warning: node not found — vendored copy SHIPS ITS COMMENTS" >&2
+fi
 
 if command -v git >/dev/null && git -C "$SRC" rev-parse --short HEAD >/dev/null 2>&1; then
   git -C "$SRC" rev-parse --short HEAD > "$DEST/BUILD"

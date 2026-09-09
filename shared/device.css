@@ -1,9 +1,5 @@
-/* THE DEVICE — shared chrome.
-   ============================================================
-   PALETTE — sourced from the game's own UI, not designed:
-   void #000 · bone #fff · dim #5a5a5a · dimmer #2e2e2e
-   soul #ff0013 · choice-yellow #ffff00 · friend-pink #ff9bd5
-   ============================================================ */
+
+
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -32,7 +28,7 @@ body {
 a { color: #5a5a5a; }
 a:hover, a:focus-visible { color: #ffff00; outline: none; }
 
-/* the soul — an 8x8 heart drawn in box-shadow pixels */
+
 .heart {
   display: inline-block; width: 2px; height: 2px;
   margin-right: 14px; margin-left: 2px;
@@ -62,7 +58,7 @@ a:hover, a:focus-visible { color: #ffff00; outline: none; }
   z-index: 5;
 }
 
-/* ---------- sub-pages (failure / contact / index) ---------- */
+
 .subview {
   padding: 20vh 24px 10vh;
   max-width: 640px; margin: 0 auto;
@@ -92,10 +88,8 @@ footer {
 footer a { color: #2e2e2e; text-decoration: none; }
 footer a:hover, footer a:focus-visible { color: #5a5a5a; }
 
-/* ---------- FLICKER LAYER (opt-in only, from the interrogation) ----------
-   The game asks before anything moves — "FIRST. ARE YOU PHOTOSENSITIVE?"
-   is DEVICE_CONTACT's own opening question. Nothing here flickers until
-   that question has been answered NO. */
+
+
 body.flicker-ok::after {
   content: "";
   position: fixed; inset: 0; z-index: 60; pointer-events: none;

@@ -5,13 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DEVICE_FAILURE</title>
 <meta name="robots" content="noindex">
-<!-- THIS PAGE IS SELF-CONTAINED ON PURPOSE.
-     The host serves it for ANY unknown path, at any depth, with the URL
-     unchanged — so a relative stylesheet resolves against a directory that
-     does not exist, and a root-absolute one breaks the moment the site is
-     served from a project subpath (user.github.io/thedevice/) instead of its
-     own domain. Inlining is the only version that is correct in both places.
-     The canonical, linkable copy of this screen is /DEVICE_FAILURE/. -->
+
 <style>
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ height:100%; background:#000; }
@@ -48,17 +42,14 @@
 
 
 <script>
-  // THE WAY HOME, from a page that does not know where it is.
-  // On a project site the root is the first path segment; on a custom domain
-  // it is "/". Computing it beats hardcoding either and breaking the other.
+
   (function () {
     var seg = location.pathname.split('/').filter(Boolean);
     var onProjectSite = /\.github\.io$/.test(location.hostname) && seg.length > 0;
     document.getElementById('home').href = onProjectSite ? '/' + seg[0] + '/' : '/';
   }());
 
-  // The line arrives the way the rest of the site's lines do. Reduced motion
-  // gets it whole; the text is real content either way.
+
   (function () {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     var el = document.getElementById('line');

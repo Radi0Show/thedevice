@@ -28,8 +28,7 @@
 <script type="module">
   import { applyPrefs, reduceMotion, typeInto, beat } from '../shared/device.js';
   applyPrefs();
-  // Two lines, a beat apart. Without JS (or with reduced motion) they are
-  // simply there — the text is real content either way.
+
   const el = document.getElementById('line');
   if (!reduceMotion) {
     (async () => {

@@ -1,38 +1,18 @@
-// THE BOARD — room_board_preshadowmantle, and the way it moves.
-//
-// This is DELTARUNE Chapter 3's board game: the stage Kris plays for a rank
-// (Z / C / B / A / S / T — `scr_get_rank_letter`). Every number below is
-// read out of the room and the objects that run it, not tuned by eye:
-//
-//   obj_mainchara_board   Kris — 8-directional at wspeed 4, 16x16 at scale 2
-//   obj_board_camera      the screen — 384x256, fixed at (128,64)
-//   obj_board_solid       the walls — 32x32 cells scaled per instance
-//   room_board_preshadowmantle   2460x960, a 77x30 grid of 32px tiles
-//
-// THE TRICK THIS ROOM IS BUILT ON, and the thing worth understanding before
-// changing anything here: THE CAMERA NEVER MOVES. The screen is a fixed
-// 384x256 window and Kris is clamped inside it (x 128..480, y 64..288 —
-// 384-32 and 256-32, because Kris is 32 wide). When he walks off an edge,
-// obj_board_camera does not pan: it translates THE ENTIRE WORLD — the tile
-// layers via `layer_x`/`layer_y`, and every obj_board_parent instance,
-// Kris included — one whole screen over, 24px a frame horizontally and 16
-// vertically. Sixteen frames either way. So "everything in the room moves
-// with the screen" is literally what the code does, and this engine keeps
-// one world offset and moves everything through it the same way.
 
-const VIEW_W = 640, VIEW_H = 480;      // the game window
-const PANE_X = 128, PANE_Y = 64;       // where the board's screen sits in it
-const PANE_W = 384, PANE_H = 256;      // obj_board_camera's gamescreenWidth/Height
-const MS_PER_FRAME = 1000 / 30;        // GEN8 game speed
 
-const WSPEED = 4;                      // obj_mainchara_board Create
-const KRIS_SIZE = 32;                  // 16x16 sprite at the instance's scale 2
 
-// obj_mainchara_board Step, lines 1-4. The pane inset by Kris's own size.
+const VIEW_W = 640, VIEW_H = 480;
+const PANE_X = 128, PANE_Y = 64;
+const PANE_W = 384, PANE_H = 256;
+const MS_PER_FRAME = 1000 / 30;
+
+const WSPEED = 4;
+const KRIS_SIZE = 32;
+
+
 const BOUND_L = 128, BOUND_R = 480, BOUND_U = 64, BOUND_D = 288;
 
-// obj_board_camera Step: horizontal shifts run at 24, vertical at 16 — both
-// land on exactly 16 frames for their axis.
+
 const SHIFT_H_SPEED = 24, SHIFT_V_SPEED = 16;
 
 const FACE_DOWN = 0, FACE_RIGHT = 1, FACE_UP = 2, FACE_LEFT = 3;
@@ -67,17 +47,12 @@ export async function runBoard(canvas, base = 'assets/board/') {
     left: [krisFrames[6], krisFrames[7]],
   };
 
-  /* ---------------- the world ----------------
-     obj_board_camera's Create:
-         moveX = 128 - roomStartingX - originX
-         moveY = 64  - roomStartingY - originY
-     and then it moves the layers AND every board instance by that. The
-     layers start at 0,0 here, so this room opens shifted (0, -256) — which
-     is what puts Kris's starting cell inside the screen. */
+
+
   const moveX = PANE_X - room.roomStartingX;
   const moveY = PANE_Y - room.roomStartingY;
 
-  const world = { x: moveX, y: moveY };   // the tile layer's origin
+  const world = { x: moveX, y: moveY };
   const solids = room.solids.map((s) => ({ x: s.x + moveX, y: s.y + moveY, w: s.w, h: s.h }));
   const spot = room.spotlight
     ? { x: room.spotlight.x + moveX, y: room.spotlight.y + moveY } : null;
@@ -92,7 +67,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     nowx: 0, nowy: 0,
   };
 
-  /** `place_meeting(x, y, obj_board_solid)` — Kris's 32x32 box against them. */
+
   function meets(x, y) {
     for (const s of solids) {
       if (x < s.x + s.w && x + KRIS_SIZE > s.x && y < s.y + s.h && y + KRIS_SIZE > s.y) return true;
@@ -100,7 +75,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     return false;
   }
 
-  /* ---------------- input ---------------- */
+
   const held = new Set();
   const KEYMAP = {
     arrowup: 'u', arrowdown: 'd', arrowleft: 'l', arrowright: 'r',
@@ -119,11 +94,11 @@ export async function runBoard(canvas, base = 'assets/board/') {
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', onKeyUp);
 
-  /* ---------------- the shift ---------------- */
+
   let shift = 'none';
   let moving = 0;
 
-  /** Translate EVERYTHING — the world origin, the walls, Kris. */
+
   function translate(dx, dy) {
     world.x += dx; world.y += dy;
     for (const s of solids) { s.x += dx; s.y += dy; }
@@ -140,16 +115,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     const dy = shift === 'down' ? -speed : shift === 'up' ? speed : 0;
     translate(dx, dy);
 
-    // AND THEN KRIS GETS TWO PIXELS BACK, every frame, against the drift.
-    //
-    // This is the line that makes the transition work, and it is easy to
-    // miss: obj_board_camera moves every board instance by the full
-    // movespeed and then nudges KRIS ALONE by 2 the other way. Over the 16
-    // frames of a horizontal shift he travels 352 instead of 384 — from one
-    // bound to exactly the other (480 - 352 = 128), so he walks in at the
-    // edge of the new screen. Without it he overshoots past the opposite
-    // bound, trips the edge test again, and the screen shifts back and
-    // forth forever.
+
     if (shift === 'right') kris.x += 2;
     if (shift === 'left') kris.x -= 2;
     if (shift === 'down') kris.y += 2;
@@ -157,7 +123,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
 
     moving += speed;
     if (moving >= total) {
-      // con 99: the world settles on whole pixels and control comes back.
+
       kris.x = Math.round(kris.x);
       kris.y = Math.round(kris.y);
       shift = 'none';
@@ -166,10 +132,8 @@ export async function runBoard(canvas, base = 'assets/board/') {
     }
   }
 
-  /* ---------------- Kris ----------------
-     obj_mainchara_board's Step: read the four keys, set facing by the rules
-     that make a held direction win over the one you just released, then
-     resolve movement one axis at a time with a corner slip. */
+
+
   function stepKris() {
     kris.nowx = kris.x;
     kris.nowy = kris.y;
@@ -184,9 +148,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     if (pd) { py = WSPEED; pressdir = FACE_DOWN; }
     if (pu) { py = -WSPEED; pressdir = FACE_UP; }
 
-    // The facing rules, verbatim: while facing one way, the opposite key
-    // takes over immediately, and letting go of the current one hands
-    // facing to whatever is still held.
+
     const f = kris.facing;
     if (f === FACE_UP) {
       if (pd) kris.facing = FACE_DOWN;
@@ -204,9 +166,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
 
     const x = kris.x, y = kris.y;
 
-    // X AXIS. Blocked? First try to slip up or down by g — this is what
-    // lets you round a corner without catching on it — then walk px back
-    // toward zero until it fits.
+
     if (px !== 0 && meets(x + px, y)) {
       for (let g = WSPEED; g > 0; g -= 1) {
         if (!pd && !meets(x + px, y - g)) { kris.y -= g; py = 0; break; }
@@ -221,7 +181,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
       if (!bkx) px = 0;
     }
 
-    // Y AXIS, the same shape.
+
     if (py !== 0 && meets(kris.x, y + py)) {
       for (let g = WSPEED; g > 0; g -= 1) {
         if (!pr && !meets(kris.x - g, y + py)) { kris.x -= g; px = 0; break; }
@@ -236,7 +196,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
       if (!bky) py = 0;
     }
 
-    // DIAGONAL: walk both components down together until the pair fits.
+
     if (px !== 0 && py !== 0 && meets(kris.x + px, kris.y + py)) {
       let i = px, j = py, ok = 0;
       while (j !== 0 || i !== 0) {
@@ -250,9 +210,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     kris.x += px;
     kris.y += py;
 
-    // THE EDGE. Clamp to the screen, and hand over to the camera only if
-    // there is somewhere to arrive: a solid one cell beyond the boundary
-    // means this edge is a wall, not a way out.
+
     if (kris.x > BOUND_R) {
       kris.x = BOUND_R;
       if (!meets(kris.x + 32, kris.y)) { kris.facing = FACE_RIGHT; kris.canfreemove = false; shift = 'right'; }
@@ -271,7 +229,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
     }
   }
 
-  /** The walk cycle: two frames, and only ACTUAL movement drives it. */
+
   function stepAnim() {
     if (kris.x !== kris.nowx || kris.y !== kris.nowy) kris.walkbuffer = 6;
     if (kris.walkbuffer > 3) kris.imageIndex += 0.125;
@@ -279,12 +237,11 @@ export async function runBoard(canvas, base = 'assets/board/') {
     kris.walkbuffer -= 0.75;
   }
 
-  /* ---------------- drawing ---------------- */
+
   const { tileW, tileH, cols, border } = room.tileset;
 
   function drawTiles() {
-    // Only the cells the screen can see — the grid is 77x30 and all but a
-    // pane of it is off-screen at any moment.
+
     const x0 = Math.floor((PANE_X - world.x) / tileW);
     const y0 = Math.floor((PANE_Y - world.y) / tileH);
     const x1 = Math.ceil((PANE_X + PANE_W - world.x) / tileW);
@@ -293,7 +250,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
       const row = room.grid[ty];
       if (!row) continue;
       for (let tx = Math.max(0, x0); tx < Math.min(room.tilesX, x1); tx++) {
-        // GameMaker packs flip/rotate flags into the high bits of the id.
+
         const id = row[tx] & 0x7ffff;
         if (!id) continue;
         const sx = (id % cols) * (tileW + border * 2) + border;
@@ -325,21 +282,18 @@ export async function runBoard(canvas, base = 'assets/board/') {
 
     ctx.restore();
 
-    // The screen's edge. The game frames this area with the show's set;
-    // this is a plain bezel in its place.
+
     ctx.strokeStyle = '#2e2e2e';
     ctx.lineWidth = 2;
     ctx.strokeRect(PANE_X - 1, PANE_Y - 1, PANE_W + 2, PANE_H + 2);
   }
 
-  /* ---------------- the clock ---------------- */
+
   let raf = 0, acc = 0, last = performance.now();
   function frame(now) {
     acc += now - last;
     last = now;
-    // A hidden tab pauses rAF but time keeps passing - without this
-    // clamp the backlog replays at 8x on return (the fast-forward
-    // burst). Coming back resumes at normal speed, dropping the gap.
+
     if (acc > MS_PER_FRAME * 4) acc = MS_PER_FRAME;
     let guard = 0;
     while (acc >= MS_PER_FRAME && guard++ < 8) {
@@ -353,7 +307,7 @@ export async function runBoard(canvas, base = 'assets/board/') {
   }
   raf = requestAnimationFrame(frame);
 
-  // Exposed for debugging and automated checks, like the sim's window.__sim.
+
   window.__board = {
     get kris() { return kris; },
     get shift() { return shift; },

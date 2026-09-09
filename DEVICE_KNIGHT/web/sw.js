@@ -1,13 +1,7 @@
-// The service worker: what makes add-to-home-screen a standalone app rather
-// than a browser tab, and what keeps the fight playable offline once loaded.
-//
-// STRATEGY, deliberately boring: navigation goes network-first (a deploy is
-// picked up on the next launch, offline falls back to the cached shell);
-// everything else — sprites, audio, modules — is cache-first with a
-// background fill, because those files are content-stable between deploys
-// and there are hundreds of them. CACHE bumps on deploy via sw.js itself
-// changing, which retires the old cache in activate.
-const CACHE = 'blackknife-v1';
+
+
+const PREFIX = 'blackknife-';
+const CACHE = PREFIX + '1.0.18';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -18,7 +12,9 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(
+        keys.filter((k) => k.startsWith(PREFIX) && k !== CACHE).map((k) => caches.delete(k)),
+      ))
       .then(() => self.clients.claim()),
   );
 });
@@ -34,7 +30,16 @@ self.addEventListener('fetch', (e) => {
           caches.open(CACHE).then((c) => c.put(e.request, copy));
           return r;
         })
-        .catch(() => caches.match(e.request).then((m) => m ?? caches.match('./index.html'))),
+
+        .catch(() => caches.match(e.request).then((m) => {
+          if (m) return m;
+          const isShell = url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+          if (isShell) return caches.match('./index.html');
+          return new Response(
+            'Offline, and this page is not cached.',
+            { status: 503, headers: { 'Content-Type': 'text/plain' } },
+          );
+        })),
     );
     return;
   }

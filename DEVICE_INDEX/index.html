@@ -83,11 +83,7 @@
     })();
   }
 
-  // THE ROSTER COMES FROM THE SIM ITSELF when it is connected — the same
-  // module its title screen builds its picker from, so this page cannot
-  // drift from what the simulator can actually launch. The checked-in
-  // snapshot only carries the pre-merge state, and the provenance line
-  // says which one you are looking at.
+
   let menu, provenance;
   try {
     ({ ATTACK_MENU: menu } = await import('../DEVICE_KNIGHT/sim/scenes/single.js'));
@@ -99,9 +95,7 @@
   }
   document.getElementById('provenance').textContent = provenance;
 
-  // ?difficulty= takes the selector's RAW value (0/3/4 for the tunnel), not
-  // the 1..N the sim's picker displays — same contract main.js reads. The
-  // link text shows D1..DN like the picker; the href carries the raw value.
+
   function row(entry) {
     const tr = document.createElement('tr');
     const links = entry.difficulties.map((raw, i) =>

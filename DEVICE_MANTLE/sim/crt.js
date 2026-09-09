@@ -1,13 +1,5 @@
-// THE BOARD'S CRT — obj_board_controller's Draw, running the game's own
-// shd_crt (extracted verbatim to assets/crt/shd_crt.frag) over the screen
-// region (128,32) 384x288: the RGB triad filter, chromatic aberration,
-// vignette, and the glitch shake when a sword-carrying Kris takes a hit
-// (crt_glitch = 6, strength 10, decaying 1 a frame).
-//
-// The pipeline mirrors the game's: the region is copied off the composed
-// frame (surface_copy_part), stretched by the glitch jitter
-// (draw_surface_stretched with min(0,dx) offsets), run through the shader,
-// and drawn back in place.
+
+
 
 const REGION = { x: 128, y: 32, w: 384, h: 288 };
 
@@ -30,10 +22,9 @@ export async function createCRT(base) {
   glCanvas.width = REGION.w;
   glCanvas.height = REGION.h;
   const gl = glCanvas.getContext('webgl', { premultipliedAlpha: false, preserveDrawingBuffer: true });
-  if (!gl) return null;                       // no WebGL: the filter stays off
+  if (!gl) return null;
 
-  // The staging canvas receives the region (plus the glitch stretch)
-  // before upload — the equivalent of the game's screen_surface.
+
   const stage = document.createElement('canvas');
   stage.width = REGION.w;
   stage.height = REGION.h;
@@ -58,7 +49,7 @@ export async function createCRT(base) {
   }
   gl.useProgram(prog);
 
-  // One fullscreen quad; v flipped so the texture reads top-down.
+
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
@@ -87,21 +78,21 @@ export async function createCRT(base) {
   const uFilter = U('filter_amount');
   const uTime = U('time');
 
-  // The controller's live state.
+
   const state = {
     enabled: true,
-    timer: 0,                  // crttimer = (t + 0.5) % 3, per frame
-    glitch: 0,                 // crt_glitch, decays 1 a frame
-    glitchStrength: 10,        // crt_glitchstrength
-    chromStrength: 0.5,        // chromStrength
+    timer: 0,
+    glitch: 0,
+    glitchStrength: 10,
+    chromStrength: 0.5,
   };
 
-  /** Apply the filter in place over the main 2D canvas. */
+
   function apply(g2d, srcCanvas) {
     if (!state.enabled) return;
     state.timer = (state.timer + 0.5) % 3;
 
-    // The Draw's uniform derivations, verbatim.
+
     const gl_ = state.glitch;
     const vig = gl_ ? 0.2 + Math.random() * Math.min(Math.max(gl_ / 200, 0), 0.1) : 0.2;
     const vigInt = Math.pow(1.5, 1.5 - vig) * 18;
@@ -113,8 +104,7 @@ export async function createCRT(base) {
     const dx = gl_ ? (Math.random() * 2 - 1) * Math.min(Math.max(gl_ / state.glitchStrength, 0), 3) : 0;
     const dy = gl_ ? (Math.random() * 2 - 1) * Math.min(Math.max(gl_ / state.glitchStrength, 0), 3) : 0;
 
-    // surface_copy_part + draw_surface_stretched(min(0,dx), min(0,dy),
-    // w+|dx|, h+|dy|).
+
     sg.clearRect(0, 0, REGION.w, REGION.h);
     sg.drawImage(srcCanvas, REGION.x, REGION.y, REGION.w, REGION.h,
       Math.min(0, dx), Math.min(0, dy), REGION.w + Math.abs(dx), REGION.h + Math.abs(dy));

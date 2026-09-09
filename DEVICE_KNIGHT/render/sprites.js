@@ -1,20 +1,10 @@
-// Sprite loading for the renderer.
-//
-// Art is extracted from the player's own data file into assets/sprites (see
-// knight-research/tools/patches — the dump is a UTMT `dump --sprites`, then
-// filtered to the ~96 sprites the fight code actually references).
-//
-// manifest.json carries what the PNGs cannot: GameMaker's per-sprite ORIGIN.
-// Every draw is positioned relative to it, so without these the art lands
-// offset from where the physics is — the classic sprite/hitbox mismatch this
-// project exists to avoid.
 
-// Module-relative, not document-relative: the sim must load identically no
-// matter where the hosting page sits (thedevice vendors this tree one URL
-// level deeper than web/index.html does).
+
+
+
 const BASE = new URL('../assets/sprites/', import.meta.url).href;
 
-/** Object type name -> sprite name. Entities may override with `sprite`. */
+
 export const SPRITE_FOR = {
   obj_heart: 'spr_dodgeheart',
   obj_growtangle: 'spr_battlebg_0',
@@ -28,17 +18,14 @@ function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => resolve(img);
-    // A missing frame must not wedge startup; the renderer falls back to the
-    // collision-mask drawing for anything that fails.
+
     img.onerror = () => resolve(null);
     img.src = src;
   });
 }
 
-/**
- * Load the manifest and every frame it lists.
- * @returns {Promise<Map<string, {meta: object, frames: HTMLImageElement[]}>>}
- */
+
+
 export async function loadSprites(base = BASE) {
   const res = await fetch(base + 'manifest.json');
   if (!res.ok) throw new Error(`sprite manifest not found at ${base}manifest.json`);

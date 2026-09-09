@@ -1,27 +1,5 @@
-// THE UNREADABLE NAMES — REAL WINGDINGS, RASTERISED.
-//
-// The devices that do not exist yet are listed in a script you cannot read.
-// A slot that announces "JOKER, COMING SOON" is a roadmap, and a roadmap is
-// a promise about a date. A name in a language you cannot read says the
-// thing exists without saying when.
-//
-// THESE ARE THE ACTUAL GLYPHS. An earlier version of this file invented
-// symbols that merely looked occult, which is a different thing from being
-// Wingdings. The font turned out to be installed on the machine this was
-// built on, so every letter A-Z and the underscore was rendered at 128px,
-// box-downsampled into a 16x16 cell and thresholded at 0.36 coverage — the
-// shapes below are Microsoft's, not mine. They are recognisable: J K L are
-// the three faces, N the skull, S the filled drop, T the snowflake, U V W X
-// the crosses, Y the hexagram, Z the star and crescent.
-//
-// THEY ARE BAKED IN ON PURPOSE. Wingdings cannot be embedded, and it is
-// missing on most phones and every Linux box — where a missing symbol font
-// falls back to plain legible letters, leaking the exact thing the cipher
-// hides on the machines least likely to have it. Rasterising once and
-// shipping the bitmaps gives everybody the real shapes.
-//
-// The cell is 16x16, the same one fnt_8bit uses, so a name in cipher and a
-// name in the board font sit on the same grid.
+
+
 
 const ART = {
   'A': `......##.#.#....
@@ -470,7 +448,7 @@ const GLYPHS = Object.fromEntries(Object.entries(ART).map(([k, a]) => [
   }),
 ]));
 
-/** Horizontal runs per row — fewer rects to draw, and fewer SVG nodes. */
+
 function runs(rows) {
   const out = [];
   rows.forEach((row, y) => {
@@ -491,12 +469,12 @@ export function wingdingsWidth(text, advance = DEFAULT_ADVANCE) {
   return [...String(text)].length * advance;
 }
 
-/** What a line occupies vertically, for centring against the board font. */
+
 export function wingdingsHeight(scale = 1) {
   return ROWS * scale;
 }
 
-/** Draw straight onto a canvas — the board is painted, not laid out in DOM. */
+
 export function drawWingdings(ctx, text, x, y, { scale = 1, advance = DEFAULT_ADVANCE, color = '#ffffff' } = {}) {
   ctx.fillStyle = color;
   let pen = x;
@@ -509,13 +487,8 @@ export function drawWingdings(ctx, text, x, y, { scale = 1, advance = DEFAULT_AD
   return pen - x;
 }
 
-/**
- * The SVG form, for pages that lay the names out in DOM.
- *
- * The real text goes in as a visually hidden span, so find-in-page, copy and
- * a screen reader all still get the actual name — the cipher is for the eye,
- * not a way of withholding the page from anyone who needs it read aloud.
- */
+
+
 export function wingdings(text, scale = 2, label = null) {
   const chars = [...String(text).toUpperCase()];
   const advance = COLS;

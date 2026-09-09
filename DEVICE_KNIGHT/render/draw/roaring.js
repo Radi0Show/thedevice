@@ -1,35 +1,5 @@
-// obj_knight_roaring2's Draw event — the ROAR, ported whole.
-//
-// 282 lines and four offscreen surfaces. It is the one place in the fight where
-// nothing you see is a sprite sitting at an instance's position: the knight is
-// re-drawn one scanline at a time with a per-row sine offset, the background is
-// a tiled texture multiplied by six expanding rings and then re-scanned with a
-// second sine, and the whole composite fades in behind an alpha the Create
-// event lerps up over 32 frames.
-//
-// The layer order, which is the whole event:
-//
-//   ball_surface   tiled `spr_knight_bullet_flow`, drawn five times (once
-//                  normally, four more additively), then MULTIPLIED by six
-//                  concentric white->#595959 circles whose radii sweep through
-//                  `ball_counter`. That multiply is what turns a flat texture
-//                  into a vortex.
-//   star_surface   the circle, particles, roaring stars, starchildren and
-//                  afterimages, with `spr_knight_line_grate` darkened over the
-//                  middle of them (RGB only — see gpu_set_colorwriteenable).
-//   my_surface     black; then ball_surface re-drawn ONE ROW AT A TIME with a
-//                  horizontal sine wobble and an HSV tint that cycles every
-//                  frame; then star_surface; then the knight, also row by row.
-//
-// and finally `draw_surface_ext(my_surface, ..., darkness)`.
-//
-// The counters the event advances (ball_counter, hsv, star_flicker, intensify)
-// live in sim/attacks/roaring.js's endStep — the renderer only reads.
-//
-// The `do_fake_screen` finale at roaring_timer 299 IS ported — see
-// takeScreenCut at the bottom: the composite is photographed, cut along the
-// -63 degree diagonal the marker has been telegraphing, and the two halves are
-// handed to markers that slide apart.
+
+
 
 import { drawSpriteExt, drawBeamColor, mergeColor, clamp01, tinted, c_white, c_gray, c_red } from './gm.js';
 import { drawPointingStarchild } from './pointing-starchild.js';
@@ -49,7 +19,7 @@ function surf(store, key) {
 }
 const surfaces = {};
 
-/** GML `make_color_hsv(h, s, v)` — h/s/v are 0..255, not 0..360. */
+
 function makeColorHsv(h, s, v) {
   const hh = ((h / 255) * 6) % 6;
   const ss = s / 255;
@@ -64,7 +34,7 @@ function makeColorHsv(h, s, v) {
   return [Math.round(c[0] * 255), Math.round(c[1] * 255), Math.round(c[2] * 255)];
 }
 
-/** `draw_sprite_tiled(spr, sub, x, y)` — repeats the frame over the surface. */
+
 function drawTiled(g, entry, sub, x, y, scale = 1) {
   if (!entry || !entry.frames.length) return;
   const img = entry.frames[sub % entry.frames.length];
@@ -80,12 +50,8 @@ function drawTiled(g, entry, sub, x, y, scale = 1) {
   }
 }
 
-/**
- * `obj_knight_roaring_star`'s Other_10 / Other_11. Near-identical to the
- * pointing star's, with one addition: past `split >= 2` the star is drawn as
- * two halves peeling apart by `splitease`, which is the tell that it is about
- * to break in two.
- */
+
+
 function drawRoaringStar(ctx, e, sprites, userEvent) {
   const entry = sprites.get(e.sprite_index);
   if (!entry || !entry.frames.length) return;
@@ -148,19 +114,8 @@ function drawRoaringStar(ctx, e, sprites, userEvent) {
   }
 }
 
-/**
- * THE KNIGHT, one scanline at a time.
- *
- * Each row of `knight_sprite` is blitted as a 70x1 strip at double scale, with
- * its x displaced by `sin((row + time*4) * 0.2) * intensify * 0.3`. Above
- * intensify 1.5 a second pass draws alternate rows at 0.75 alpha, thrown much
- * further (`* 8`) and in ALTERNATING directions, which is what tears the figure
- * apart at the peak of the roar.
- *
- * `y` is `fake_y + row*2 + sin(bobble_count * 0.1) * bobble_amp - 10 - bbox_top*2`:
- * the row spacing is 2 because the whole thing is drawn at scale 2, and the
- * bobble is a slow vertical breathe over the whole figure.
- */
+
+
 function drawKnightRows(g, entry, e, time, originX, originY) {
   if (!entry || !entry.frames.length) return;
   const img = entry.frames[Math.floor(e.knight_sprite_image ?? 0) % entry.frames.length];
@@ -202,24 +157,9 @@ export function drawRoaring(ctx, e, state, deps) {
   const vy = state.view.y;
   const alive = (name) => state.entities.filter((x) => x.alive && x.type.name === name);
 
-  // `draw_self()` first — the instance itself sits off screen all turn, so this
-  // is a no-op in practice, but the early exit below depends on running after.
-  //
-  // NOT `if (e.stop)`. The sim sets `stop` in the same endStep that arms the
-  // finale, and that runs BEFORE this — so keying the exit off `stop` alone
-  // would skip the very frame the finale needs to photograph. The snapshot is
-  // the gate instead: draw normally until it has been taken.
+
   if (e.stop && screenCut.taken) {
-    // `draw_self()` IS ABOVE THE `if (stop) exit;` — it runs on every frame of
-    // the attack, including every frame after the finale has frozen everything
-    // else. That is how the knight stays visible over the two halves of the cut
-    // screen: he dips, then arcs 360px up and off the top, trailing a ghost a
-    // frame, while the wreckage falls away behind him.
-    //
-    // Suppressed BEFORE the finale, and that is a deliberate deviation: the
-    // recording has this instance parked off screen at y -242 all turn, while
-    // the launcher spawns it at the arena. Drawing its plain sprite early would
-    // put a second, wrongly-posed knight on screen next to the scanline one.
+
     const self = sprites.get(e.sprite_index);
     if (self) {
       drawSpriteExt(ctx, self, e.image_index, e.x - vx, e.y - vy,
@@ -228,7 +168,7 @@ export function drawRoaring(ctx, e, state, deps) {
     return true;
   }
 
-  // ---- ball_surface: the vortex -------------------------------------------
+
   const ball = surf(surfaces, 'ball');
   const bg = ball.getContext('2d');
   bg.imageSmoothingEnabled = false;
@@ -241,10 +181,7 @@ export function drawRoaring(ctx, e, state, deps) {
   for (let i = 0; i < 4; i++) drawTiled(bg, flow, 0, e.fake_x + time * 2, e.fake_y);
   bg.globalCompositeOperation = 'source-over';
 
-  // `gpu_set_blendmode_ext(bm_zero, bm_src_color)` is dst * src — a MULTIPLY.
-  // Six radial gradients whose radii sweep 1800 -> 0 cut the flat texture into
-  // rings; the last one (radius 640, white -> black) is the vignette that keeps
-  // the edges of the screen dark.
+
   bg.globalCompositeOperation = 'multiply';
   const cx = e.fake_x;
   const cy = e.fake_y + 57;
@@ -262,7 +199,7 @@ export function drawRoaring(ctx, e, state, deps) {
   ring(640, '#000000');
   bg.globalCompositeOperation = 'source-over';
 
-  // ---- star_surface: everything that lives in the vortex --------------------
+
   const starC = surf(surfaces, 'star');
   const sg = starC.getContext('2d');
   sg.imageSmoothingEnabled = false;
@@ -271,11 +208,7 @@ export function drawRoaring(ctx, e, state, deps) {
   sg.save();
   sg.translate(-vx, -vy);
 
-  // `with (obj_knight_circle) event_user(1);` is a NO-OP. obj_knight_circle has
-  // Create/Step/Draw/CleanUp and no Other_11, and GameMaker silently does
-  // nothing when an object has no handler for a user event. The circle draws
-  // itself through its own Draw event (render/draw/knight-circle.js) and must
-  // NOT be composited here as well, or it appears twice.
+
   for (const p of alive('obj_particle_generic')) {
     const entry = sprites.get(p.sprite_index);
     if (entry) {
@@ -284,42 +217,18 @@ export function drawRoaring(ctx, e, state, deps) {
     }
   }
 
-  // THREE PASSES, not two — the event has three `with (obj_knight_roaring_star)`
-  // blocks and the first TWO are both above the grate line:
-  //
-  //     pass A  if (image_blend == c_white)  continue;   // dark stars
-  //     pass B  if (image_blend == c_dkgray) continue;   // white stars
-  //     ...the grate...
-  //     pass C  if ((image_blend == c_dkgray || image_xscale > 1) && con < 1)
-  //                 continue;                             // over the grate
-  //
-  // So EVERY star is drawn under the grate, and then white small ones — plus
-  // ANY star that has begun charging (`con >= 1`), whatever its colour or size
-  // — are drawn AGAIN on top of it. The second copy is what makes an active
-  // star burn through the scanlines while the idle field stays striped. The
-  // old two-pass reading drew each star once and split them by colour, which
-  // striped the active ones too and halved the bright field's intensity.
+
   const roarStars = alive('obj_knight_roaring_star');
   const isWhite = (x) => !x.image_blend || x.image_blend === c_white
     || (Array.isArray(x.image_blend) && x.image_blend[0] === 255 && x.image_blend[1] === 255);
   const drawStar = (st) => drawRoaringStar(sg, st, sprites, st.con === 0 ? 0 : 1);
 
-  for (const st of roarStars) { if (!isWhite(st)) drawStar(st); }   // pass A
-  for (const st of roarStars) { if (isWhite(st)) drawStar(st); }    // pass B
+  for (const st of roarStars) { if (!isWhite(st)) drawStar(st); }
+  for (const st of roarStars) { if (isWhite(st)) drawStar(st); }
 
   const grate = sprites.get('spr_knight_line_grate');
   if (grate && grate.frames[0]) {
-    // `gpu_set_colorwriteenable(true, true, true, false)` and the grate tinted
-    // **c_black**: colour is written, alpha is not, so wherever the grate has
-    // ink the pixels turn black but keep their alpha — and black contributes
-    // nothing when star_surface is later added onto my_surface, so the striped
-    // rows simply vanish from the glow.
-    //
-    // The old version multiplied by the grate's OWN pixels, and the grate's
-    // ink is white — dst * 1 is a NO-OP. The scanline effect was silently
-    // absent, which no test can see. 'source-atop' with a black-tinted copy is
-    // the real equivalent: draw black, only where the destination already has
-    // alpha, leaving that alpha as it was.
+
     sg.save();
     sg.setTransform(1, 0, 0, 1, 0, 0);
     sg.globalCompositeOperation = 'source-atop';
@@ -328,7 +237,7 @@ export function drawRoaring(ctx, e, state, deps) {
     sg.restore();
   }
 
-  for (const st of roarStars) {                                     // pass C
+  for (const st of roarStars) {
     const dark = !isWhite(st);
     const large = (st.image_xscale ?? 1) > 1;
     if ((dark || large) && (st.con ?? 0) < 1) continue;
@@ -347,7 +256,7 @@ export function drawRoaring(ctx, e, state, deps) {
   }
   sg.restore();
 
-  // ---- my_surface: the wobble, the tint, and the knight --------------------
+
   const my = surf(surfaces, 'my');
   const mg = my.getContext('2d');
   mg.imageSmoothingEnabled = false;
@@ -357,10 +266,7 @@ export function drawRoaring(ctx, e, state, deps) {
   mg.fillStyle = '#000000';
   mg.fillRect(0, 0, W, H);
 
-  // ONE ROW AT A TIME. Each scanline of the vortex is shifted horizontally by
-  // two summed sines scaled by `intensity`, so the whole background ripples;
-  // the tint is `make_color_hsv(hsv % 255, 255, 255)`, one fully-saturated hue
-  // per frame, sweeping as `hsv` walks 128..288.
+
   if (e.ball_darkness > 0) {
     const tintC = surf(surfaces, 'tint');
     const tg = tintC.getContext('2d');
@@ -403,10 +309,7 @@ export function drawRoaring(ctx, e, state, deps) {
     }
   }
 
-  // THE PRE-CUT MARKER. From roaring_timer 275 a bar grows out along -63
-  // degrees through the centre of the screen, reddening as r/g/b ramp — the
-  // telegraph for the diagonal that ends the fight. It is drawn twice: a
-  // gradient copy in that colour, and a solid black copy over it.
+
   if (e.line_timer > -1) {
     const grad = sprites.get('spr_rk_quickslash_marker_gradient');
     const mark = sprites.get('spr_rk_quickslash_marker');
@@ -415,13 +318,7 @@ export function drawRoaring(ctx, e, state, deps) {
     const myy = H * 0.5 + Math.sin((dir * Math.PI) / 180) * 280;
     const thick = 4 + 8 * (1 - Math.min(e.line_timer, 16) / 16);
     const col = [Math.round(e.r), Math.round(e.g), Math.round(e.b)];
-    // `gpu_set_colorwriteenable(true, true, true, false)` with NORMAL blending
-    // — not a multiply. The coloured gradient and the black core replace what
-    // is under them (weighted by their own alpha) while leaving the surface's
-    // alpha untouched; my_surface is opaque black-filled, so plain source-over
-    // is exact. The old 'multiply' darkened the vortex through the marker
-    // instead of painting the marker over it, which muted the reddening ramp
-    // the r/g/b lerps exist to show.
+
     mg.save();
     if (grad) drawSpriteExt(mg, grad, 0, mx, myy, e.line_timer, thick, dir, col, 1);
     if (mark) drawSpriteExt(mg, mark, 0, mx, myy, e.line_timer, thick, dir, [0, 0, 0], 1);
@@ -432,39 +329,16 @@ export function drawRoaring(ctx, e, state, deps) {
     drawKnightRows(mg, sprites.get(e.knight_sprite), e, time, 0, 0);
   }
 
-  // THE COMPOSITE IS NOT BLITTED HERE ANY MORE — it is registered as a COVER
-  // and drawn after the battle UI. In the game the charboxes, the tension bar
-  // and the bar all draw at their legacy depths (5 / 1 / 1, from
-  // __global_object_depths) and NONE of them has a roaring guard; the
-  // full-camera composite simply draws over them, so the menu fades out
-  // underneath as `darkness` ramps and is gone at 1. The renderer's old order
-  // put the panels last "over everything, including a full-screen attack" —
-  // which is exactly the assumption the original does not make.
-  //
-  // The SOUL is the one thing above the cover: roaring2's own Draw does
-  // `with (obj_heart) draw_self();` immediately after its surface blit, so
-  // canvas.js re-draws it over the cover.
+
   roaringCover.img = my;
   roaringCover.alpha = clamp01(e.darkness);
   roaringCover.active = true;
 
-  // THE KNIGHT IS DRAWN AGAIN ON THE FINALE FRAME, over the composite — the
-  // `do_fake_screen` branch repeats the whole scanline loop after the surface
-  // has been composited, at full brightness instead of behind `darkness`,
-  // holding the slash pose the roaring_timer 275/299 lerps put him in. He
-  // rides the cover, so he is deferred with it.
+
   roaringCover.fakeScreen = !!e.do_fake_screen;
   roaringCover.entity = e;
 
-  // THE SCREEN IS CUT IN TWO. `sprite_create_from_surface` twice over the same
-  // composite, each pass erasing the other side with `gpu_set_blendenable(false)`
-  // and an alpha-0 fill — which writes zero alpha rather than blending, i.e. it
-  // cuts a hole. What remains either side of the line from (200, 0) to
-  // (440, 480) becomes one sprite each.
-  //
-  // That line is the -63 degree diagonal the `line_timer` marker has been
-  // drawing across the screen since roaring_timer 275: the telegraph and the
-  // cut are the same geometry.
+
   if (e.do_fake_screen && !screenCut.taken) {
     takeScreenCut(my, e, state, sprites);
   }
@@ -472,16 +346,13 @@ export function drawRoaring(ctx, e, state, deps) {
   return true;
 }
 
-/**
- * The deferred composite — see the registration site in drawRoaring. Cleared
- * by canvas.js at the top of every frame, drawn by drawRoaringCover after the
- * battle UI so the roar covers the menu the way the game's depth order does.
- */
+
+
 export const roaringCover = {
   active: false, img: null, alpha: 0, fakeScreen: false, entity: null,
 };
 
-/** Blit the registered cover (and the finale knight) over whatever is drawn. */
+
 export function drawRoaringCover(ctx, state, sprites) {
   if (!roaringCover.active || !roaringCover.img) return;
   ctx.save();
@@ -496,28 +367,16 @@ export function drawRoaringCover(ctx, state, sprites) {
   ctx.restore();
 }
 
-const CUT_TOP_X = 200;   // midway - 120
-const CUT_BOTTOM_X = 440; // midway + 120
+const CUT_TOP_X = 200;
+const CUT_BOTTOM_X = 440;
 
-/** The two halves, built once from the last composited frame. */
+
 export const screenCut = { taken: false, halves: [null, null], origins: [[160, 240], [480, 240]] };
 
 function takeScreenCut(my, e, state, sprites) {
   screenCut.taken = true;
 
-  // WHAT GETS PHOTOGRAPHED IS `my_surface`, NOT THE SCREEN.
-  //
-  //     surface_set_target(terrible_surface);
-  //     draw_clear_alpha(c_black, 0);
-  //     draw_surface_ext(my_surface, 0, 0, 1, 1, 0, c_white, darkness);
-  //     with (obj_heart) draw_sprite_ext(...);
-  //
-  // The vortex composite at `darkness`, plus the soul. The KNIGHT is not in it:
-  // his scanline rows go to the main canvas a few lines earlier, outside this
-  // surface, precisely so that he stays a separate figure and can leap over the
-  // two halves as they fall. Snapshotting the whole canvas instead — which is
-  // what this did — bakes him into both halves and he gets torn in two with the
-  // background.
+
   const src = document.createElement('canvas');
   src.width = W;
   src.height = H;
@@ -547,13 +406,13 @@ function takeScreenCut(my, e, state, sprites) {
     g.fillStyle = '#000';
     g.beginPath();
     if (i === 0) {
-      // Keep the LEFT half: erase everything right of the diagonal.
+
       g.moveTo(CUT_TOP_X, -1);
       g.lineTo(CUT_BOTTOM_X, H);
       g.lineTo(W, H);
       g.lineTo(W, -1);
     } else {
-      // Keep the RIGHT half.
+
       g.moveTo(CUT_TOP_X, 0);
       g.lineTo(CUT_BOTTOM_X, H);
       g.lineTo(0, H);
@@ -565,17 +424,14 @@ function takeScreenCut(my, e, state, sprites) {
   }
 }
 
-/** Reset between turns — the practice loop replays Roaring. */
+
 export function resetScreenCut() {
   screenCut.taken = false;
   screenCut.halves = [null, null];
 }
 
-/**
- * One half of the cut screen, carried by an obj_marker. Drawn at the marker's
- * position minus the origin the sprite was created with, so it starts exactly
- * where the screen was and then slides.
- */
+
+
 export function drawScreenPiece(ctx, e, state) {
   const img = screenCut.halves[e.piece];
   if (!img) return true;

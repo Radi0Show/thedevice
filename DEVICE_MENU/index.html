@@ -45,8 +45,8 @@
     text-align:center; font-size:10px; color:#1c1c1c; letter-spacing:.08em;
   }
   footer a { color:#2e2e2e; text-decoration:none; }
-  /* The hand-off: the room whites out into the site the way the console
-     hands over to what it booted. */
+
+
   #flash {
     position:fixed; inset:0; background:#fff; opacity:0; z-index:50;
     pointer-events:none; transition:opacity .45s linear;
@@ -58,8 +58,8 @@
   }
   #failed a { color:#5a5a5a; text-decoration:none; }
 
-  /* ---------- THE FRIEND (rare; unexplained; never mentioned) ----------
-     It used to watch the menu. A dark room suits it better. */
+
+
   #eyes{
     position:fixed; bottom:14vh; right:9vw; z-index:40;
     display:none; pointer-events:none;
@@ -67,10 +67,8 @@
   #eyes span{ display:inline-block; width:7px; height:11px; background:#ff9bd5; }
   #eyes span + span{ margin-left:12px; background:#ffff00; }
 
-  /* THE TOUCH OVERLAY — the knight's control language (translucent
-     circles, a gradient cross), gated to coarse pointers. It is not
-     always-on chrome: it wakes when a thumb touches the screen and fades
-     back out after a few idle seconds, so the room stays the picture. */
+
+
   #touch { display: none; }
   @media (pointer: coarse) {
     #touch {
@@ -127,9 +125,8 @@
     bottom: max(18px, env(safe-area-inset-bottom));
   }
 
-  /* SIDEWAYS — the knight's landscape geometry, mirrored: the pad keeps
-     its size but centres on the left edge (that is where a thumb sits in
-     a landscape grip), and Z/X flank the right edge's centre. */
+
+
   @media (pointer: coarse) and (orientation: landscape) {
     #dpad {
       left: max(12px, env(safe-area-inset-left));
@@ -153,9 +150,7 @@
 </style>
 </head>
 <body>
-<!-- The corner label, SKIP link, key legend and footer are gone from this
-     page by request — the room is bare, like the boot. The attribution
-     footer still ships on the sims' and the other device pages. -->
+
 
 <canvas id="room" width="640" height="480"
         aria-label="A room with a television. Walk Kris to the console with the arrow keys and press Z to plug in the controller."></canvas>
@@ -182,15 +177,8 @@
 
   const canvas = document.getElementById('room');
 
-  /* FILL THE DISPLAY, BARS ON THE SHORT AXIS — what the game does in
-     fullscreen. The frame keeps its 4:3 and grows until one axis runs out,
-     so a widescreen gets black down either side and nothing is cropped.
 
-     This deliberately gives up whole-pixel scaling. At a fractional factor
-     `image-rendering: pixelated` hands some source columns n device pixels
-     and their neighbours n + 1, so a one-pixel stem is fat on one letter
-     and thin on the next. The real game makes the same trade at the same
-     place: filling the screen wins over an exact pixel grid. */
+
   function fit() {
     const f = Math.min(innerWidth / 640, innerHeight / 480);
     const cssW = 640 * f;
@@ -209,16 +197,13 @@
       mantleBase: '../assets/mantle/',
       tvBase: '../assets/tv/',
       soundOn: prefs.soundOn,
-      // Once you have booted it once, the set is on when you walk in.
+
       alreadyBooted: prefs.booted === true,
       onBooted: () => {
         if (!prefs.booted) { prefs.booted = true; savePrefs(prefs); }
-        // THE BOARD COMES UP IN THE TELEVISION — painted by the room, in the
-        // board's own blue and its own font. Kris stays in front of it and
-        // stops walking, because the board has the keys now.
+
         room.suspend(true);
-        // the #keys legend is gone from this page — the board teaches its
-        // own controls
+
       },
     });
   } catch (err) {
@@ -226,7 +211,7 @@
     document.getElementById('failed').style.display = 'flex';
   }
 
-  /* ---------------- the friend (rare, gated, once) ---------------- */
+
   if (prefs.flickerOK && !matchMedia('(prefers-reduced-motion: reduce)').matches
       && Math.random() <= 0.02) {
     setTimeout(() => {
@@ -236,7 +221,7 @@
     }, 6000 + Math.random() * 14000);
   }
 
-  /* ---------------- rare tab whisper ---------------- */
+
   if (Math.random() <= 0.05) {
     setTimeout(() => {
       const old = document.title;
@@ -247,18 +232,14 @@
 </script>
 
 <script type="module">
-  // THE THUMB SPEAKS KEYBOARD. The room's input is its keydown handler, so
-  // the overlay dispatches real KeyboardEvents — the room cannot tell a
-  // thumb from an arrow key, and the board menu's up/down/Z work unchanged
-  // once the television has the keys. Per-pointer bookkeeping so one thumb
-  // can hold the pad while the other taps Z.
+
   const touchRoot = document.getElementById('touch');
   const coarse = matchMedia('(pointer: coarse)').matches;
   if (coarse) {
     const kd = (key) => window.dispatchEvent(new KeyboardEvent('keydown', { key }));
     const ku = (key) => window.dispatchEvent(new KeyboardEvent('keyup', { key }));
 
-    // wake on any touch, sleep after idle
+
     let sleepT = 0;
     const wake = () => {
       touchRoot.classList.add('awake');
@@ -268,8 +249,7 @@
     window.addEventListener('pointerdown', wake);
     window.addEventListener('pointermove', (e) => { if (e.pointerType !== 'mouse') wake(); });
 
-    // the pad: direction from the touch point's angle off centre, with a
-    // small dead zone; a moving thumb re-aims without lifting
+
     const pad = document.getElementById('dpad');
     let padDir = null;
     const DIRS = { r: 'ArrowRight', l: 'ArrowLeft', u: 'ArrowUp', d: 'ArrowDown' };
@@ -277,7 +257,7 @@
       const r = pad.getBoundingClientRect();
       const dx = e.clientX - (r.left + r.width / 2);
       const dy = e.clientY - (r.top + r.height / 2);
-      if (Math.hypot(dx, dy) < r.width * 0.12) return padDir; // dead zone
+      if (Math.hypot(dx, dy) < r.width * 0.12) return padDir;
       return Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'r' : 'l') : (dy > 0 ? 'd' : 'u');
     };
     const setDir = (dir) => {
@@ -298,7 +278,7 @@
     pad.addEventListener('pointerup', drop);
     pad.addEventListener('pointercancel', drop);
 
-    // the buttons: press and release map to the key's down and up
+
     for (const [id, key] of [['btnZ', 'z'], ['btnX', 'x']]) {
       const el = document.getElementById(id);
       el.addEventListener('pointerdown', (e) => {

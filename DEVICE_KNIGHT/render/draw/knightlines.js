@@ -1,43 +1,5 @@
-// obj_bullet_knight_tunnelslash's Draw — a spear drawn TWICE and then cut off
-// by the arena wall.
-//
-//     if (!surface_exists(spear_surface)) spear_surface = surface_create(100, 100);
-//     surface_set_target(spear_surface);
-//     draw_clear_alpha(c_black, 0);
-//     draw_sprite_ext(sprite_index, image_index, 50, 50,
-//         image_xscale + sin(timer * 2) * 0.2,
-//         image_yscale + sin(timer * 2) * 0.05,
-//         image_angle, c_gray, image_alpha);
-//     draw_sprite_ext(sprite_index, image_index, 50, 50,
-//         image_xscale * 0.85 + sin(timer * 2) * 0.1,
-//         image_yscale + sin(timer * 2) * 0.05,
-//         image_angle, image_blend, image_alpha);
-//     surface_reset_target();
-//     if (y > scr_get_box(1) + 8 && y < scr_get_box(3) - 8) {
-//         var cut = max((scr_get_box(2) + 7) - (x - 50), 0);
-//         draw_surface_part(spear_surface, cut, 0, 100 - cut, 100, (x - 50) + cut, y - 50);
-//     } else {
-//         draw_surface_part(spear_surface, 0, 0, 100, 100, x - 50, y - 50);
-//     }
-//
-// TWO THINGS, and both are load-bearing:
-//
-// 1. THE OUTLINE IS A SECOND COPY, not a shader. A c_gray spear at the full
-//    scale, then the real one at 85% of the x scale over it — so the grey
-//    shows only as a rim along the long axis. Both breathe on `sin(timer * 2)`
-//    at different amplitudes (0.2 against 0.1), which makes the rim itself
-//    pulse rather than the whole shape.
-//
-// 2. THE CUT IS WHAT PUTS IT IN THE WALL. For a spear whose y lies inside the
-//    box's rows, the left of the surface is clipped at `box left + 7`, so the
-//    part that would hang over the arena is simply not drawn and the spear
-//    reads as buried in the wall. Spears outside those rows are drawn whole
-//    and sail past. Note the clip is on the SURFACE, not on the sprite: the
-//    100x100 buffer is what makes a single `draw_surface_part` able to cut a
-//    rotated sprite at a world x.
-//
-// The surface is rebuilt every frame in the original (`draw_clear_alpha` then
-// two draws), so a per-frame scratch canvas here is not a shortcut.
+
+
 
 import { drawSpriteExt } from './gm.js';
 

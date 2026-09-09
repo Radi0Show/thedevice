@@ -1,11 +1,5 @@
-// SNAPSHOT of knight-sim's sim/scenes/single.js ATTACK_MENU, taken 2026-08-17.
-//
-// DEVICE_INDEX imports the LIVE table from the vendored sim first, so once
-// the projects are merged this file is dead weight that can never drift into
-// the page. It exists only for the pre-merge, self-contained state — the
-// index has to render while the sim is not connected. If you edit the
-// roster upstream, this copy does not matter; if the live import ever fails
-// in production, the provenance line the page prints will say SNAPSHOT.
+
+
 export const SNAPSHOT_DATE = '2026-08-17';
 export const ATTACK_MENU = [
   { id: 'stars', ac: 1, name: 'Stars', difficulties: [0, 1, 2], where: 'phase 1/2/3 opener' },

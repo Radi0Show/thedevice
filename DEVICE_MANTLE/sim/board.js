@@ -1,31 +1,5 @@
-// THE BOARD ENGINE — the sword route's three levels, all of them.
-//
-// Chapter 3's board game, the one ranked Z C B A S T. The sword route hands
-// you one level after each board:
-//
-//   1  room_board_1_sword   6220x1920   desert: monsters, spear monsters,
-//                                       flowers, pond fish, one bluebird,
-//                                       cactus hazards, the tree loop
-//   2  room_board_2_sword   5184x4736   water: boats, docks, warp maze,
-//                                       fish that dash, the ice door
-//   3  room_board_3_sword   3968x3392   the approach: stanchions, no
-//                                       enemies, one exit trigger
-//
-// THE CAMERA NEVER MOVES. The screen is a fixed 384x256 window at (128,64);
-// walking off an edge translates THE WHOLE WORLD one pane over (24px/frame
-// horizontal, 16 vertical), with Kris — and an engaged boat — nudged +2px a
-// frame against the drift so they land on the opposite bound. Warps are the
-// same translation done all at once behind a 10-frame fade
-// (obj_board_camera's shift = "warp").
-//
-// LIFETIME: the moment a shift begins every enemy and projectile is
-// destroyed; the frame it lands (con 98) every living spawner inside the
-// player's bounds fires, the arriving screen's colour changer retints the
-// TV, and regions (water, falls, triggers) activate. Enemies are strictly
-// per-screen.
-//
-// Everything numeric is read from the dump and cited where it lands;
-// approximations are labelled on the page, not just here.
+
+
 
 import { createEnemies, CONTACT_DAMAGE } from './enemies.js';
 import { loadAtlas } from './sprites.js';
@@ -39,7 +13,7 @@ const VIEW_W = 640, VIEW_H = 480;
 const PANE_X = 128, PANE_Y = 64, PANE_W = 384, PANE_H = 256;
 const MS_PER_FRAME = 1000 / 30;
 
-const WSPEED = 4;                      // obj_mainchara_board Create
+const WSPEED = 4;
 const KRIS_SIZE = 32;
 const BOUND_L = 128, BOUND_R = 480, BOUND_U = 64, BOUND_D = 288;
 const SHIFT_H_SPEED = 24, SHIFT_V_SPEED = 16;
@@ -47,20 +21,16 @@ const SHIFT_H_SPEED = 24, SHIFT_V_SPEED = 16;
 const FACE_DOWN = 0, FACE_RIGHT = 1, FACE_UP = 2, FACE_LEFT = 3;
 const FACE_NAME = ['down', 'right', 'up', 'left'];
 
-/* ---------------- getting hit ----------------
-   obj_mainchara_board's Create and the damage block in its Step. Kris opens
-   at myhealth 999; the Step's first health line clamps to maxhealth 12. A
-   contact hit costs 2 (the hitbox's damage), projectiles cost 1, cactus 1. */
+
+
 const MAXHEALTH = 12;
 const IFRAMES = 20;
 const HURTTIMER = 5;
-const HITMOVE = 32;                    // Create's 64 is overwritten by the hit
+const HITMOVE = 32;
 const HITMOVESPEED = 16;
 
-/* ---------------- the sword ----------------
-   Eight frames; hitbox at buffer 6, re-aimed at 4; a direction press on
-   7/6/5/4/0 turns the swing. Boxes from the two hitbox sprites' dims and
-   origins at scale +/-2, relative to Kris's corner. */
+
+
 const SWORDBUFFER = 8;
 const SWORD_BOXES = {
   0: [0, 16, 22, 50], 1: [16, 12, 50, 22], 2: [8, -34, 22, 50], 3: [-34, 12, 50, 22],
@@ -68,19 +38,18 @@ const SWORD_BOXES = {
 const STRIKE_OFFSET = { 0: [0, 0], 1: [0, 0], 2: [0, -32], 3: [-32, 0] };
 const STRIKE_FRAME = { 7: 0, 6: 0, 5: 1, 4: 1, 3: 1, 2: 2, 1: 0, 0: 0 };
 
-/* The level-up table from the Step; xptolevel starts 3, or 10 in level 2. */
+
 const XP_TABLE = { 2: 24, 3: 15, 4: 14, 5: 68 };
 
-/* obj_board_death_event_sword's colour ladder (BGR literals decoded). */
+
 const DEATH_REDS = [
   { t: 0, css: 'rgb(209,25,0)' }, { t: 40, css: 'rgb(167,27,0)' },
   { t: 50, css: 'rgb(121,20,0)' }, { t: 60, css: 'rgb(0,0,0)' },
 ];
 const DEATH_END = 120;
 
-/* The per-level intro colour fades. 1-3 are the managers' con-1 fades;
-   4 is obj_board_b3s_repeatintro's #7C344F; the mantle rooms hold black
-   (obj_gameshow_swordroute's Create). */
+
+
 const INTRO_COLOR = { 1: '#FFD864', 2: '#E2FF81', 3: '#4DAFFF',
   4: '#7C344F', 5: '#000000', 6: '#000000', 7: '#7C344F' };
 
@@ -101,12 +70,12 @@ export async function runBoard(canvas, level, opts = {}) {
   const font = await loadFont(base);
   const audio = opts.audio ?? createAudio(base);
   const snd = (n, o) => audio.play(n, o);
-  // The game's own shd_crt over the screen region; null when WebGL is out.
+
   const crt = await createCRT(base).catch(() => null);
   if (crt) crt.state.enabled = localStorage.getItem('eramsim.crt') !== '0';
   const writer = createWriter(font, S, snd);
   const shopwriter = createShopwriter(font, snd);
-  let mantle = null;   // the Shadow Mantle, level 6 only (created after kris)
+  let mantle = null;
 
   const tileset = await new Promise((res, rej) => {
     const i = new Image();
@@ -115,11 +84,10 @@ export async function runBoard(canvas, level, opts = {}) {
     i.src = `${base}${room.tileset.file}`;
   });
 
-  // Everything the three levels can draw, warmed up front — the board is
-  // small enough that "speed to play" wins over lazy loading.
+
   await S.preload(Object.keys(S.manifest));
 
-  /* ---------------- the world ---------------- */
+
   const moveX = PANE_X - room.roomStartingX;
   const moveY = PANE_Y - room.roomStartingY;
   const world = { x: moveX, y: moveY };
@@ -135,18 +103,14 @@ export async function runBoard(canvas, level, opts = {}) {
   const water = shifted(room.water ?? []);
   const waterfalls = shifted(room.waterfalls ?? []);
   const treeSpawners = shifted(room.treeSpawners ?? []);
-  // obj_board_fern's parent is obj_board_solid: every fern is a wall, hp 1
-  // to the sword (defense 1 — swordlv 2 fells it, defeat splash and gone).
+
   const rawProps = shifted(room.props ?? []);
   const props = rawProps.filter((p) => p.sprite !== 'spr_board_fern');
   const ferns = rawProps.filter((p) => p.sprite === 'spr_board_fern').map((f) => ({
     ...f, solid: { x: f.x, y: f.y, w: 32, h: 32 },
   }));
   const events = shifted(room.events ?? []);
-  // Events whose objects descend from obj_board_solid are WALLS (the
-  // parent-chain audit): the chest-room NPC (also sword-immune there, per
-  // its own Step), level 3's stanchions, the shelter Tenna, and the
-  // shelter door. Masks are the 16px sprite x scale, like the triggers.
+
   const SOLID_EVENTS = new Set(['npc', 'b3s_stanchion', 'dungeon3_tenna',
     'warptopreshadowmantle']);
   for (const e of events) {
@@ -158,26 +122,21 @@ export async function runBoard(canvas, level, opts = {}) {
   const boats = shifted(room.boats ?? []).map((b) => ({
     ...b, engaged: false, facing: FACE_DOWN, bob: 0, disembark: 0, myx: 0, myy: 0,
   }));
-  // obj_board_cactus's parent is obj_board_hazard, NOT obj_board_solid —
-  // a cactus is a walk-in hazard (overlap, damage, the knockback throws
-  // you back out), never a wall. Making it solid left its mask-true
-  // hurtbox unreachable from adjacent cells.
+
   const cactus = shifted(room.cactus ?? []).map((c) => ({
     ...c, hp: 3, frame: Math.floor(Math.random() * 2),
   }));
   for (const f of ferns) solids.push(f.solid);
   for (const e of events) { if (e.solid) solids.push(e.solid); }
-  // obj_board_b1powerpond's parent is obj_board_solid — the pond blocks.
+
   for (const w of water) {
     if (w.type === 'b1powerpond') solids.push({ x: w.x, y: w.y, w: 64, h: 32 });
   }
-  const candies = [];                 // dropped + placed heal pickups
-  const trees = [];                   // spawned by treeSpawners, per screen
+  const candies = [];
+  const trees = [];
 
-  /* Level 3's caterpillar party: obj_board_caterpillarchara trails the
-     parent's position history (`target = 12` slots). Susie follows Kris,
-     Ralsei follows behind her. The exact catch-up interpolation is
-     approximated by the plain history — labelled. */
+
+
   const followers = room.number === 3
     ? [{ name: 'susie', delay: 12 }, { name: 'ralsei', delay: 24 }]
     : [];
@@ -187,14 +146,12 @@ export async function runBoard(canvas, level, opts = {}) {
     ? { x: room.pickup.x + moveX, y: room.pickup.y + moveY, taken: false }
     : null;
 
-  /* ---------------- kris ---------------- */
+
   const kris = {
     x: room.kris.x + moveX, y: room.kris.y + moveY,
     facing: FACE_DOWN, imageIndex: 0, walkbuffer: 0,
     canfreemove: true, nowx: 0, nowy: 0,
-    // obj_mainchara_board's Create: the dungeons and the mantle rooms
-    // start WITH the sword (dungeon_3 at swordlv 3, the mantle rooms at 5
-    // via obj_gameshow_swordroute's Create).
+
     sword: opts.sword ?? room.number >= 4,
     swordlv: room.number === 4 ? 3 : room.number >= 5 ? 5 : 1,
     xp: 0,
@@ -203,13 +160,12 @@ export async function runBoard(canvas, level, opts = {}) {
     myhealth: 999, maxhealth: MAXHEALTH,
     iframes: 0, hurttimer: 0, hitcon: 0, hitmove: 0, hitx: 0, hity: 0,
     blend: 'white', monstersdefeated: 0,
-    boat: false,                       // riding
+    boat: false,
     atdoorway: false, leftdoorway: false,
   };
 
-  /* VIOLENCE — obj_board_controller's Create: true, except false in
-     room_board_1_sword. Level 2's manager holds it false until Kris has
-     the sword. The enemies re-derive their own aggression on top. */
+
+
   let violence = room.number !== 1;
   if (room.number === 2) violence = false;
 
@@ -234,11 +190,8 @@ export async function runBoard(canvas, level, opts = {}) {
     snd, violence,
   });
 
-  /* A solid Kris is ALREADY inside does not block him — it lets him out.
-     Level 3's own room data places his start overlapping a 10x4-cell wall
-     band (the door alcove), so the game demonstrably allows walking out of
-     an overlap; it only forbids walking INTO one. Without this rule the
-     level-3 spawn is a softlock. */
+
+
   function meets(x, y) {
     for (const s of solids) {
       if (x < s.x + s.w && x + KRIS_SIZE > s.x && y < s.y + s.h && y + KRIS_SIZE > s.y) {
@@ -260,7 +213,7 @@ export async function runBoard(canvas, level, opts = {}) {
     });
   };
 
-  /* ---------------- input ---------------- */
+
   const held = new Set();
   const KEYMAP = {
     arrowup: 'u', arrowdown: 'd', arrowleft: 'l', arrowright: 'r',
@@ -284,9 +237,8 @@ export async function runBoard(canvas, level, opts = {}) {
   window.addEventListener('keydown', onKey);
   window.addEventListener('keyup', onKeyUp);
 
-  /* ---------------- the TV set ---------------- */
-  // obj_gameshow_swordroute: screencolor with a 16-frame merge fade, the
-  // set art, and the additive glow below the screen.
+
+
   const tv = {
     color: '#000000', newColor: '#000000', change: 0, changeTime: 16,
     drawui: false,
@@ -305,10 +257,10 @@ export async function runBoard(canvas, level, opts = {}) {
     return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * f)).join(',')})`;
   }
 
-  /* ---------------- shifts and warps ---------------- */
+
   let shift = 'none';
   let moving = 0;
-  let warp = null;                     // {t, warpx, warpy, playerX, playerY}
+  let warp = null;
   let healthbarFlash = 0;
 
   function translate(dx, dy) {
@@ -317,8 +269,7 @@ export async function runBoard(canvas, level, opts = {}) {
       colorChangers, water, waterfalls, treeSpawners, props, events, docks, candies, trees]) {
       for (const o of arr) { o.x += dx; o.y += dy; }
     }
-    // The cactus and fern bodies translate here; their solids are already
-    // IN `solids` and translate with them.
+
     for (const c of cactus) { c.x += dx; c.y += dy; }
     for (const f of ferns) { f.x += dx; f.y += dy; }
     for (const sw of switches) { sw.x += dx; sw.y += dy; }
@@ -332,18 +283,14 @@ export async function runBoard(canvas, level, opts = {}) {
     kris.x += dx; kris.y += dy;
   }
 
-  /** Everything that happens the frame a screen becomes THE screen. */
+
   function arrive() {
-    // ANTI-SOFTLOCK GUARD (found in play, not in the dump): a warp's
-    // landing spot can overlap the warptouch that goes the other way —
-    // level 1's doorway pair does — and an instant re-fire ping-pongs the
-    // player between rooms forever. A warptouch Kris is standing on when a
-    // warp lands stays disarmed until he steps off it.
+
     for (const w of warps) {
       w.rearm = (kris.x < w.x + w.w && kris.x + KRIS_SIZE > w.x
         && kris.y < w.y + w.h && kris.y + KRIS_SIZE > w.y);
     }
-    trail.length = 0;                 // followers snap to Kris on arrival
+    trail.length = 0;
     if (chest && !chest.taken) {
       chest.x = world.x + chest.rx;
       chest.y = world.y + chest.ry;
@@ -356,8 +303,7 @@ export async function runBoard(canvas, level, opts = {}) {
         }
       }
     }
-    // obj_board_swordroute_treehelper's Step_2: any tree touching Kris is
-    // destroyed — the game's own guard against landing inside the forest.
+
     for (let i = trees.length - 1; i >= 0; i--) {
       const t = trees[i];
       if (t.x < kris.x + KRIS_SIZE && t.x + 32 > kris.x
@@ -368,13 +314,11 @@ export async function runBoard(canvas, level, opts = {}) {
       }
     }
     foes.spawnVisible(spawners);
-    // The colour changer standing on this screen retints the set (16
-    // frames, obj_board_screenColorChanger -> gameshow colorchange).
+
     for (const c of colorChangers) {
       if (c.x >= 128 && c.x <= 512 && c.y >= 64 && c.y <= 320) { retint(c.color); break; }
     }
-    // Tree spawners expand into their grid of trees when their region
-    // touches the screen (the camera's event_user(7) + activation sweep).
+
     for (const ts of treeSpawners) {
       if (ts.made) continue;
       const w = ts.cols * 32, h = ts.rows * 32;
@@ -383,9 +327,7 @@ export async function runBoard(canvas, level, opts = {}) {
         for (let i = 0; i < ts.cols; i++) {
           for (let j = 0; j < ts.rows; j++) {
             const tx = ts.x + i * 32, ty = ts.y + j * 32;
-            // obj_board_tree's parent is obj_board_solid — every tree is a
-            // wall. A tree that would spawn on top of Kris is skipped (the
-            // game destroys trees touching him at spawn).
+
             if (tx < kris.x + KRIS_SIZE && tx + 32 > kris.x
               && ty < kris.y + KRIS_SIZE && ty + 32 > kris.y) continue;
             const solid = { x: tx, y: ty, w: 32, h: 32 };
@@ -399,8 +341,7 @@ export async function runBoard(canvas, level, opts = {}) {
   }
 
   function startWarp(w) {
-    // obj_board_warptouch -> camera shift = "warp": 10 frames of fade, the
-    // rebase, then con 98 on the way back in.
+
     warp = { t: 0, ...w };
     kris.canfreemove = false;
     foes.clearScreen();
@@ -411,8 +352,7 @@ export async function runBoard(canvas, level, opts = {}) {
     warp.t += warp.instawarp ? 10 : 1;
     if (warp.t >= 10 && !warp.rebased) {
       warp.rebased = true;
-      // The rebase: the target screen's corner (warpx,warpy in room
-      // coordinates) becomes the pane, Kris lands at playerX/playerY.
+
       const dx = (PANE_X - warp.warpx) - world.x;
       const dy = (PANE_Y - warp.warpy) - world.y;
       translate(dx, dy);
@@ -421,7 +361,7 @@ export async function runBoard(canvas, level, opts = {}) {
       if (typeof warp.facing === 'number') kris.facing = warp.facing;
       arrive();
     }
-    if (warp.t >= 25) {                // timer 15 after the rebase
+    if (warp.t >= 25) {
       warp = null;
       kris.canfreemove = true;
     }
@@ -436,8 +376,7 @@ export async function runBoard(canvas, level, opts = {}) {
     const dx = shift === 'right' ? -speed : shift === 'left' ? speed : 0;
     const dy = shift === 'down' ? -speed : shift === 'up' ? speed : 0;
     translate(dx, dy);
-    // Kris — and an engaged boat — get two pixels back each frame, against
-    // the drift, landing on the opposite bound.
+
     const nudge = { right: [2, 0], left: [-2, 0], down: [0, 2], up: [0, -2] }[shift];
     kris.x += nudge[0]; kris.y += nudge[1];
     const raft = boats.find((b) => b.engaged);
@@ -454,9 +393,7 @@ export async function runBoard(canvas, level, opts = {}) {
   }
 
   function beginShift(dir) {
-    // A warpentrance on the boundary converts the shift into a warp — the
-    // check in Kris's Step right after the edge sets `shift`:
-    //   if (place_meeting(x, y, obj_board_warpentrance)) ... shift = "warp"
+
     const w = warps.find((o) => o.kind === 'warpentrance'
       && kris.x < o.x + o.w && kris.x + KRIS_SIZE > o.x
       && kris.y < o.y + o.h && kris.y + KRIS_SIZE > o.y);
@@ -469,17 +406,15 @@ export async function runBoard(canvas, level, opts = {}) {
     }
     kris.canfreemove = false;
     shift = dir;
-    foes.clearScreen();               // the camera's shift-start cleanup
+    foes.clearScreen();
   }
 
-  /* ---------------- kris movement ---------------- */
+
   function stepKris() {
     kris.nowx = kris.x;
     kris.nowy = kris.y;
 
-    // atdoorway / leftdoorway, from the Step's tail: standing on the
-    // boundary is "at the doorway"; the strict interior arms the enemies'
-    // player-on-screen checks.
+
     if (shift === 'none' && !warp) {
       if (kris.x < 129 || kris.x > 479 || kris.y < 65 || kris.y > 287) kris.atdoorway = true;
       else { kris.leftdoorway = true; kris.atdoorway = false; }
@@ -564,7 +499,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- the boat (level 2) ---------------- */
+
   function stepBoats() {
     for (const b of boats) {
       if (b.gone) continue;
@@ -572,8 +507,7 @@ export async function runBoard(canvas, level, opts = {}) {
       const engaged = b.engaged;
 
       if (!engaged && !kris.boat && kris.canfreemove && shift === 'none' && !warp) {
-        // obj_board_boat's user event 0 — scr_interact: PRESS Z while
-        // standing on a dock and the boat takes you (Kris jumps to it).
+
         const onDock = docks.some((d) =>
           kris.x < d.x + 32 && kris.x + KRIS_SIZE > d.x && kris.y < d.y + 32 && kris.y + KRIS_SIZE > d.y);
         const near = Math.hypot(b.x - kris.x, b.y - kris.y) < 200;
@@ -598,7 +532,7 @@ export async function runBoard(canvas, level, opts = {}) {
       }
 
       if (engaged && b.disembark > 0) {
-        // Slide the boat to the dock, jump Kris out one cell beyond.
+
         b.disembark -= 1;
         b.x += Math.sign(b.myx - b.x) * Math.min(2, Math.abs(b.myx - b.x));
         b.y += Math.sign(b.myy - b.y) * Math.min(2, Math.abs(b.myy - b.y));
@@ -614,7 +548,7 @@ export async function runBoard(canvas, level, opts = {}) {
       }
 
       if (engaged && kris.canfreemove && shift === 'none' && !warp) {
-        // Drive: Kris's own movement rules against the boat solids.
+
         const pr = held.has('r') ? 1 : 0, pl = held.has('l') ? 1 : 0;
         const pd = held.has('d') ? 1 : 0, pu = held.has('u') ? 1 : 0;
         let px = 0, py = 0, pressdir = -1;
@@ -656,13 +590,13 @@ export async function runBoard(canvas, level, opts = {}) {
         if (px !== 0 && py !== 0 && boatMeets(b.x + px, b.y + py)) { px = 0; }
         b.x += px; b.y += py;
 
-        // The edges, tested on the boat while riding.
+
         if (b.x > BOUND_R) { b.x = BOUND_R; if (!boatMeets(b.x + 32, b.y)) { b.facing = FACE_RIGHT; beginShift('right'); } }
         if (b.x < BOUND_L) { b.x = BOUND_L; if (!boatMeets(b.x - 32, b.y)) { b.facing = FACE_LEFT; beginShift('left'); } }
         if (b.y > BOUND_D) { b.y = BOUND_D; if (!boatMeets(b.x, b.y + 32)) beginShift('down'); }
         if (b.y < BOUND_U) { b.y = BOUND_U; if (!boatMeets(b.x, b.y - 32)) { b.facing = FACE_UP; beginShift('up'); } }
 
-        // Disembark: Z while facing a dock one cell ahead.
+
         if (press1) {
           const cx = b.facing === FACE_RIGHT ? 32 : b.facing === FACE_LEFT ? -32 : 0;
           const cy = b.facing === FACE_DOWN ? 32 : b.facing === FACE_UP ? -32 : 0;
@@ -671,7 +605,7 @@ export async function runBoard(canvas, level, opts = {}) {
             && b.y + cy + 12 < dk.y + 32 && b.y + cy + 20 > dk.y);
           if (d) {
             b.disembark = 16;
-            b.myx = d.x - cx; b.myy = d.y - cy;   // the boat parks beside
+            b.myx = d.x - cx; b.myy = d.y - cy;
             b.dockx = d.x; b.docky = d.y;
             kris.canfreemove = false;
             press1 = false;
@@ -685,7 +619,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- the sword ---------------- */
+
   function stepSword() {
     if (press1 && kris.sword && kris.swordbuffer <= 0 && kris.canfreemove
       && shift === 'none' && !warp && !death && !outro && !kris.boat) {
@@ -728,17 +662,15 @@ export async function runBoard(canvas, level, opts = {}) {
       kris.swordlv = Math.min(5, kris.swordlv + 1);
       kris.xptolevel = XP_TABLE[kris.swordlv] ?? 68;
       snd('snd_board_ominous');
-      // Level 2's manager: the first level-up swaps the sword music back
-      // to the ocean.
+
       if (room.number === 2 && kris.swordlv === 2) audio.music('board_ocean');
-      // Level 1's manager: swordlv 4 goes ominous-quiet into the ocean.
+
       if (room.number === 1 && kris.swordlv === 4) audio.music('board_ocean');
     }
   }
 
   function chopTrees(box) {
-    // obj_board_tree's Step: a sword hit fells it only when
-    // `sword.swordlv > defense` — defense 3, so the maxed blade.
+
     if (kris.swordlv <= 3) return;
     for (let i = trees.length - 1; i >= 0; i--) {
       const t = trees[i];
@@ -752,7 +684,7 @@ export async function runBoard(canvas, level, opts = {}) {
   }
 
   function chopFerns(box) {
-    // obj_board_fern's Step: swordlv > defense (1) — one hit, splash, gone.
+
     if (kris.swordlv <= 1) return;
     for (let i = ferns.length - 1; i >= 0; i--) {
       const f = ferns[i];
@@ -766,11 +698,8 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* obj_board_caterpillarchara's Step_2 tail: ONE sword hit destroys a
-     follower — defeat splash, swordlv++ with snd_board_ominous, and the
-     kpause: 30 frames where everything holds while the player character
-     takes it in (the overworld Kris's sideways glance is machinery this
-     sim has no stage for; the pause is kept). */
+
+
   let kpause = 0;
 
   function hitFollowers(box) {
@@ -804,7 +733,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- the pickup and candy ---------------- */
+
   function stepPickup() {
     if (pickup && pickup.exitAt) {
       pickup.exitAt -= 1;
@@ -833,23 +762,19 @@ export async function runBoard(canvas, level, opts = {}) {
         pickup.taken = true;
         kris.sword = true;
         kris.canfreemove = false;
-        // The pickup's Step: level music starts with the sword...
+
         if (room.number === 1) audio.music('board_sword_music');
         if (room.number === 2) audio.music('board_sword_music', { pitch: 0.9 });
         if (room.number === 3) audio.music('board_ocean');
-        // ...and the take-sequence WARPS YOU OUT — the sword room is
-        // one-way by design (the pickup's own transition + instawarp):
-        //   L1 -> (896,1344) player (1072,1456)
-        //   L2 -> (1664,3136) player (1744,3216)
-        //   L3 -> (1664,576)  player (1856,704)
-        pickup.exitAt = 40;                    // the raise-the-sword beat
+
+        pickup.exitAt = 40;
       }
     }
     for (let i = candies.length - 1; i >= 0; i--) {
       const c = candies[i];
       c.t += 1;
       if (c.dropped && c.t > 150) { candies.splice(i, 1); continue; }
-      if (c.t < 10) continue;              // the 10-frame grace
+      if (c.t < 10) continue;
       const over = kris.x < c.x + 32 && kris.x + KRIS_SIZE > c.x
         && kris.y < c.y + 32 && kris.y + KRIS_SIZE > c.y;
       const sworded = kris.swordhitbox && kris.swordhitbox.box
@@ -863,27 +788,18 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- warps, triggers and endings ---------------- */
-  let outro = null;                    // {kind, t}
-  let treeLoops = 0;                   // global.flag[1006]
 
-  /* ---------------- the set pieces ----------------
-     obj_board_1_sword_shadowtease, obj_board_b2s_icedoor,
-     obj_b2s_tennamonologue, obj_board_1_sword_b1store,
-     obj_board_smallpond_sword — each translated from its own Step and
-     driven here. */
-  let tease = null;                    // the Mantle fleeing, then the text
-  let doorSeq = null;                  // the ice door opening
-  let chest = null;                    // level 1's icekey chest (after 4 loops)
-  let keySeq = null;                   // the chest cinematic
-  /* Level 4's switch puzzle (obj_board_dungeon3_switch): two plates on one
-     screen; Kris on one, the black deer on the other, both at once — then
-     CONTROL TRANSFERS TO THE DEER (obj_mainchara_board.controlled = false,
-     the deer's abouttoregaincontrol = true, its hp set to 1 so one hazard
-     touch hands control back). Door walls seal the screen edge while you
-     are the deer. The deer's destination beyond the opened wall is staged
-     by set pieces this sim does not carry — Z as the deer also returns
-     control, so the mechanic cannot softlock (labelled). */
+  let outro = null;
+  let treeLoops = 0;
+
+
+
+  let tease = null;
+  let doorSeq = null;
+  let chest = null;
+  let keySeq = null;
+
+
   const switches = events.filter((e) => e.obj === 'dungeon3_switch')
     .map((e) => ({ ...e, pressed: false, used: false }));
   let deerCtl = null;
@@ -896,11 +812,11 @@ export async function runBoard(canvas, level, opts = {}) {
     if (deerCtl) {
       const d = deerCtl.deer;
       if (!foes.enemies.includes(d) || d.hp <= 0) {
-        // the deer fell — control returns
+
         deerCtl = null;
         kris.canfreemove = true;
       } else {
-        // drive the deer at wspeed 2, Kris's own movement rules
+
         const spd = 2;
         let dx = 0, dy = 0;
         if (held.has('r')) dx = spd;
@@ -938,18 +854,16 @@ export async function runBoard(canvas, level, opts = {}) {
     if (tease) {
       tease.t += 1;
       if (tease.t < 48) {
-        tease.y -= 8;                          // vspeed -8
+        tease.y -= 8;
         if (tease.t % 4 === 0) tease.trail.push({ x: tease.e.x, y: tease.y, a: 1 });
       }
       for (const tr of tease.trail) tr.a -= 0.06;
       if (tease.t === 48) {
-        // shopwriter.shopstring = "See you soon."; textcol = 0 (black)
+
         shopwriter.show('See you soon.', { color: '#000000', y: 64 + 64 + 12 });
       }
       if (tease.t >= 200) {
-        // The tease is a mid-level encounter (flag 1008), not the ending —
-        // the Mantle is gone, the words hang there, and control returns.
-        // Level 1 truly ends at the CHEST in the tree loop.
+
         kris.canfreemove = true;
         tease.done = true;
       }
@@ -962,7 +876,7 @@ export async function runBoard(canvas, level, opts = {}) {
     if (doorSeq) {
       doorSeq.t += 1;
       if (doorSeq.t === 30) {
-        doorSeq.door.imageIndex = 1;           // the door opens
+        doorSeq.door.imageIndex = 1;
         snd('snd_impact', { volume: 0.8, pitch: 0.5 });
         snd('snd_impact', { volume: 0.6, pitch: 0.8 });
       }
@@ -974,8 +888,7 @@ export async function runBoard(canvas, level, opts = {}) {
       return;
     }
     if (tenna && !writer.active) {
-      // obj_b2s_tennamonologue: the trigger starts the monologue; once it
-      // ends, the first MOVEMENT spooks him and he makes his getaway.
+
       if (tenna.con === 0) {
         const t = triggers.find((tr) => tr.extflag === 'b2s_tennamonologue');
         if (t && kris.x < t.x + t.w && kris.x + KRIS_SIZE > t.x
@@ -1009,15 +922,13 @@ export async function runBoard(canvas, level, opts = {}) {
             onClose: () => {
               kris.canfreemove = true;
               snd('snd_board_escaped', { pitch: 1.2 });
-              tenna.con = 4;                   // the marker vanishes
+              tenna.con = 4;
             },
           });
         }
       }
     }
-    // The store sign: on its screen, with the sword, the sign types out —
-    // "BECOME STRONGER" until swordlv 3, "BECAME STRONGER" at 3,
-    // "Having fun?" (in black) past it.
+
     const store = events.find((e) => e.obj === '1_sword_b1store');
     if (store) {
       const on = store.x >= 128 && store.x <= 512 && store.y >= 64 && store.y <= 320;
@@ -1032,8 +943,7 @@ export async function runBoard(canvas, level, opts = {}) {
         if (!tease) shopwriter.clear();
       }
     }
-    // Level 5's confrontation: the two obj_board_preshadowmantle markers
-    // carry the Holder's words.
+
     if (room.number === 5 && !writer.active) {
       for (const e of events) {
         if (e.obj !== 'preshadowmantle' || e.said) continue;
@@ -1056,7 +966,7 @@ export async function runBoard(canvas, level, opts = {}) {
         }
       }
     }
-    // The spring: Z on the small pond.
+
     if (press1 && room.number === 1 && !writer.active && kris.canfreemove
       && shift === 'none' && !warp && !outro && !death) {
       const pond = water.find((w) => w.type === 'smallpond_sword');
@@ -1077,18 +987,17 @@ export async function runBoard(canvas, level, opts = {}) {
       const over = kris.x < w.x + w.w && kris.x + KRIS_SIZE > w.x
         && kris.y < w.y + w.h && kris.y + KRIS_SIZE > w.y;
       if (w.rearm) { if (!over) w.rearm = false; continue; }
-      if (w.kind !== 'warptouch') continue;   // entrances fire at the edge
+      if (w.kind !== 'warptouch') continue;
       if (over && typeof w.warpx === 'number') { startWarp(w); return; }
     }
     for (const e of events) {
-      // the event's mask is its 16px SPRITE x its scale — 32*sx doubled
-      // every trigger (the stairs fired from a cell away)
+
       const ew = 16 * (e.sx || 1), eh = 16 * (e.sy || 1);
       const over = kris.x < e.x + ew && kris.x + KRIS_SIZE > e.x
         && kris.y < e.y + eh && kris.y + KRIS_SIZE > e.y;
       if (!over) continue;
       if (e.obj === 'b1_shadowteaseentrance') {
-        // scr_quickwarp(3200, 64, 3376, 256)
+
         startWarp({ warpx: 3200, warpy: 64, playerX: 3376, playerY: 256 });
         return;
       }
@@ -1097,19 +1006,12 @@ export async function runBoard(canvas, level, opts = {}) {
         return;
       }
       if (e.obj === 'swordroute_treeteleportroom' && treeLoops < 4) {
-        // The forest loop, from the teleportroom's Step:
-        //   var plx = obj_mainchara_board.x - 128;   // SCREEN position
-        //   scr_board_instawarp(1280, 1088, 1280 + plx, 1088 + ply, ...)
-        // — you land on the canonical screen at the same screen position,
-        // four times (global.flag[1006]), and then the forest lets you
-        // through.
+
         treeLoops += 1;
         const plx = kris.x - PANE_X;
         const ply = kris.y - PANE_Y;
         if (treeLoops === 4 && !chest) {
-          // The fourth entry spawns the CHEST on the canonical screen —
-          // obj_board_swordroute_icekey at cell (choose(4,5), choose(2,3)),
-          // its colour changer forced to #FF9B00.
+
           const tx = 4 + Math.floor(Math.random() * 2);
           const ty = 2 + Math.floor(Math.random() * 2);
           chest = { rx: 1280 + tx * 32, ry: 1088 + ty * 32, taken: false };
@@ -1119,9 +1021,7 @@ export async function runBoard(canvas, level, opts = {}) {
         return;
       }
       if (e.obj === '1_sword_shadowtease' && !outro && !tease && !e.fled) {
-        // Level 1's finale: the Mantle flees upward trailing afterimages
-        // (vspeed -8, an image every 4 frames, snd_board_mantle_move),
-        // leaves "See you soon." behind, and the level is done.
+
         tease = { t: 0, e, y: e.y, trail: [] };
         e.fled = true;
         kris.canfreemove = false;
@@ -1129,9 +1029,7 @@ export async function runBoard(canvas, level, opts = {}) {
         return;
       }
       if (e.obj === 'b2sword_boatwarp' && kris.boat) {
-        // obj_board_b2sword_boatwarp: the boat sails into it, the boat is
-        // destroyed, and Kris lands on foot at (4192,2240) —
-        // scr_quickwarp(3968, 2112, 4192, 2240).
+
         const b = boats.find((x) => x.engaged);
         if (b) { b.engaged = false; b.gone = true; }
         kris.boat = false;
@@ -1141,11 +1039,7 @@ export async function runBoard(canvas, level, opts = {}) {
       }
 
     }
-    // The ice door — an interactable: Z within reach opens its sequence
-    // (obj_board_b2s_icedoor's Step, con 10..12): the "UNLOCKED WITH THE
-    // ICE KEY" box (rate 6, silent, unskippable), snd_noise twice, then the
-    // door opens with snd_impact and the set fades #5AAFFF down to black
-    // into the dungeon.
+
     if (press1 && room.number === 2 && !outro && !doorSeq) {
       const door = events.find((e) => e.obj === 'b2s_icedoor');
       if (door) {
@@ -1166,9 +1060,7 @@ export async function runBoard(canvas, level, opts = {}) {
         }
       }
     }
-    // Level 4's exit: obj_board_warptopreshadowmantle — Z at the shelter
-    // door: "USED THE SHELTER KEY", the door creaks open in three steps,
-    // and the walk begins.
+
     if (press1 && room.number === 4 && !outro) {
       const door = events.find((e) => e.obj === 'warptopreshadowmantle');
       if (door) {
@@ -1194,18 +1086,16 @@ export async function runBoard(canvas, level, opts = {}) {
       if (!over || t.fired) continue;
       t.fired = true;
       if (room.number === 3 && !t.extflag) {
-        beginOutro('escape');           // b3s con 999: fade and leave
+        beginOutro('escape');
         return;
       }
-      // Level 7: the room's triggers line the lower-right exit corridor —
-      // they hand control to obj_swordroute_event_leavescreen (the
-      // leave-the-TV cutscene, reduced here to the finale outro).
+
       if (room.number === 7) {
         beginOutro('finale');
         return;
       }
     }
-    // Level 4: the switch plates and the deer.
+
     if (room.number === 4 && switches.length && !switches[0].used) {
       const deer = foes.enemies.find((e) => e.kind === 'black_deer');
       for (const sw of switches) {
@@ -1224,11 +1114,7 @@ export async function runBoard(canvas, level, opts = {}) {
         kris.canfreemove = false;
       }
     }
-    // Level 1's true ending: the CHEST from the tree loop. Its cinematic
-    // (obj_board_swordroute_icekey's Draw): the blue flood #1E76F0, the
-    // four-corner static at quarter alpha (screencolor #ADC7EB), black,
-    // snd_link_get_key, flag 1055 = 1 — and in the game the TV turns off.
-    // The dialogue writer inside the sequence is not reproduced (labelled).
+
     if (press1 && room.number === 1 && chest && !chest.taken && !keySeq) {
       const near = kris.x < chest.x + 32 + 40 && kris.x + KRIS_SIZE > chest.x - 40
         && kris.y < chest.y + 32 + 40 && kris.y + KRIS_SIZE > chest.y - 40;
@@ -1241,9 +1127,7 @@ export async function runBoard(canvas, level, opts = {}) {
         return;
       }
     }
-    // Level 7: the chest is a GAG — Pippins guards it forever (his Step
-    // skips sword damage in this room) and the chest "(won't open.)".
-    // Talking to him is the MICHAEL read; the route continues elsewhere.
+
     if (press1 && room.number === 7 && !outro && !writer.active && kris.canfreemove) {
       const npc = events.find((e) => e.obj === 'npc');
       if (npc) {
@@ -1259,7 +1143,7 @@ export async function runBoard(canvas, level, opts = {}) {
         }
       }
     }
-    // Level 5: reaching the end of the walk is the handoff to the fight.
+
     if (room.number === 5 && !outro && (kris.x - world.x) > 2200) {
       beginOutro('walk');
       return;
@@ -1282,13 +1166,10 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- damage ---------------- */
+
   let death = null;
 
-  // place_meeting uses SPRITE MASKS, and Kris's is
-  // spr_board_spritemask_16x16_lowerhalf — bbox [0,8,15,15] at xscale 2:
-  // only the LOWER 32x16 half of his cell can be hurt. Every hazard box
-  // below comes from its sprite's bbox the same way (hitboxes.json dump).
+
   function krisHurtbox() {
     return { x: kris.x, y: kris.y + 16, w: KRIS_SIZE, h: 16 };
   }
@@ -1298,7 +1179,7 @@ export async function runBoard(canvas, level, opts = {}) {
     const hb = krisHurtbox();
     for (const c of cactus) {
       if (c.dead) continue;
-      // spr_board_cactus bbox [4,2,11,13] x2 -> a 16x24 box inset in the cell
+
       if (hb.x < c.x + 24 && hb.x + hb.w > c.x + 8
         && hb.y < c.y + 28 && hb.y + hb.h > c.y + 4) {
         return { damage: 1, px: c.x, py: c.y };
@@ -1322,7 +1203,7 @@ export async function runBoard(canvas, level, opts = {}) {
         kris.blend = 'red';
         kris.myhealth -= hazard.damage ?? CONTACT_DAMAGE;
         healthbarFlash = 2;
-        // `if (sword == true) { crt_glitch = 6; crt_glitchstrength = 10; }`
+
         if (kris.sword && crt) { crt.state.glitch = 6; crt.state.glitchStrength = 10; }
         snd('snd_board_playerhurt');
         snd('snd_hurt1');
@@ -1407,13 +1288,8 @@ export async function runBoard(canvas, level, opts = {}) {
     for (const r of DEATH_REDS) if (t >= r.t) death.css = r.css;
   }
 
-  /* ---------------- the intro ----------------
-     obj_board_squaretransition, special = "heart": seven full-width black
-     bars over board rows 1..7, the top of the stack clearing every 15
-     frames (`if (timer % 15 == 0) baramount--`), with the little heart
-     (obj_board_squaretransition_heart, two halves at (312,182) and
-     (312,192), scale 1) riding bars 4 and 3. Behind it the manager fades
-     screencolor black -> the level colour over 60 frames. */
+
+
   let intro = { t: 0 };
   retint('#000000', 1);
   tv.color = '#000000';
@@ -1425,8 +1301,7 @@ export async function runBoard(canvas, level, opts = {}) {
     if (7 - Math.floor(intro.t / 15) <= 0) {
       intro = null;
       tv.drawui = true;
-      // level music: the walk plays glacier, the fight nightmare_nes,
-      // everything else the ocean.
+
       if (room.number === 5) audio.music('glacier', { volume: 0.7 });
       else if (room.number === 6) audio.music('nightmare_nes');
       else audio.music('board_ocean');
@@ -1443,7 +1318,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- restart ---------------- */
+
   function restart() {
     translate(moveX - world.x, moveY - world.y);
     kris.x = room.kris.x + moveX;
@@ -1457,15 +1332,12 @@ export async function runBoard(canvas, level, opts = {}) {
     kris.hitx = 0; kris.hity = 0;
     kris.blend = 'white';
     kris.swordbuffer = 0; kris.swordhitbox = null;
-    // level-entry state comes back exactly as on first entry — a death in
-    // the mantle rooms must NOT strip the sword (that made level 6
-    // unwinnable after one death)
+
     kris.xp = 0;
     kris.swordlv = room.number === 4 ? 3 : room.number >= 5 ? 5 : 1;
     kris.xptolevel = room.number === 2 ? 10 : room.number === 4 ? 68 : 3;
     kris.sword = opts.sword ?? room.number >= 4;
-    // the fight starts over clean — a stale mantle kept its old phase and
-    // a boss mid-flight after death
+
     if (room.number === 6) mantle = makeMantle();
     kris.boat = false;
     kris.atdoorway = false; kris.leftdoorway = false;
@@ -1505,8 +1377,7 @@ export async function runBoard(canvas, level, opts = {}) {
   }
 
   function stepTrail() {
-    // The history advances only while Kris MOVES — when he stops, the
-    // party holds its spacing behind him instead of converging under him.
+
     const moving = kris.x !== kris.nowx || kris.y !== kris.nowy;
     if (!moving && trail.length) { trail[0].moving = false; return; }
     trail.unshift({ x: kris.x, y: kris.y, facing: kris.facing, moving });
@@ -1520,7 +1391,7 @@ export async function runBoard(canvas, level, opts = {}) {
     kris.walkbuffer -= 0.75;
   }
 
-  /* ---------------- drawing ---------------- */
+
   const { tileW, tileH, cols, border } = room.tileset;
   let animClock = 0;
 
@@ -1539,8 +1410,7 @@ export async function runBoard(canvas, level, opts = {}) {
         const sx = (id % cols) * (tileW + border * 2) + border;
         const sy = Math.floor(id / cols) * (tileH + border * 2) + border;
         const dx = world.x + tx * tileW, dy = world.y + ty * tileH;
-        // GM tile flags: bit 28 mirror (x), bit 29 flip (y), bit 30
-        // rotate 90° — dropping these is what mirrored the walls wrong.
+
         if (raw & 0x70000000) {
           g.save();
           g.translate(dx + tileW / 2, dy + tileH / 2);
@@ -1583,7 +1453,7 @@ export async function runBoard(canvas, level, opts = {}) {
     g.fillRect(PANE_X, PANE_Y, PANE_W, PANE_H);
     drawTiles();
 
-    // Water regions (animated 32px cells), then falls, then floor props.
+
     for (const w of water) {
       if (w.type === 'shallow') {
         for (let i = 0; i < w.cols; i++) {
@@ -1594,7 +1464,7 @@ export async function runBoard(canvas, level, opts = {}) {
           }
         }
       } else if (onScreen(w.x, w.y, 128, 128)) {
-        // The ponds draw their own water then a border sprite.
+
         const dims = { oasis_sword: [4, 2], smallpond_sword: [4, 2], lancermoat_sword: [7, 1], b1powerpond: [2, 1] };
         const [cw, ch] = dims[w.type] ?? [2, 1];
         for (let i = 0; i < cw; i++) {
@@ -1617,13 +1487,13 @@ export async function runBoard(canvas, level, opts = {}) {
     for (const p of props) {
       if (!onScreen(p.x, p.y)) continue;
       if (p.flip === undefined && p.sprite === 'spr_board_fern') {
-        p.flip = Math.random() < 0.5;      // dir = choose(0, 1), per instance
+        p.flip = Math.random() < 0.5;
       }
       drawSprite(p.sprite, p.imageIndex, p.x, p.y, { tint: p.color ?? null, flipX: !!p.flip });
     }
     for (const e of events) {
-      // The visible set pieces; markers (spr_board_event etc.) stay unseen.
-      if (e.fled) continue;                     // the tease, gone
+
+      if (e.fled) continue;
       const visible = {
         sword_fakeentrance: 'spr_board_sword_fakeentrance',
         b1swordentrance: 'spr_board_downstairs',
@@ -1642,11 +1512,11 @@ export async function runBoard(canvas, level, opts = {}) {
         drawSprite(visible, fixedFrame ? (e.imageIndex ?? 0) : animClock * 0.1, e.x, e.y);
       }
     }
-    // Tenna, waiting with his back turned — until he makes his getaway.
+
     if (tenna && tenna.con < 4 && onScreen(tenna.marker.x, tenna.marker.y)) {
       drawSprite('spr_board_npc_tenna_back', 0, tenna.marker.x, tenna.marker.y);
     }
-    // The Mantle fleeing upward, afterimages trailing.
+
     if (tease) {
       for (const tr of tease.trail) {
         if (tr.a > 0) drawSprite('spr_shadow_mantle_idle', animClock * 0.1, tr.x, tr.y, { alpha: Math.max(0, tr.a) * 0.5 });
@@ -1660,7 +1530,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
     for (const f of ferns) {
       if (f.dead || !onScreen(f.x, f.y)) continue;
-      if (f.flip === undefined) f.flip = Math.random() < 0.5;   // dir = choose(0,1)
+      if (f.flip === undefined) f.flip = Math.random() < 0.5;
       drawSprite('spr_board_fern', f.imageIndex, f.x, f.y, { flipX: !!f.flip });
     }
     for (const c of cactus) {
@@ -1675,7 +1545,7 @@ export async function runBoard(canvas, level, opts = {}) {
       if (onScreen(d.x, d.y)) drawSprite('spr_board_dock', 0, d.x, d.y);
     }
     for (const c of candies) {
-      if (c.dropped && c.t > 120 && Math.floor(c.t / 4) % 2) continue;   // the blink
+      if (c.dropped && c.t > 120 && Math.floor(c.t / 4) % 2) continue;
       drawSprite('spr_board_candy', 0, c.x, c.y);
     }
     for (const sw of switches) {
@@ -1685,9 +1555,7 @@ export async function runBoard(canvas, level, opts = {}) {
       drawSprite('spr_board_chest', 0, chest.x, chest.y);
     }
     if (pickup && !pickup.taken && !kris.sword) {
-      // obj_board_pickup's Step: `if (type == "sword") sprite_index =
-      // spr_board_sword` — all three levels' pickups carry type "sword" in
-      // their creation code; the key art was the object's default sprite.
+
       if ((room.pickup.cc ?? {}).type === 'sword') {
         drawSprite('spr_board_sword', 0, pickup.x, pickup.y);
       } else {
@@ -1700,7 +1568,7 @@ export async function runBoard(canvas, level, opts = {}) {
       drawSprite('spr_board_raft', 0, b.x, b.y + bobY);
     }
 
-    // The party, trailing behind (drawn under Kris, depth parent+5).
+
     for (let fi = followers.length - 1; fi >= 0; fi--) {
       const f = followers[fi];
       const t = trail[Math.min(f.delay, Math.max(0, trail.length - 1))];
@@ -1713,13 +1581,13 @@ export async function runBoard(canvas, level, opts = {}) {
     }
 
     if (mantle) mantle.draw(g);
-    // The walk's spotlight follows Kris (obj_board_shadowspotlight).
+
     if (room.number === 5 && !outro) {
       drawSprite('spr_board_shadow_spotlight', 0, kris.x - 16, kris.y - 16);
     }
     foes.draw(g, S);
 
-    // Kris — on the raft, mid-swing, or walking.
+
     let frame, dx = 0, dy = 0;
     let name;
     if (kris.swordbuffer > 0) {
@@ -1744,16 +1612,16 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* The TV set: obj_gameshow_swordroute + obj_board_controller's Draw. */
+
   function drawTV() {
-    // The colorchange merge, from the gameshow's Draw.
+
     if (tv.change > 0) {
       tv.color = mergeColor(tv.newColor, tv.color, tv.change / tv.changeTime);
       tv.change -= 1;
     }
-    // The set art (330x250 at origin (5,5), scale 2 -> drawn at (-10,-10)).
+
     drawSprite('spr_gameshow_swordroutebg', 0, 0, 0);
-    // The glow below the screen: additive, tinted screencolor, alpha 0.5.
+
     const glow = S.frame('spr_gameshow_swordroute_tvglow', 0);
     if (glow) {
       g.save();
@@ -1762,12 +1630,12 @@ export async function runBoard(canvas, level, opts = {}) {
       g.drawImage(S.tinted(glow, tv.color), 0, 320, glow.width * 2, glow.height * 2);
       g.restore();
     }
-    // The Draw's black floor under everything past y 380.
+
     g.fillStyle = '#000';
     g.fillRect(0, 380, VIEW_W, VIEW_H - 380);
   }
 
-  /* The HUD strip — event_user(0), gated on drawui. */
+
   function drawHUD() {
     g.fillStyle = '#000';
     g.fillRect(128, 32, 384, 32);
@@ -1780,7 +1648,7 @@ export async function runBoard(canvas, level, opts = {}) {
     g.fillRect(166, 40, (kris.maxhealth / absolutemax) * maxbar, 14);
     g.fillStyle = healthbarFlash > 0 ? '#ff0000' : '#ffffff';
     g.fillRect(166, 40, (hp / absolutemax) * maxbar, 14);
-    // The key icon, by the route counter: carried in level 2, spent in 3.
+
     if (room.number === 2) drawSprite('spr_board_ui_icekey', 0, 412, 38);
     if (room.number === 3) drawSprite('spr_board_ui_icekey', 1, 412, 38);
     if (kris.sword) {
@@ -1815,7 +1683,7 @@ export async function runBoard(canvas, level, opts = {}) {
     g.rect(PANE_X, PANE_Y, PANE_W, PANE_H);
     g.clip();
     drawWorld();
-    // The warp fade covers the pane both ways.
+
     if (warp) {
       const a = warp.t < 10 ? warp.t / 10 : Math.max(0, 1 - (warp.t - 10) / 15);
       g.fillStyle = `rgba(0,0,0,${a})`;
@@ -1828,7 +1696,7 @@ export async function runBoard(canvas, level, opts = {}) {
       g.fillRect(PANE_X, PANE_Y, PANE_W, PANE_H);
     }
     if (keySeq) {
-      // the icekey Draw's floods and the four-corner static
+
       const t = keySeq.t;
       if (t >= 90 && t < 150) {
         g.fillStyle = '#000';
@@ -1874,7 +1742,7 @@ export async function runBoard(canvas, level, opts = {}) {
     }
   }
 
-  /* ---------------- the clock ---------------- */
+
   let raf = 0, acc = 0, last = performance.now();
   function frame(now) {
     acc += now - last;
@@ -1890,7 +1758,7 @@ export async function runBoard(canvas, level, opts = {}) {
       }
       if (intro) { stepIntro(); press1 = false; continue; }
       if (outro) {
-        // The end card holds; the loop stays alive so the page can move on.
+
         if (!outro.done) stepOutro();
         press1 = false;
         continue;
@@ -1902,8 +1770,7 @@ export async function runBoard(canvas, level, opts = {}) {
         continue;
       }
       if (writer.active) {
-        // global.interact = 1: the board halts around the text box; the
-        // enemies keep wandering, exactly as in the game.
+
         writer.step(kris, press1);
         press1 = false;
         foes.step(kris);
@@ -1916,9 +1783,7 @@ export async function runBoard(canvas, level, opts = {}) {
       stepBoats();
       stepTrail();
       stepAnim();
-      // The interacts run BEFORE the swing — obj_mainchara_board's Step
-      // gates the swing on `interacted == 0`, so Z at a door, chest, dock
-      // or pond talks instead of swinging.
+
       stepPickup();
       stepWarps();
       stepSetPieces();
@@ -1968,8 +1833,8 @@ export async function runBoard(canvas, level, opts = {}) {
       }
     },
     swing() { press1 = true; },
-    writer,   // debug: probe text-box behaviour (wrapping, pacing)
-    /** Debug: jump to a screen. Same code path as a real warptouch. */
+    writer,
+
     warpTo(warpx, warpy, playerX, playerY) { startWarp({ warpx, warpy, playerX, playerY }); },
     skipIntro() { if (intro) { intro = null; tv.drawui = true; retint(INTRO_COLOR[room.number], 1); } },
     restart,

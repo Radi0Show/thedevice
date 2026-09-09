@@ -1,36 +1,13 @@
-// THE CRT — obj_ch5_LW20W_crt, running the chapter's own shader.
-//
-// Chapter 5's weird route ends on a television that puts the whole picture
-// through `shader = 28` — shd_crt2. Its Create also builds a string:
-//
-//     _insert_text = stringsetloc("INSERT\nCHAPTER 7 SIDE B", ...)
-//
-// **AND NOTHING EVER DRAWS IT.** A grep of all 11,850 code entries in the
-// chapter finds exactly one occurrence: that assignment. It is a write-only
-// variable, the same shape as `splitbox`, `slice_delay` and `linex` in
-// knight-sim's notes — content that exists as a string and never reaches a
-// screen. So there is no font to copy and no position to match; this
-// finishes the joke instead, in the font the rest of the site speaks in.
-//
-// THE EFFECT IS THE REAL SHADER, NOT A LIKENESS. An earlier version of this
-// file split the colour channels by hand in 2D canvas and it read as flat,
-// because shd_crt2 is a whole CRT: barrel warp, noise, interference, a
-// rolling band that also drives the aberration, a Gaussian horizontal
-// filter, Gaussian scanlines, an aperture grille, a brightness lift and a
-// vignette. Reproducing that by approximation is a losing game, so the
-// shader is extracted verbatim into assets/crt/shd_crt2.frag and run in
-// WebGL against the same two uniforms the object feeds it.
+
+
 
 import { loadFont, drawText, textWidth } from './gm-font.js';
 
 const MS_PER_FRAME = 1000 / 30;
 
-// The shader's own `resolution` const is 640x480 — the game's application
-// surface — so the picture is composed at that size and the emulated pixel
-// grid lands where the shader expects it.
+
 const VIEW_W = 640, VIEW_H = 480;
-// The content itself is laid out in 320x240 and drawn at 2, the way the
-// dark world draws everything (scr_darksize).
+
 const LAYOUT_SCALE = 2;
 
 const VERT = `
@@ -41,7 +18,7 @@ void main() {
   gl_Position = vec4(a_pos * 2.0 - 1.0, 0.0, 1.0);
 }`;
 
-/** scr_wave, verbatim: a sine between `from` and `to` over `period` seconds. */
+
 function scrWave(from, to, period, phase) {
   const half = (to - from) * 0.5;
   return from + half
@@ -67,8 +44,7 @@ export async function runCrt(canvas, opts = {}) {
     fetch(opts.shader ?? 'assets/crt/shd_crt2.frag').then((r) => r.text()),
   ]);
 
-  // The picture, composed in 2D and handed to the shader as a texture —
-  // exactly what the object does with the application surface.
+
   const inner = document.createElement('canvas');
   inner.width = VIEW_W; inner.height = VIEW_H;
   const g = inner.getContext('2d');
@@ -99,7 +75,7 @@ export async function runCrt(canvas, opts = {}) {
 
   const tex = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, tex);
-  // NEAREST: the shader does its own filtering, and the source is pixel art.
+
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -107,24 +83,19 @@ export async function runCrt(canvas, opts = {}) {
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
   gl.uniform1i(uTex, 0);
 
-  /* ---------------- the screen's contents ---------------- */
+
   const questions = opts.questions ?? [];
   let row = 0;
 
   const state = {
     title: opts.title ?? ['INSERT', 'THE KNIGHT'],
-    // obj_ch5_LW20W_crt Step: aberration 0.34, and time accumulates a wave.
+
     time: 0,
     aberration: 0.34,
     frame: 0,
   };
 
-  // SCROLL MODE (opts.scroll = { text, frames?, speed? }): the cartridge
-  // boot — one line of text tiled across the screen, every row drifting
-  // left, alternate rows half-phase, stepped at the CRT's 30fps. The
-  // drift rate and row spacing are approximated from the look of the
-  // game's insert screens, not extracted values. It scrolls until Z;
-  // pass `frames` only if a timed auto-advance is ever wanted again.
+
   const scroll = opts.scroll ?? null;
   let scrollDone = false;
 
@@ -148,7 +119,7 @@ export async function runCrt(canvas, opts = {}) {
       const H = VIEW_H / LAYOUT_SCALE;
       const text = `${scroll.text}    `;
       const tw = textWidth(font, text);
-      const speed = scroll.speed ?? 1.5;           // px per 30fps step
+      const speed = scroll.speed ?? 1.5;
       const off = (state.frame * speed) % tw;
       const rowH = 28;
       for (let r = -1; r * rowH < H + rowH; r++) {
@@ -204,7 +175,7 @@ export async function runCrt(canvas, opts = {}) {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   }
 
-  /* ---------------- input ---------------- */
+
   const confirmScroll = () => {
     if (!scrollDone) { scrollDone = true; opts.onConfirm?.(); }
   };
@@ -213,9 +184,7 @@ export async function runCrt(canvas, opts = {}) {
 
   const onKey = (e) => {
     if (scroll) {
-      // the scroller has two inputs, and they are the same input: get on
-      // with it (Z/Enter, or a tap anywhere — the phone's whole screen is
-      // the button)
+
       const sk = e.key.toLowerCase();
       if (sk === 'z' || sk === 'enter') {
         e.preventDefault();
@@ -238,9 +207,7 @@ export async function runCrt(canvas, opts = {}) {
   function frame(now) {
     acc += now - last;
     last = now;
-    // A hidden tab pauses rAF but time keeps passing - without this
-    // clamp the backlog replays at 8x on return (the fast-forward
-    // burst). Coming back resumes at normal speed, dropping the gap.
+
     if (acc > MS_PER_FRAME * 4) acc = MS_PER_FRAME;
     let guard = 0;
     while (acc >= MS_PER_FRAME && guard++ < 8) { acc -= MS_PER_FRAME; step(); }

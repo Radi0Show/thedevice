@@ -1,16 +1,5 @@
-// obj_regularbullet — the shared bullet base, translated from:
-//   gml_Object_obj_regularbullet_Create_0 / Step_0
-//
-// Parent chain: obj_collidebullet (Other_15 default damage) -> obj_bulletparent
-// (codeless). Children call these from their own create/step in the same
-// position their GML calls event_inherited().
-//
-// The default Other_15 (obj_collidebullet) is also here: children that do
-// not override it get scr_damage / scr_damage_all via the gate flags set by
-// scr_bullet_init. Dodge-only translation: the observable effect of both
-// damage scripts is `if (global.inv < 0) global.inv = global.invc * 30`
-// (verified in the dump: scr_damage line 363, scr_damage_all line 17);
-// party hp[] bookkeeping is out of scope per CLAUDE.md.
+
+
 
 import { destroy } from '../entity.js';
 import { scrDamageAll, scrDamageSingle } from '../damage.js';
@@ -29,20 +18,8 @@ export function scrBulletInit(e) {
   e.updateimageangle = 0;
 }
 
-/**
- * `scr_bullet_inherit(target)` — copies the CALLER's bullet fields down.
- *
- * This is how damage actually reaches a bullet. `scr_bullet_init` gives every
- * bullet a placeholder `damage = 10`, and 10 is small enough that the party's
- * defence eats almost all of it: `scr_damage_calculation` subtracts 1 per
- * point of DF below maxhp/8, so 10 against 9 DF lands as **1**. A bullet that
- * never inherits therefore does not look broken — it looks weak, which is the
- * quietest possible failure and exactly how Flurry's teeth shipped wrong.
- *
- * The `obj_dbulletcontroller` branch of the original also copies `creatorid`
- * and `creator`; no caller in this fight is a dbulletcontroller, so it is
- * omitted rather than guessed at.
- */
+
+
 export function scrBulletInherit(self, target) {
   if (!target) return;
   if (self.damage !== -1) target.damage = self.damage;
@@ -61,7 +38,7 @@ export function regularbulletCreate(e, state) {
   e.spinspeed = 0;
   e.image_alpha = 1;
   if (!state.soul || !state.soul.alive) {
-    destroy(e);
+    destroy(e, state);
   }
   e.wall_destroy = 1;
   e.bottomfade = 0;
@@ -74,11 +51,12 @@ export function regularbulletCreate(e, state) {
 }
 
 export function regularbulletStep(e, state) {
+
   if (e.wall_destroy === 1) {
-    if (e.x < state.view.x - 80) destroy(e);
-    if (e.x > state.view.x + 760) destroy(e);
-    if (e.y < state.view.y - 80) destroy(e);
-    if (e.y > state.view.y + 580) destroy(e);
+    if (e.x < state.view.x - 80) destroy(e, state);
+    if (e.x > state.view.x + 760) destroy(e, state);
+    if (e.y < state.view.y - 80) destroy(e, state);
+    if (e.y > state.view.y + 580) destroy(e, state);
   }
   if (e.updateimageangle === 1) {
     e.image_angle = e.direction;
@@ -93,27 +71,13 @@ export function regularbulletStep(e, state) {
   }
 }
 
-/** obj_collidebullet Other_15 — the default damage handler. */
+
 export function collidebulletOther15(e, state) {
-  // Oracle parity: when the patched game replaces this handler with a
-  // recorder, contact is counted but nothing else happens. See
-  // state.damageEnabled.
+
   if (!state.damageEnabled) return;
 
   if (e.active === 1 || e.active === true) {
-    // obj_collidebullet Other_15, the real routing — and an earlier note
-    // here ("the knight's bullets hit the whole party") was WRONG, reported
-    // from play as the whole party melting at once:
-    //
-    //     if (target != 3) scr_damage();       // ONE character, redirected
-    //     if (target == 3) scr_damage_all();   // the party, aoedamage set
-    //
-    // `scr_bullet_init` defaults `target = 0`, so an ordinary bullet takes
-    // HP from ONE character, chosen by scr_damage's chapter-3 block (the
-    // Kris redirect and the ShadowMantle's two-of-three pull). Only bullets
-    // that set target = 3 in their own Other_15 (the slashes, the pointing
-    // stars) hit everyone — and those set aoedamage, which SKIPS the
-    // redirect, so the AoE path never funnels into the wearer.
+
     if (state.invTimer < 0) {
       const opts = { flurrySoftened: state.flurrySoftened === true };
       if (e.target === 3) {
@@ -123,7 +87,7 @@ export function collidebulletOther15(e, state) {
       }
     }
     if (e.destroyonhit === 1 || e.destroyonhit === true) {
-      destroy(e);
+      destroy(e, state);
     }
   }
 }

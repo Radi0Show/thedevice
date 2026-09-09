@@ -1,13 +1,9 @@
-// GameMaker draw primitives the ported Draw events keep needing.
-//
-// These are the handful of GML calls that have no one-line canvas equivalent:
-// colour merging (GML packs colours BGR), `gpu_set_fog` silhouettes, and
-// `draw_triangle_color` gradient beams. Keeping them here means each ported
-// Draw event reads like the GML it came from instead of like canvas plumbing.
 
-/** GML `lengthdir_x` — degrees, y axis pointing DOWN, so sin is negated. */
+
+
+
 export const ldx = (len, deg) => len * Math.cos((deg * Math.PI) / 180);
-/** GML `lengthdir_y`. */
+
 export const ldy = (len, deg) => -len * Math.sin((deg * Math.PI) / 180);
 
 export const c_white = [255, 255, 255];
@@ -15,7 +11,7 @@ export const c_gray = [128, 128, 128];
 export const c_red = [255, 0, 0];
 export const c_black = [0, 0, 0];
 
-/** GML `merge_color(a, b, t)` — a straight per-channel lerp. */
+
 export function mergeColor(a, b, t) {
   const k = Math.max(0, Math.min(1, t));
   return [
@@ -27,75 +23,67 @@ export function mergeColor(a, b, t) {
 
 export const rgb = (c) => `rgb(${c[0]},${c[1]},${c[2]})`;
 
-/**
- * A copy of one sprite frame recoloured to a solid colour, keeping its alpha.
- *
- * Two different GML calls land here. `gpu_set_fog(true, col, 0, 0)` makes every
- * following draw a flat silhouette in `col` — that is what `scr_draw_outline`
- * uses. `draw_sprite_ext(..., col, a)` instead MULTIPLIES the sprite by `col`,
- * which for the white-ish star art is close enough to the same thing; where it
- * is not (the purple flow texture at `c_gray`) the caller multiplies with a
- * globalAlpha pass instead.
- *
- * Cached per (image, colour) because this runs several times per bullet per
- * frame and there are up to 96 of them.
- */
+
+
 const tintCache = new Map();
+
+
+
+const TINT_CACHE_CAP = 2048;
+function remember(key, c) {
+  if (tintCache.size >= TINT_CACHE_CAP) tintCache.delete(tintCache.keys().next().value);
+  tintCache.set(key, c);
+}
+
+
+
+export function tintInto(dst, img, color) {
+  if (dst.width !== img.width || dst.height !== img.height) {
+    dst.width = img.width;
+    dst.height = img.height;
+  }
+  const g = dst.getContext('2d');
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.globalAlpha = 1;
+  g.globalCompositeOperation = 'source-over';
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, dst.width, dst.height);
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'multiply';
+  g.fillStyle = rgb(color);
+  g.fillRect(0, 0, dst.width, dst.height);
+
+  g.globalCompositeOperation = 'destination-in';
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = 'source-over';
+  return dst;
+}
+
 export function tinted(img, color) {
   if (!img) return null;
-  // COLOUR IS AN [r, g, b] ARRAY. A string gets indexed character by
-  // character and yields the literal `rgb(r,g,b)` — not a colour, so the fill
-  // silently does nothing and the sprite draws untinted. An invalid
-  // fillStyle throws nothing and changes nothing, so the mistake is
-  // completely silent; it cost two rounds of "the Flurry flame still looks
-  // wrong" before it was found. Fail loudly instead.
+
   if (!Array.isArray(color)) {
     throw new TypeError(
       `tinted() needs an [r,g,b] array, got ${JSON.stringify(color)}`,
     );
   }
-  // ONLY <img> IS CACHEABLE. Callers also pass CANVASES that are rebuilt every
-  // frame (the cut box's two halves), and a canvas has no `.src` — so the key
-  // would collapse to "undefined|<colour>" and every later call would get the
-  // first frame's picture back. Cache on the source URL or not at all.
+
+  if (color[0] === 255 && color[1] === 255 && color[2] === 255) return img;
+
   const key = img.src ? `${img.src}|${color[0]},${color[1]},${color[2]}` : null;
   if (key) {
     const hit = tintCache.get(key);
     if (hit) return hit;
   }
-  let c = document.createElement('canvas');
-  c.width = img.width;
-  c.height = img.height;
-  const g = c.getContext('2d');
-  g.imageSmoothingEnabled = false;
-  g.drawImage(img, 0, 0);
-  // MULTIPLY, NOT REPLACE. GameMaker's `draw_sprite_ext` colour argument
-  // multiplies the texture, so a BLACK pixel stays black whatever the tint is.
-  // A `source-in` fill instead replaces every pixel with the colour, which for
-  // the near-white star art is indistinguishable — and for spr_battlebg_0's
-  // solid black interior turned the whole arena green.
-  g.globalCompositeOperation = 'multiply';
-  g.fillStyle = rgb(color);
-  g.fillRect(0, 0, c.width, c.height);
-  // `multiply` ignores the source alpha, so put the original's back.
-  g.globalCompositeOperation = 'destination-in';
-  g.drawImage(img, 0, 0);
-  if (key) tintCache.set(key, c);
+  const c = tintInto(document.createElement('canvas'), img, color);
+  if (key) remember(key, c);
   return c;
 }
 
-/**
- * `draw_sprite_ext` with GameMaker's conventions: the position is the sprite's
- * ORIGIN, scale is about that origin, and image_angle is counter-clockwise
- * degrees. `color` multiplies the texture; pass null to leave it alone.
- */
-/**
- * GameMaker's FOG (`d3d_set_fog(true, colour, 0, 1)`): every pixel REPLACED
- * by the colour, alpha kept — a solid silhouette. This is NOT what the
- * draw-colour argument does (that multiplies; see tinted above), and a white
- * `tinted` is a silent no-op on dark art — which is why the fog draws (the
- * intro's whiteout copy, the charge-up's white knight) need this instead.
- */
+
+
+
+
 export function fogged(img, color) {
   if (!img) return null;
   if (!Array.isArray(color)) {
@@ -115,7 +103,7 @@ export function fogged(img, color) {
   g.fillRect(0, 0, c.width, c.height);
   g.globalCompositeOperation = 'destination-in';
   g.drawImage(img, 0, 0);
-  if (key) tintCache.set(key, c);
+  if (key) remember(key, c);
   return c;
 }
 
@@ -133,25 +121,54 @@ export function drawSpriteExt(ctx, entry, sub, x, y, xs, ys, angleDeg, color, al
   ctx.restore();
 }
 
-/**
- * `scr_draw_beam_color(x, y, length, width, angle, col, outer, alpha, circle)`.
- *
- * A `draw_triangle_color` wedge: apex at (x,y) in `col`, spreading `width`
- * degrees and reaching `length`, with the two far corners in `outer` — which
- * every caller passes as 0 (black). Under `bm_add` black contributes nothing,
- * so the beam is a spike that fades out along its length.
- */
-/**
- * Gradients for the beams, cached. During Stars' burst wind-up every charging
- * star draws SIX of these a frame — ~18 stars gave ~108 fresh CanvasGradient
- * allocations per frame, reported from play as a massive FPS drop exactly
- * when the stars wind up. A gradient is position-free if the triangle is
- * drawn in LOCAL space (translate/rotate first), so one gradient per
- * (colour, integer length) serves every beam of that shape forever. The
- * length is Math.round'd FOR THE CACHE KEY ONLY — the strobe's fractional
- * lengths differ from the rounded gradient by under a pixel of ramp, and the
- * triangle geometry itself keeps the exact float length.
- */
+
+
+export function drawSpriteExtNineSlice(ctx, entry, sub, x, y, xs, ys, angleDeg, color, alpha, guide) {
+  if (!entry || !entry.frames.length) return;
+  const img = entry.frames[((sub | 0) % entry.frames.length + entry.frames.length) % entry.frames.length];
+  if (!img) return;
+  const w = img.width;
+  const h = img.height;
+  const W = w * xs;
+  const H = h * ys;
+  if (!(W > 0) || !(H > 0)) return;
+  const src = color ? tinted(img, color) : img;
+  const g = guide;
+  const cw = Math.min(g, W / 2);
+  const ch = Math.min(g, H / 2);
+  const ew = W - 2 * cw;
+  const eh = H - 2 * ch;
+  const sw = w - 2 * g;
+  const sh = h - 2 * g;
+  const ox = -(entry.meta.ox ?? 0) * xs;
+  const oy = -(entry.meta.oy ?? 0) * ys;
+  ctx.save();
+  ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+  ctx.translate(x, y);
+  if (angleDeg) ctx.rotate((-angleDeg * Math.PI) / 180);
+  const slice = (sx, sy, sW, sH, dx, dy, dW, dH) => {
+    if (sW <= 0 || sH <= 0 || dW <= 0 || dH <= 0) return;
+    ctx.drawImage(src, sx, sy, sW, sH, ox + dx, oy + dy, dW, dH);
+  };
+
+  slice(0, 0, g, g, 0, 0, cw, ch);
+  slice(w - g, 0, g, g, W - cw, 0, cw, ch);
+  slice(0, h - g, g, g, 0, H - ch, cw, ch);
+  slice(w - g, h - g, g, g, W - cw, H - ch, cw, ch);
+
+  slice(g, 0, sw, g, cw, 0, ew, ch);
+  slice(g, h - g, sw, g, cw, H - ch, ew, ch);
+  slice(0, g, g, sh, 0, ch, cw, eh);
+  slice(w - g, g, g, sh, W - cw, ch, cw, eh);
+
+  slice(g, g, sw, sh, cw, ch, ew, eh);
+  ctx.restore();
+}
+
+
+
+
+
 const beamGradients = new WeakMap();
 
 export function drawBeamColor(ctx, x, y, length, width, angle, color, alpha, circle = false) {
@@ -163,16 +180,7 @@ export function drawBeamColor(ctx, x, y, length, width, angle, color, alpha, cir
     ctx.arc(x + ldx(length, angle), y + ldy(length, angle), width / 2, 0, Math.PI * 2);
     ctx.fill();
   }
-  // The gradient runs apex -> tip, which is what a two-colour triangle with
-  // both far vertices the same colour interpolates to. Drawn in LOCAL space
-  // (apex at the origin, beam along +x) so the cached gradient fits every
-  // position and angle; GameMaker's angles are CCW, canvas rotation is CW,
-  // hence the negation.
-  // A CanvasGradient belongs to the context that made it, and MORE THAN ONE
-  // context draws beams in the same frame (the roar's beams go to its own
-  // star surface). A per-context map means neither evicts the other — a
-  // single shared cache cleared on context change would have churned every
-  // frame of the roar, which is the failure this cache exists to remove.
+
   let perCtx = beamGradients.get(ctx);
   if (!perCtx) beamGradients.set(ctx, (perCtx = new Map()));
   const key = `${rgb(color)}|${Math.round(length)}`;
@@ -198,12 +206,8 @@ export function drawBeamColor(ctx, x, y, length, width, angle, color, alpha, cir
   ctx.restore();
 }
 
-/**
- * `scr_draw_outline(dist, color, alpha)` — four flat-colour copies of the
- * instance's own sprite offset along the axes (rotated with image_angle when it
- * is not a multiple of 90). Drawn additively by both callers, so it reads as a
- * glow rather than an outline.
- */
+
+
 export function drawOutline(ctx, entry, e, dist, color, alpha) {
   let xA = dist;
   let xB = 0;
@@ -222,7 +226,7 @@ export function drawOutline(ctx, entry, e, dist, color, alpha) {
   }
 }
 
-/** GML `scr_pingpong(v, n)` — 0..n..0 with period 2n. */
+
 export function pingpong(v, n) {
   if (n === 0) return v;
   const m = ((v % (n * 2)) + n * 2) % (n * 2);
@@ -231,32 +235,67 @@ export function pingpong(v, n) {
 
 export const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-/**
- * obj_growtangle's Draw — the arena, and it is GREEN.
- *
- *     draw_sprite_ext(sprite_index, 1, x, y, ..., image_blend, image_alpha);
- *     ... draw_self();
- *
- * Frame 1 tinted with `image_blend` (which Create sets to
- * `merge_color(c_green, c_lime, 0.5)`) UNDER the ordinary frame. spr_battlebg_0's
- * two frames are two layers of one border, not an animation — the second is the
- * green glow that the arena wears for the entire fight.
- *
- * The `customBox` branch is not reachable here: nothing in the knight fight sets
- * `customBox`, so the `else` arm — draw_self() — is the one that runs.
- */
+
+
+
+
+
+const customBoxBakes = new Map();
+function customBoxBake(entry, maxxscale, maxyscale, blend) {
+  const key = `${maxxscale}|${maxyscale}|${blend ? blend.join(',') : ''}`;
+  let c = customBoxBakes.get(key);
+  if (c) return c;
+  c = document.createElement('canvas');
+
+  c.width = Math.max(1, Math.round((entry.meta.w ?? 75) * maxxscale / 2));
+  c.height = Math.max(1, Math.round((entry.meta.h ?? 75) * maxyscale / 2));
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = false;
+
+  drawSpriteExtNineSlice(g, entry, 0,
+    (entry.meta.ox ?? 0) * maxxscale / 2, (entry.meta.oy ?? 0) * maxyscale / 2,
+    maxxscale / 2, maxyscale / 2, 0, blend, 1, 2);
+  customBoxBakes.set(key, c);
+  return c;
+}
+
 export function drawGrowtangle(ctx, e, sprites, fallbackName) {
-  // NOTE the second layer is `draw_self()`, which applies image_blend TOO — so
-  // both frames are tinted green. Frame 1 is a solid black interior (green x
-  // black is still black) and frame 0 is the border, which is what actually
-  // comes out green. The generic blit in render/canvas.js therefore has to
-  // honour image_blend as well, or the border stays white.
-  // The box never assigns `sprite_index` — GameMaker gives it one from the
-  // object definition — so the renderer resolves it through SPRITE_FOR, and
-  // this has to use the same map or it silently draws nothing.
+
   const entry = sprites.get(e.sprite_index ?? fallbackName);
-  if (!entry || entry.frames.length < 2) return false; // fall back to the blit
-  drawSpriteExt(ctx, entry, 1, e.x, e.y,
-    e.image_xscale, e.image_yscale, e.image_angle, e.image_blend, e.image_alpha);
-  return false; // draw_self() still follows — the caller's normal blit
+  if (!entry || entry.frames.length < 2) return false;
+
+
+  const custom = !!e.customBox && (e.maxxscale !== 2 || e.maxyscale !== 2);
+  const hitbox = custom ? sprites.get('spr_battlebg_stretch_hitbox') : null;
+  if (!custom || !hitbox || hitbox.frames.length < 2) {
+    drawSpriteExt(ctx, entry, 1, e.x, e.y,
+      e.image_xscale, e.image_yscale, e.image_angle, e.image_blend, e.image_alpha);
+    return false;
+  }
+
+
+  drawSpriteExtNineSlice(ctx, hitbox, 1, e.x, e.y,
+    e.image_xscale, e.image_yscale, e.image_angle, e.image_blend, e.image_alpha, 4);
+
+
+  const growing = (e.growcon === 1 && e.timer < e.maxtimer) || (e.growcon === 3 && e.timer > 0);
+  if (growing) {
+    const bake = customBoxBake(entry, e.maxxscale, e.maxyscale, e.image_blend);
+    const sc = (e.timer / e.maxtimer) * (e.growscale ?? 2);
+    if (sc > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, e.image_alpha));
+      ctx.translate(e.x, e.y);
+      if (e.image_angle) ctx.rotate((-e.image_angle * Math.PI) / 180);
+      ctx.scale(sc, sc);
+
+      ctx.drawImage(bake, -(entry.meta.ox ?? 0) * e.maxxscale / 2, -(entry.meta.oy ?? 0) * e.maxyscale / 2);
+      ctx.restore();
+    }
+  } else {
+
+    drawSpriteExtNineSlice(ctx, hitbox, 0, e.x, e.y,
+      e.image_xscale, e.image_yscale, e.image_angle, e.image_blend, e.image_alpha, 4);
+  }
+  return true;
 }

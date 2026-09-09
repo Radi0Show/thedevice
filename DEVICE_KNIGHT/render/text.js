@@ -1,33 +1,13 @@
-// SPRITE FONTS — `font_add_sprite_ext`, which is what the battle UI uses.
-//
-// None of the numbers on screen come from a real font asset. obj_initializer2
-// builds them out of sprites:
-//
-//     global.hpfont       = font_add_sprite_ext(spr_numbersfontsmall,
-//                                               "0123456789-+", 0, 2);
-//     global.damagefont   = font_add_sprite_ext(spr_numbersfontbig,
-//                                               "0123456789", 20, 0);
-//     global.tvlandfont   = font_add_sprite_ext(spr_tvlandfont, "ABC...", 0, 1);
-//
-// So drawing text is: look each character up in the map string, blit that frame
-// of the sprite, advance. No glyph metrics, no texture page, no font chunk to
-// extract — the whole mechanism is a sprite with one frame per character.
-//
-// `font_add_sprite_ext(sprite, map, prop, sep)`:
-//
-//     map   the characters, in frame order
-//     prop  PROPORTIONAL. Falsy means every glyph advances by the sprite's full
-//           width; truthy means each advances by its own inked width. `hpfont`
-//           passes 0 — fixed — which is why HP numbers line up in a column.
-//     sep   extra pixels between glyphs. 2 for hpfont, 0 for the damage font.
 
-/** The fonts the battle UI builds, exactly as obj_initializer2 builds them. */
+
+
+
 export const FONTS = {
   hp: { sprite: 'spr_numbersfontsmall', map: '0123456789-+', prop: false, sep: 2 },
   damage: { sprite: 'spr_numbersfontbig', map: '0123456789', prop: true, sep: 0 },
 };
 
-/** Advance for one glyph — full sprite width unless the font is proportional. */
+
 function advance(entry, font, index) {
   const img = entry.frames[index];
   const w = font.prop && img ? img.width : entry.meta.w ?? (img ? img.width : 0);
@@ -46,13 +26,8 @@ export function measureText(sprites, font, text) {
   return total > 0 ? total - font.sep : 0;
 }
 
-/**
- * `draw_text` with a sprite font.
- *
- * `halign` mirrors `draw_set_halign`: the charbox draws both HP numbers with
- * `fa_right`, so the current value's right edge sits at x+160 and the max's at
- * x+205 — the numbers grow leftward and the slash between them never moves.
- */
+
+
 export function drawSpriteText(ctx, sprites, font, text, x, y, {
   halign = 'left', color = null, alpha = 1,
 } = {}) {
@@ -71,7 +46,7 @@ export function drawSpriteText(ctx, sprites, font, text, x, y, {
     const img = entry.frames[i];
     if (img) {
       if (color) {
-        // A tinted copy, the same multiply the rest of the renderer uses.
+
         ctx.drawImage(tintedGlyph(img, color), cx, y);
       } else {
         ctx.drawImage(img, cx, y);
@@ -82,7 +57,7 @@ export function drawSpriteText(ctx, sprites, font, text, x, y, {
   ctx.restore();
 }
 
-/** Glyphs are tiny and few; one cached tint per (glyph, colour) is plenty. */
+
 const glyphCache = new Map();
 function tintedGlyph(img, color) {
   const key = `${img.src}|${color}`;

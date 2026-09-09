@@ -1,14 +1,5 @@
-// PIXEL GLYPHS — the site's display face, hand-authored.
-//
-// No webfont: shipping a third-party pixel font means a license file and a
-// binary this repo cannot read, and extracting the game's own font into the
-// hub would put game assets outside the sim that ships them. 45 glyphs of
-// 5x7 bitmap cover every header this site sets, they scale by integers only,
-// and SVG rects in currentColor inherit the focus/selection color for free.
-//
-// The real text stays in the element (visually hidden), so screen readers,
-// find-in-page and copy all see words, not rectangles. Without JS the text
-// simply shows as monospace — a fallback, not a failure.
+
+
 
 const GLYPHS = {
   A: [0b01110,0b10001,0b10001,0b11111,0b10001,0b10001,0b10001],
@@ -64,9 +55,9 @@ const GLYPHS = {
   '&': [0b01100,0b10010,0b10100,0b01000,0b10101,0b10010,0b01101],
 };
 
-const COLS = 5, ROWS = 7, ADVANCE = 6; // one blank column between glyphs
+const COLS = 5, ROWS = 7, ADVANCE = 6;
 
-/** Build one SVG for a line of text, horizontal runs merged per row. */
+
 function render(text, scale) {
   const chars = [...text.toUpperCase()];
   const width = chars.length * ADVANCE - 1;
@@ -77,8 +68,7 @@ function render(text, scale) {
   svg.setAttribute('height', ROWS * scale);
   svg.setAttribute('shape-rendering', 'crispEdges');
   svg.setAttribute('aria-hidden', 'true');
-  // Inline, not a stylesheet rule: pages that host the sim carry their own
-  // minimal styles, and a glyph must never be black-on-black there.
+
   svg.setAttribute('fill', 'currentColor');
   chars.forEach((ch, i) => {
     const rows = GLYPHS[ch] ?? GLYPHS['?'];
@@ -103,7 +93,7 @@ function render(text, scale) {
   return svg;
 }
 
-/** Swap every [data-pixel] element's text for glyphs, keeping the text. */
+
 export function initPixelText(root = document) {
   for (const el of root.querySelectorAll('[data-pixel]')) {
     const text = el.textContent.trim();
@@ -111,7 +101,7 @@ export function initPixelText(root = document) {
     const scale = Number(el.dataset.scale || 3);
     const hidden = document.createElement('span');
     hidden.textContent = text;
-    // Visually hidden, not display:none — assistive tech must still read it.
+
     hidden.style.cssText =
       'position:absolute;width:1px;height:1px;overflow:hidden;'
       + 'clip-path:inset(50%);white-space:nowrap';

@@ -1,114 +1,35 @@
-// obj_dmgwriter — THE FLOATING DAMAGE NUMBER.
-//
-// Created by `scr_damage_enemy` at
-//
-//     instance_create(global.monsterx[t],
-//                     (global.monstery[t] + 20) - (global.hittarget[t] * 20),
-//                     obj_dmgwriter)
-//
-// `hittarget` increments per hit in the same turn, so three characters hitting
-// the Knight stack their numbers 20px apart going UP rather than overlapping.
-//
-// It is the fight's only quantitative feedback: the Knight's HP is "???", so
-// the number that pops off him is the sole way to know whether a bar was worth
-// anything.
-//
-// THE MOTION, from its Draw, and every part of it is load-bearing:
-//
-//   delay 2 (8 when obj_heroparent sets it)  nothing happens for the first
-//                                            frames — the number lands AFTER
-//                                            the swing connects, not with it
-//   vspeed = -5 - random(2), hspeed = 10     it is thrown up and to the right
-//   hspeed decays by 1 a frame toward 0      so the arc straightens out
-//   vspeed += 1 while bounces < 2            gravity
-//   y > ystart -> y = ystart,                TWO BOUNCES, each half the last
-//                 vspeed = vstart / 2
-//   killtimer > 35 -> kill += 0.08,          then it rises and fades over 13
-//                     y -= 4                 frames and destroys itself
-//
-// THE SQUASH IS THE WHOLE LOOK. It is drawn
-//
-//     draw_text_transformed(x + 30, y, msg, 2 - stretch, stretch + kill, 0)
-//
-// with `stretch` starting at **0.2** and rising 0.4 a frame until it passes
-// 1.2, where it clamps to 1. So the scale runs
-//
-//     (1.8, 0.2) -> (1.4, 0.6) -> (1.0, 1.0)
-//
-// — the number starts as a wide flat smear and snaps to square in three
-// frames. Drawing it at a constant scale loses the impact entirely.
-//
-// And the fade reuses `kill` in BOTH the alpha and the Y SCALE: `stretch +
-// kill` means the number stretches vertically as it disappears.
+
+
 
 import { PARTY_POS, PARTY } from './damage.js';
 import { gmlRandom } from './rng.js';
 
-// `type` is the writer's colour selector, and IT MEANS DIFFERENT THINGS in the
-// two directions:
-//
-//   damage TO the enemy   `dm.type = global.char[caster] - 1`   0/1/2, tinted
-//                                                               by the attacker
-//   damage TO the party   `dmgwriter.type = doomtype`           **-1** normally
-//
-// and obj_dmgwriter's Draw opens with `draw_set_color(c_white)` before any of
-// the type branches. -1 matches none of them, so **party damage numbers are
-// WHITE** — the per-character tints are for damage you DEAL, not damage you
-// take. Colouring an incoming hit by who took it is wrong and reads as if the
-// party were hitting themselves.
-//
-// `doomtype` is 4 on death (c_red, and `message = 2` swaps the digits for the
-// DOWN graphic) and 12 for the other death branch.
-/**
- * `scr_charbox_x(i)` for a three-character party — 0, 212, 424. NOT the 213 /
- * 426 the panels are drawn at: the charbox script and the panel `xchunk` are
- * two different numbers in the game, and obj_healwriter is placed off THIS one.
- */
+
+
 const CHARBOX_X = [0, 212, 424];
 
-const LIGHTB = [128, 255, 255]; // merge_color(c_aqua, c_white, 0.5)   Kris
-const LIGHTF = [255, 153, 255]; // merge_color(c_purple, c_white, 0.6) Susie
-const LIGHTG = [128, 255, 128]; // merge_color(c_lime, c_white, 0.5)   Ralsei
+const LIGHTB = [128, 255, 255];
+const LIGHTF = [255, 153, 255];
+const LIGHTG = [128, 255, 128];
 export const DMG_COLORS = [LIGHTB, LIGHTF, LIGHTG];
 
-/** `doomtype`. -1 is an ordinary hit on the party; 4 is a death. */
+
 export const TYPE_PARTY = -1;
 export const TYPE_DEAD = 4;
-/**
- * `doomtype 12` — SWOON, and it is a DIFFERENT WRITER FROM DOWN.
- *
- *     if (target == 0) { doomtype = 4;  hp = round(-maxhp / 2); }
- *     else             { doomtype = 12; hp = -999; }
- *
- * and obj_dmgwriter's Draw maps them to different graphics entirely:
- * `type == 4` -> message 2 -> spr_battlemsg FRAME 1 (DOWN), while
- * `type == 12` -> message 10 -> FRAME 13 (SWOON). Both red. Using DEAD for
- * everyone put the DOWN graphic over Susie and Ralsei, who never go down —
- * they swoon, which is the whole reason they cannot be healed back.
- */
+
+
 export const TYPE_SWOON = 12;
-/** `type = 3` — a HEAL, drawn in c_lime. Every heal writer in the dump uses it. */
+
 export const TYPE_HEAL = 3;
 const C_WHITE = [255, 255, 255];
 const C_RED = [255, 0, 0];
 export const C_LIME = [0, 255, 0];
 
-/**
- * `specialmessage`, which swaps the digits for a frame of `spr_battlemsg`:
- *
- *     message 1  frame 0   MISS   (damage == 0)
- *     message 2  frame 1   DOWN   (type == 4, c_red)
- *     message 3  frame 2   MAX    (c_lime)
- *
- * MAX is set by every heal in the game at the same place and on the same test
- * — `if (global.hp[char] >= global.maxhp[char]) dmgwr.specialmessage = 3` —
- * in scr_healitemspell, scr_healallitemspell, scr_raise_party, scr_spell,
- * scr_bullet_heal and obj_battlecontroller's heart button. A heal that fills
- * the bar shows MAX instead of a number, exactly as a killing blow shows DOWN.
- */
+
+
 export const MSG_MAX = 3;
 
-/** The colour for a writer's `type`, exactly as the Draw's branches pick it. */
+
 export function dmgColor(type) {
   if (type === 0) return LIGHTB;
   if (type === 1) return LIGHTF;
@@ -119,45 +40,25 @@ export function dmgColor(type) {
   return C_WHITE;
 }
 
-/**
- * Damage numbers live on state, not as entities — they touch nothing else.
- *
- * `heals` is the SECOND writer: `obj_healwriter`, which is a different object
- * from obj_dmgwriter and appears somewhere else entirely. See spawnHealWriter.
- */
+
+
 export function createDmgNumbers() {
   return { list: [], heals: [], hittarget: 0, tu: [0, 0, 0] };
 }
 
-/**
- * `scr_damage_enemy`'s `instance_create`, plus obj_heroparent's `dm.delay = 8`.
- *
- * @param {number} type   `dm.type`: 0/1/2 for damage DEALT by that
- *                        character, -1 for damage taken, 4 for a death
- * @param {number} damage 0 draws the "MISS" message sprite instead
- */
+
+
 export function spawnDmgNumber(state, x, y, damage, type, delay = 8, opts = {}) {
   const d = state.dmg;
   if (!d) return;
-  // `stack: false` is the SELF-CHAR path. obj_dmgwriter is one object with two
-  // spawn sites and they count on DIFFERENT variables: hits on the enemy step
-  // by `global.hittarget[t]`, writers over a party member by that character's
-  // own `tu`. Running a party-wide heal through the enemy counter climbs 60px
-  // up one character instead of one step each.
+
   const { special = 0, stack = true, yoff = 0 } = opts;
   const top = stack ? y + 20 - d.hittarget * 20 : y + yoff;
-  // `damage = round(random(600))` in obj_dmgwriter's CREATE — a placeholder
-  // the caller overwrites on the next line, but the roll still happens, and
-  // it comes from the same WELL512 stream every bullet draws from. Skipping
-  // it desynced the whole-fight diff four frames after the first landed hit:
-  // scr_damage_all spawns THREE writers, the next star (b15, f205) rolled
-  // three positions early and flew the opposite direction.
+
   if (state.gmlRng) gmlRandom(state.gmlRng, 600);
   d.list.push({
     x,
-    // `(monstery + 20) - (hittarget * 20)` — each hit this turn sits 20px
-    // higher than the last, which is what keeps three simultaneous hits
-    // readable instead of stacked on one another.
+
     y: top,
     ystart: top,
     damage,
@@ -178,7 +79,7 @@ export function spawnDmgNumber(state, x, y, damage, type, delay = 8, opts = {}) 
   if (stack) d.hittarget += 1;
 }
 
-/** `global.hittarget[t] = 0` for every enemy at the top of a turn. */
+
 export function resetDmgStack(state) {
   if (state.dmg) {
     state.dmg.hittarget = 0;
@@ -186,28 +87,10 @@ export function resetDmgStack(state) {
   }
 }
 
-/**
- * `scr_dmgwriter_selfchar()` — the writer that appears over a PARTY MEMBER
- * rather than over the enemy:
- *
- *     return instance_create(x, (y + myheight) - 24 - (tu * 20), obj_dmgwriter);
- *
- * `tu` is that character's own stack counter, so a party-wide heal puts three
- * numbers at three heights the way `hittarget` does for three hits on the
- * Knight. It is a DIFFERENT counter from hittarget — sharing one would make a
- * three-target heal climb 60px up one character instead of one step each.
- *
- * Every caller then does the same four things, so they live here:
- *
- *     dmgwr.delay = 8; dmgwr.type = 3; dmgwr.damage = amount;
- *     if (global.hp[char] >= global.maxhp[char]) dmgwr.specialmessage = 3;
- *
- * `maxed` is that test, taken by the caller AFTER the heal lands.
- */
-/**
- * Where a heal number sits: the sprite's centre-top, from the manifest's own
- * origins. Shared by BOTH heal displays so they cannot drift apart again.
- */
+
+
+
+
 const HEAL_ANCHOR = [
   { x: 156, y: 104 },
   { x: 96, y: 142 },
@@ -217,19 +100,7 @@ const HEAL_ANCHOR = [
 export function spawnSelfHealNumber(state, target, amount, maxed) {
   const d = state.dmg;
   if (!d) return;
-  // ABOVE THE SPRITE, the same anchor the item heal uses.
-  //
-  // This drew at PARTY_POS — `(x, y + myheight - 24)`, where damage TAKEN
-  // appears, which is where scr_dmgwriter_selfchar really puts it. But the
-  // item heal was moved above the character's head on request, and leaving the
-  // SPELL heal behind meant Heal Prayer's number and its MAX came up somewhere
-  // different from a Spincake's, for the same event. Reported as healing to
-  // max not showing MAX above the character: it was showing it, at the old
-  // spot, while the item path put it where it was expected.
-  //
-  // Same labelled deviation as spawnHealWriter's, now applied consistently:
-  // both heal displays sit over the sprite, both keep the `tu` stack so
-  // several heals on one character read as a column rather than a pile.
+
   const pos = HEAL_ANCHOR[target] ?? PARTY_POS[target];
   const tu = d.tu[target] ?? 0;
   spawnDmgNumber(state, pos.x, pos.y, amount, TYPE_HEAL, 8,
@@ -237,99 +108,37 @@ export function spawnSelfHealNumber(state, target, amount, maxed) {
   d.tu[target] = tu + 1;
 }
 
-/**
- * `obj_healwriter` — THE OTHER HEAL DISPLAY, and the one ITEMS use.
- *
- *     // scr_healitem
- *     healtext = instance_create(scr_charbox_x(t) + 70 + xx, yy + 430,
- *                                obj_healwriter);
- *     healtext.healamt = arg1;
- *
- * It is not obj_dmgwriter with different settings: it is a separate object
- * that appears over the CHARBOX instead of over the character, rises with
- * friction instead of bouncing, and has no message sprite at all — so an item
- * that fills the bar shows `+150`, never MAX. Only the spell/raise path gets
- * the MAX graphic. Treating the two as one would put MAX on a Spincake.
- *
- *     Create: healamt, vspeed = -6, friction = 0.2, image_alpha = 1.5
- *     Draw:   mainbig, c_lime, "+" + healamt, image_alpha -= 0.1, die at < 0
- *
- * IT SHOWS THE REQUESTED AMOUNT, not what landed — `healamt = arg1`, the
- * argument, while `scr_heal` clamps at maxhp and returns the difference. A
- * Spincake on a full party still reads +150. Faithful, and load-bearing for
- * the reported case: a ReviveMint goes through scr_itemuse case 2 into
- * scr_healitem, so what you see is the revive amount it tried to give.
- */
-/**
- * CENTRE-TOP OF EACH BATTLE SPRITE, which is not PARTY_POS.
- *
- * PARTY_POS is the sprite's DRAW ORIGIN — the point passed to draw_sprite_ext
- * — and every one of these sprites has a non-zero `ox` and is drawn at scale
- * 2, so the origin sits at the sprite's left edge (Ralsei's a full 138px left
- * of his right edge). Spawning a heal number there put it beside the
- * character's foot, not over their head. Damage numbers dodge this with a
- * hardcoded `+30` at draw time; this table does it properly.
- *
- * Derived from the sprite pack's own metadata, at the scale 2 they draw with:
- *
- *   slot  origin      sprite            w x h   ox   left = x - ox*2   centre   top
- *   Kris  (126, 104)  spr_krisb_idle    36x38    3   120               156      104
- *   Susie ( 80, 142)  spr_susieb_idle   54x45   19    42                96      142
- *   Rals  ( 58, 190)  spr_ralsei_idle   69x47    0    58               127      190
- */
+
+
+
+
 
 export function spawnHealWriter(state, target, amount) {
   const d = state.dmg;
   if (!d) return;
-  // DELIBERATE DEVIATION, asked for and labelled. The dump puts this one over
-  // the CHARBOX -- `instance_create(scr_charbox_x(t) + 70 + xx, yy + 430,
-  // obj_healwriter)` -- and only the SPELL path (scr_healitemspell, via
-  // scr_dmgwriter_selfchar) puts a heal number over the character with the
-  // MAX graphic. Items here are shown over the character instead, at the same
-  // point damage taken already appears, because that is where it is wanted.
-  // The MAX read below is the same deviation: obj_healwriter has no message
-  // sprite at all, so in the game a Spincake on a full bar reads +150.
+
   const hp = state.partyHp?.[target] ?? 0;
   const max = PARTY[target]?.maxhp ?? 0;
   const pos = HEAL_ANCHOR[target] ?? PARTY_POS[target];
   d.heals.push({
-    // Just clear of the head, then it rises.
+
     x: pos.x,
     y: pos.y - 6,
     maxed: max > 0 && hp >= max,
     healamt: amount,
-    // THE MESSAGE SPRITE'S SQUASH-AND-STRETCH, from obj_dmgwriter's Draw:
-    //
-    //     draw_sprite_ext(message_sprite, 2, x + 30, y,
-    //                     2 - stretch, stretch + kill, ...)
-    //     ...
-    //     if (stretchgo == 1) stretch += 0.4;
-    //     if (stretch >= 1.2) { stretch = 1; stretchgo = 0; }
-    //
-    // starting at 0.2. So it pops in WIDE AND FLAT (1.8 x 0.2) and settles at
-    // 1 x 1 — it is never drawn at 2 x 2 in the game, and drawing it there
-    // made the MAX graphic twice the size it should be in both axes, which is
-    // four times the area. Reported from play as the sprite being physically
-    // too big.
-    //
-    // obj_healwriter itself has no message sprite and no stretch — showing MAX
-    // over a character at all is this project's labelled deviation — so the
-    // animation is borrowed from the writer the game DOES show it on rather
-    // than invented.
+
     stretch: 0.2,
     stretchgo: 1,
-    // GML `friction` reduces the SPEED MAGNITUDE and clamps at zero on
-    // crossing; the writer only ever moves up, so this is vspeed climbing
-    // toward 0 by 0.2 a frame.
+
     vspeed: -6,
     alpha: 1.5,
   });
 }
 
-/** obj_healwriter's Draw, which is also its whole step. */
+
 export function stepHealWriters(state) {
   for (const h of state.dmg?.heals ?? []) {
-    // `if (stretchgo == 1) stretch += 0.4;` then the 1.2 clamp back to 1.
+
     if (h.stretchgo === 1) h.stretch = (h.stretch ?? 0.2) + 0.4;
     if ((h.stretch ?? 0) >= 1.2) { h.stretch = 1; h.stretchgo = 0; }
   }
@@ -338,50 +147,22 @@ export function stepHealWriters(state) {
   for (const h of d.heals) {
     h.y += h.vspeed;
     h.vspeed = h.vspeed + 0.2 > 0 ? 0 : h.vspeed + 0.2;
-    // `image_alpha` starts at 1.5 and GameMaker CLAMPS draw_set_alpha at 1,
-    // so the first five frames are fully opaque and the fade is the last ten.
+
     h.alpha -= 0.1;
   }
   d.heals = d.heals.filter((h) => h.alpha >= 0);
 }
 
-// THE WRITERS RUN AT THE FRAME'S END — obj_dmgwriter's whole behaviour is
-// its DRAW event, and draws run after every step, collision and end step of
-// the frame, including the frame the writer is born (any-phase creations
-// join that frame's draw pass; the balloon writer measured pos 2 at birth).
-// So the delay clock TICKS FROM BIRTH and the one-shot throw roll lands at
-// birth+delay-1 in the END-OF-FRAME slot. Three ledgers pin the ordering,
-// and an earlier per-dispatch "skip the birth tick" model fit the first two
-// only by accident of call-site ordering:
-//
-//   f1720-1722 (turn 5): jitter pairs at stream 96-97 / 98-99, the three
-//     throws at 100-102 — the throws are f1721's END slot, after f1721's
-//     end-step jitter, not f1722's start;
-//   f2969/f2974 (turn 8): throws at birth+1 (2970/2975), the +1 that moved
-//     the tunnel boundary rolls to their measured positions;
-//   f4213 (phase 3 Stars): three throws at 4214's end slot, BEFORE the
-//     f4215 star's chain roll — the sim's old model put them after it, and
-//     the star's u read three positions early (u at 152 vs the game's 155).
-//
-// stepFrame calls this AFTER runPhase('endStep') for exactly that reason —
-// a scene-level endStep call site puts the rolls before every same-frame
-// end-step consumer and inverts the second receipt.
+
 export function stepDmgNumbers(state, rng) {
   const d = state.dmg;
   if (!d) return;
   for (const n of d.list) {
-    // NOTHING HAPPENS UNTIL THE DELAY ELAPSES. With `delay = 8` the number
-    // appears eight frames after the hit registers — after the character's
-    // swing has connected, which is why it reads as a consequence.
+
     if (n.delaytimer < n.delay) {
       n.delaytimer += 1;
       if (n.delaytimer === n.delay) {
-        // `vspeed = -5 - random(2)` — the throw is randomised, so three
-        // numbers from one turn do not travel in lockstep. It fires in the
-        // DRAW event, once, at delay-elapse — and like every Draw-event
-        // random it consumes from the global stream, so it must come from
-        // gmlRng when the state carries one (the scene's mulberry fallback
-        // predates the RNG discovery and stays only for rng-less callers).
+
         n.vspeed = -5 - (state.gmlRng ? gmlRandom(state.gmlRng, 2)
           : (rng ? rng() * 2 : 1));
         n.vstart = n.vspeed;

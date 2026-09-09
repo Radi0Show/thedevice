@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#000000">
-<!-- iOS reads these instead of (most of) the manifest: standalone display and
-     the home-screen icon. black-translucent lets the game draw under the
-     status bar, which the safe-area insets in the CSS already account for. -->
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BlackKnife">
@@ -15,11 +13,8 @@
 <link rel="icon" href="icon-192.png">
 <title>Black Knife Simulator</title>
 <style>
-  /* THE GAME FILLS THE WINDOW, and nothing else is on screen.
-     The page used to be a canvas with a debug readout under it (frame
-     counter, HP, sprite count, key legend) and the canvas sized to leave
-     room for that line. It read as a harness with a game inside it; the
-     real thing is 640x480 letterboxed into whatever it is given. */
+
+
   html, body {
     margin: 0;
     height: 100%;
@@ -27,28 +22,16 @@
     overflow: hidden;
     color: #ccc;
     font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
-    /* MOBILE: the page is a game, not a document. No scroll, no pinch zoom,
-       no rubber-banding, no long-press callout — every one of those gestures
-       is a dodge input the browser would otherwise steal. */
+
+
     touch-action: none;
     overscroll-behavior: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
   }
-  /* The letterbox: centre the canvas in the viewport and let the aspect
-     ratio decide which pair of bars appears. `min()` on both axes is what
-     keeps the WHOLE frame on screen — sizing on width alone once made the
-     canvas taller than the window and cropped the top ~65 rows, which is
-     exactly where the Stars cone opens and where the Knight stands.
 
-     THIS IS THE PRE-SCRIPT FALLBACK ONLY. `fitCanvas()` in main.js
-     overrides both axes with an INTEGER-multiple size, because
-     `image-rendering: pixelated` at a fractional scale is what produced
-     the reported "weird" menu text: nearest-neighbour with a 4.725x
-     factor gives some source pixels 4 device pixels and others 5, so a
-     1px font stem is thick on one letter and thin on the next. There is
-     no filtering that fixes that — only landing on a whole number. */
+
   #game {
     position: absolute;
     top: 50%;
@@ -57,16 +40,13 @@
     width: min(100vw, calc(100vh * 4 / 3));
     height: min(100vh, calc(100vw * 3 / 4));
     background: #000;
-    /* Nearest-neighbour, like every other surface in this project. */
+
     image-rendering: pixelated;
     image-rendering: crisp-edges;
     image-rendering: pixelated;
   }
-  /* ATTRIBUTION. Small, dim, and at the very bottom of the window rather than
-     inside the 640x480 frame -- the frame is the game's own art and nothing
-     of ours belongs on it. `pointer-events: none` so it can never eat a click
-     meant for the canvas, and it steps up out of the way when the debug HUD
-     is showing, since both live on the bottom edge. */
+
+
   #credit {
     position: absolute;
     left: 0;
@@ -80,11 +60,8 @@
     pointer-events: none;
     user-select: none;
   }
-  /* ---- TOUCH CONTROLS ------------------------------------------------
-     Hidden on fine-pointer machines; shown wherever the primary pointer is
-     coarse. The container ignores pointers so the play area stays clean —
-     only the pad and buttons themselves are targets. Positions respect the
-     notch/home-bar insets. */
+
+
   #touch { display: none; }
   @media (pointer: coarse) {
     #touch {
@@ -102,10 +79,8 @@
     border-radius: 50%;
     border: 2px solid rgba(255, 255, 255, 0.25);
     background: rgba(255, 255, 255, 0.06);
-    /* Belt and braces ON the elements, not only inherited from body: a held
-       X was long-press-selecting its own label ("it selects x if you hold
-       it and it's kinda distracting" — reported from a phone). The
-       tap-highlight flash goes for the same reason. */
+
+
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -116,7 +91,7 @@
     width: 148px;
     height: 148px;
   }
-  /* The pad's cross, drawn with gradients so there is no asset to load. */
+
   #dpad::before {
     content: '';
     position: absolute;
@@ -142,6 +117,16 @@
     right: calc(max(20px, env(safe-area-inset-right)) + 74px);
     bottom: max(18px, env(safe-area-inset-bottom));
   }
+
+
+  #touch.swap #btnZ {
+    right: calc(max(20px, env(safe-area-inset-right)) + 74px);
+    bottom: max(18px, env(safe-area-inset-bottom));
+  }
+  #touch.swap #btnX {
+    right: max(20px, env(safe-area-inset-right));
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 74px);
+  }
   #touch #btnR {
     top: max(14px, env(safe-area-inset-top));
     right: max(14px, env(safe-area-inset-right));
@@ -150,18 +135,11 @@
     font-size: 15px;
     line-height: 40px;
   }
-  /* SIDEWAYS. In portrait the letterbox is above and below the frame, so the
-     controls live in the black band underneath. In landscape the frame fills
-     the HEIGHT and the black bands move to the SIDES — the bottom corners
-     would sit on the game's own menu band (the 640x480 frame's bottom strip
-     is the button row and HP readout). So the pad and buttons move into the
-     side bars, vertically a little below centre, which is where thumbs
-     naturally rest on a held-sideways phone. R keeps its top-right corner.
-     Same sizes, same tolerances — only the anchors change. */
+
+
   @media (pointer: coarse) and (orientation: landscape) {
-    /* The frame fills the height, so the window's bottom edge is the FRAME's
-       bottom edge — the credit was sitting on the game's own footer text.
-       Top-left is the one corner nothing claims (R owns top-right). */
+
+
     #credit {
       bottom: auto;
       top: max(14px, env(safe-area-inset-top));
@@ -185,6 +163,20 @@
       right: calc(max(16px, env(safe-area-inset-right)) + 40px);
       bottom: auto;
       top: calc(55% + 30px);
+      transform: translateY(-50%);
+    }
+
+
+    #touch.swap #btnZ {
+      right: calc(max(16px, env(safe-area-inset-right)) + 40px);
+      bottom: auto;
+      top: calc(55% + 30px);
+      transform: translateY(-50%);
+    }
+    #touch.swap #btnX {
+      right: max(16px, env(safe-area-inset-right));
+      bottom: auto;
+      top: calc(55% - 58px);
       transform: translateY(-50%);
     }
   }
