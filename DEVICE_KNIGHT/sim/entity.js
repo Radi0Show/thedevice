@@ -22,6 +22,9 @@ export const F32_BUILTINS = [
 
 const ANGLE_BUILTINS = new Set(['direction', 'gravity_direction']);
 
+
+const MOTION_POLAR = new Set(['speed', 'direction']);
+
 function installF32Builtins(e) {
   const store = Object.create(null);
   for (const k of F32_BUILTINS) {
@@ -31,6 +34,7 @@ function installF32Builtins(e) {
         return Math.fround(((f % 360) + 360) % 360);
       }
       : (v) => Math.fround(v);
+    const polar = MOTION_POLAR.has(k);
     store[k] = typeof e[k] === 'number' ? norm(e[k]) : e[k];
     delete e[k];
     Object.defineProperty(e, k, {
@@ -41,6 +45,8 @@ function installF32Builtins(e) {
       },
       set(v) {
         store[k] = typeof v === 'number' ? norm(v) : v;
+
+        if (polar) e.motionPolarWritten = true;
       },
     });
   }

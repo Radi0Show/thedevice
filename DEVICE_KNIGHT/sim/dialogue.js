@@ -152,6 +152,9 @@ export function createDialogue() {
 
 export function advanceBalloon(dlg, state) {
 
+  const kHook = state.kaizo?.hooks?.advanceBalloon;
+  if (kHook) return kHook(dlg, state);
+
   if (state.partyHp[1] <= 0) return null;
   dlg.balloonturn += 1;
   const n = dlg.balloonturn;

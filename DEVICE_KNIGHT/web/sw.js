@@ -1,7 +1,7 @@
 
 
 const PREFIX = 'blackknife-';
-const CACHE = PREFIX + '1.0.21';
+const CACHE = PREFIX + '1.0.23';
 
 self.addEventListener('install', (e) => {
   e.waitUntil(

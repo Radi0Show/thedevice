@@ -48,39 +48,78 @@ function runMotion(state) {
       }
     }
 
-    if (!e.speed && !e.gravity) continue;
-    state.counters.motionSteps += 1;
+    let hs;
+    let vs;
+    if (e.motionPolarWritten !== false) {
 
-    const SNAP_EPS = 1e-12;
-    const PI32 = Math.fround(Math.PI);
-    const r = Math.fround(Math.fround(Math.fround(e.direction) * PI32) / 180);
-    let rc = Math.cos(r);
-    let rs = Math.sin(r);
-    if (Math.abs(rs) > 1 - SNAP_EPS) rs = Math.sign(rs);
-    if (Math.abs(rc) > 1 - SNAP_EPS) rc = Math.sign(rc);
-    let hs = Math.fround(Math.fround(e.speed) * Math.fround(rc));
-    let vs = Math.fround(Math.fround(e.speed) * -Math.fround(rs));
+      const r = Math.fround(Math.fround(Math.fround(e.direction) * PI32) / 180);
+      hs = fixupInteger(Math.fround(Math.fround(e.speed) * Math.fround(Math.cos(r))));
+      vs = fixupInteger(Math.fround(Math.fround(e.speed) * -Math.fround(Math.sin(r))));
+    } else {
+
+      hs = e.motionHspeed;
+      vs = e.motionVspeed;
+    }
+
+    if (!e.gravity && hs === 0 && vs === 0) {
+
+      e.motionHspeed = hs;
+      e.motionVspeed = vs;
+      e.motionPolarWritten = false;
+      continue;
+    }
+    state.counters.motionSteps += 1;
 
     if (e.gravity) {
 
       const gr = Math.fround(Math.fround(Math.fround(e.gravity_direction) * PI32) / 180);
-      let gc = Math.cos(gr);
-      let gsn = Math.sin(gr);
+      hs = Math.fround(hs + Math.fround(Math.fround(e.gravity) * Math.fround(Math.cos(gr))));
+      vs = Math.fround(vs + Math.fround(Math.fround(e.gravity) * -Math.fround(Math.sin(gr))));
 
-      if (Math.abs(gsn) > 1 - SNAP_EPS) gsn = Math.sign(gsn);
-      if (Math.abs(gc) > 1 - SNAP_EPS) gc = Math.sign(gc);
-      hs = Math.fround(hs + Math.fround(Math.fround(e.gravity) * Math.fround(gc)));
-      vs = Math.fround(vs + Math.fround(Math.fround(e.gravity) * -Math.fround(gsn)));
-      e.speed = Math.sqrt(hs * hs + vs * vs);
-
-      let dir = (Math.fround(Math.atan2(-vs, hs)) * 180) / Math.PI;
-      if (dir < 0) dir += 360;
+      e.speed = fixupInteger(Math.fround(Math.sqrt(Math.fround(Math.fround(hs * hs) + Math.fround(vs * vs)))));
+      let dir = fixupInteger(Math.fround(Math.fround(Math.fround(Math.atan2(-vs, hs)) * 180) / PI32));
+      if (dir < 0) dir = Math.fround(dir + 360);
       e.direction = dir;
     }
+
+    e.motionHspeed = hs;
+    e.motionVspeed = vs;
+
+    e.motionPolarWritten = false;
 
     e.x = e.x + hs;
     e.y = e.y + vs;
   }
+}
+
+const PI32 = Math.fround(Math.PI);
+
+function fixupInteger(v) {
+  const r = Math.round(v);
+  return Math.abs(v - r) < 1e-4 ? r : v;
+}
+
+export function motionComponents(e) {
+  if (e.motionPolarWritten !== false) {
+    const r = Math.fround(Math.fround(Math.fround(e.direction) * PI32) / 180);
+    return [
+      fixupInteger(Math.fround(Math.fround(e.speed) * Math.fround(Math.cos(r)))),
+      fixupInteger(Math.fround(Math.fround(e.speed) * -Math.fround(Math.sin(r)))),
+    ];
+  }
+  return [e.motionHspeed, e.motionVspeed];
+}
+
+export function setMotionComponents(e, hs, vs) {
+  hs = Math.fround(hs);
+  vs = Math.fround(vs);
+  e.motionHspeed = hs;
+  e.motionVspeed = vs;
+  e.speed = fixupInteger(Math.fround(Math.sqrt(Math.fround(Math.fround(hs * hs) + Math.fround(vs * vs)))));
+  let dir = fixupInteger(Math.fround(Math.fround(Math.fround(Math.atan2(-vs, hs)) * 180) / PI32));
+  if (dir < 0) dir = Math.fround(dir + 360);
+  e.direction = dir;
+  e.motionPolarWritten = false;
 }
 
 function grazes(e, gx, gy, sizeFactor = 1) {

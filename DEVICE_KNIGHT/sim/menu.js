@@ -6,7 +6,7 @@ import { scrTensionheal } from './tension.js';
 import { cue } from './audio.js';
 import { useItem, takeItem, applyItem, ITEMS } from './items.js';
 import {
-  SPELLS, SPELL_LIST, ACTS, canAfford, spellCost, castSpell, holdBreath,
+  spellInfo, spellListFor, actsFor, canAfford, spellCost, castSpell, holdBreath,
 } from './spells.js';
 import {
   FACE_IDLE, FACE_ATTACK, FACE_SPELL, FACE_ITEM, FACE_DEFEND, FACE_ACT,
@@ -45,7 +45,7 @@ function recordSpell(state, c, id, target) {
   state.charaction[c] = 2;
   state.pendingSpell = state.pendingSpell ?? [];
   state.pendingSpell[c] = { id, target };
-  return `${SPELLS[id].name}!`;
+  return `${spellInfo(state, id).name}!`;
 }
 
 
@@ -209,9 +209,10 @@ export function listRows(state) {
     });
   }
   if (menu.submenu === 'magic') {
-    return (SPELL_LIST[c] ?? []).map((id) => ({
-      label: SPELLS[id].name,
-      descb: SPELLS[id].descb,
+
+    return (spellListFor(state, c) ?? []).map((id) => ({
+      label: spellInfo(state, id).name,
+      descb: spellInfo(state, id).descb,
       id,
 
       usable: canAfford(state, id, c),
@@ -219,8 +220,10 @@ export function listRows(state) {
   }
   if (menu.submenu === 'actgrid') {
 
-    return (ACTS[c] ?? [])
-      .map((a, i) => ({ label: a.name, descb: a.descb, id: i, usable: true }))
+    return (actsFor(state, c) ?? [])
+      .map((a, i) => ({
+        label: a.name, descb: a.descb, id: i, usable: a.usable ?? true, cost: a.cost ?? 0,
+      }))
       .filter(() => !(c === 1 && state.actCounts?.susieUsed));
   }
   return [];
@@ -446,6 +449,8 @@ export function stepMenu(state, input) {
 
 
           state.pendingAct = { c, act: row.id };
+
+          if (row.cost > 0) state.tension -= row.cost;
           menu.submenu = null;
 
           heroAct(state, c, HERO_ACT);
@@ -461,7 +466,7 @@ export function stepMenu(state, input) {
         } else {
 
           const needsTarget = menu.submenu === 'magic'
-            ? SPELLS[row.id]?.target === 1
+            ? spellInfo(state, row.id)?.target === 1
             : ITEMS[row.id]?.target === 'one';
           if (needsTarget) {
             menu.pending = menu.submenu === 'magic'

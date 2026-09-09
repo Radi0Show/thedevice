@@ -52,9 +52,28 @@ export const ACTS = [
 ];
 
 
+export function spellInfo(state, id) {
+  return state?.kaizo?.hooks?.spellInfo?.[id] ?? SPELLS[id];
+}
+
+export function spellListFor(state, c) {
+  return state?.kaizo?.hooks?.spellList?.(state, c) ?? SPELL_LIST[c];
+}
+
+export function actsFor(state, c) {
+  return state?.kaizo?.hooks?.actList?.(state, c) ?? ACTS[c];
+}
+
+
 
 export function spellCost(state, slot, spellId) {
-  const s = SPELLS[spellId];
+
+  const hook = state?.kaizo?.hooks?.spellCost;
+  if (hook) {
+    const v = hook(state, slot, spellId);
+    if (v !== undefined) return v;
+  }
+  const s = spellInfo(state, spellId);
   if (!s) return Infinity;
 
   if (spellId === 4) return statFor(state, slot).rudeBusterCost;
@@ -72,6 +91,12 @@ export function canAfford(state, spellId, slot = 1) {
 export function resolveActPages(state, c, actId) {
   state.actCounts = state.actCounts ?? {};
   const n = state.actCounts;
+
+  const hook = state.kaizo?.hooks?.resolveActPages;
+  if (hook) {
+    const pages = hook(state, c, actId);
+    if (pages) return pages;
+  }
   if (c === 0) {
     if (actId === 1) return ACT_PAGES[holdBreath(state)];
     n.check = (n.check ?? 0) + 1;
@@ -102,7 +127,13 @@ export function soulSpeed(state) {
 
 
 export function castSpell(state, slot, spellId, target = 0, opts = {}) {
-  const s = SPELLS[spellId];
+
+  const hook = state.kaizo?.hooks?.castSpell;
+  if (hook) {
+    const r = hook(state, slot, spellId, target, opts);
+    if (r !== undefined) return r;
+  }
+  const s = spellInfo(state, spellId);
   if (!s) return null;
 
   if (!opts.alreadyPaid) {

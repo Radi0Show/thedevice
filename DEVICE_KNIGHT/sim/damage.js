@@ -210,21 +210,27 @@ export function knightTarget(state, target, opts = {}) {
 
 export function scrDamage(state, damage, target, opts = {}) {
 
+  const kHook = state.kaizo?.hooks?.scrDamage;
+  if (kHook) return kHook(state, damage, target, opts);
+
   if (state.damageEnabled === false) return 0;
 
   const mantle = (gearOf(state)[target]?.armor ?? []).includes(23);
   const hp = state.partyHp;
   if (!hp || hp[target] <= 0) return 0;
 
-  let t = scrDamageCalculation(damage, target, mantle, state);
 
+  let t = damage;
   let mantled = false;
-  if (mantle) {
-    t = gmlRound(t * 0.33);
-    mantled = true;
+  if (!opts.truedamage) {
+    t = scrDamageCalculation(damage, target, mantle, state);
+    if (mantle) {
+      t = gmlRound(t * 0.33);
+      mantled = true;
+    }
+    if (state.charaction?.[target] === ACTION_DEFEND) t = Math.ceil((2 * t) / 3);
+    if (!mantled) t = Math.ceil(t * (opts.elementReduction ?? 1));
   }
-  if (state.charaction?.[target] === ACTION_DEFEND) t = Math.ceil((2 * t) / 3);
-  if (!mantled) t = Math.ceil(t * (opts.elementReduction ?? 1));
   if (t < 1) t = 1;
 
 
@@ -254,6 +260,9 @@ export function scrDamage(state, damage, target, opts = {}) {
 
 
 export function scrDamageSingle(state, damage, target, opts = {}) {
+
+  const kHook = state.kaizo?.hooks?.scrDamageSingle;
+  if (kHook) return kHook(state, damage, target, opts);
   if (state.damageEnabled === false) return 0;
   if (state.invTimer >= 0) return 0;
 
@@ -276,6 +285,9 @@ export function scrDamageSingle(state, damage, target, opts = {}) {
 
 
 export function scrDamageAll(state, damage, opts = {}) {
+
+  const kHook = state.kaizo?.hooks?.scrDamageAll;
+  if (kHook) return kHook(state, damage, opts);
   if (state.damageEnabled === false) return 0;
   if (state.invTimer >= 0) return 0;
 
@@ -306,6 +318,9 @@ export function partyWiped(state) {
 
 
 export function scrDamageMaxhp(state, fraction, ignoreDefend = false, cannotFell = false, opts = {}) {
+
+  const kHook = state.kaizo?.hooks?.scrDamageMaxhp;
+  if (kHook) return kHook(state, fraction, ignoreDefend, cannotFell, opts);
   if (state.invTimer >= 0) return 0;
   const hp = state.partyHp;
 
