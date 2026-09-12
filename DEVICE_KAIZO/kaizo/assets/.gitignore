@@ -1,0 +1,27 @@
+# THE KAIZO ASSET OVERLAY IS PUBLISH-GATED. Nothing in here is committed.
+#
+# `sprites/` holds two kinds of art (each entry in manifest.json records
+# which, as `source`):
+#
+#   source: "vanilla" — extracted from the player's own unmodified data.win.
+#           The standing asset policy already clears vanilla sprites to ship;
+#           they are held back only because they arrive alongside the gated
+#           art and separating them is a deliberate decision, not a default.
+#
+#   source: "mod"     — EnderCat8's own art for Kaizo Roaring Knight.
+#           kaizo/HANDOFF.md §5-C: recreating and publishing another author's
+#           work needs their permission. Until that is given, this must not
+#           reach a public repo.
+#
+# The repo-root .gitignore already blocks `*.png` everywhere except
+# `assets/sprites/`, so the frames were covered. manifest.json and masks.json
+# were NOT — and masks.json carries collision geometry derived from the
+# gated art. This file closes that hole explicitly rather than relying on a
+# rule written for a different purpose.
+#
+# Regenerate any time with: node kaizo/tools/pack-kaizo-sprites.mjs
+*
+# ...except this file. A bare `*` ignores the .gitignore too, so the gate
+# would vanish from a fresh clone — leaving the next session to re-derive it
+# from scratch, which is exactly how a gate gets lost.
+!.gitignore
