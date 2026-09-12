@@ -41,7 +41,6 @@ script), jevil-sim (later), stats, and the thedevice.dev release.
 index.html            DEVICE_MENU     the file select
 DEVICE_KNIGHT/        host page for the sim (vendored at merge time)
 DEVICE_JEVIL/         empty slot — DEVICE_FAILURE wearing the slot's name
-DEVICE_INDEX/         attack index, imported live from the sim when connected
 DEVICE_CONTACT/       credits, bug reports, disclaimer
 DEVICE_FAILURE/       the nothing-here page; 404.html is its root-path twin
 shared/               css, page behavior, the pixel-glyph renderer

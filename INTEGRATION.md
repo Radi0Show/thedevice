@@ -6,9 +6,12 @@ directory alone. This file is the record of what connects later, how, and
 what was already agreed — so the merge is a checklist, not an archaeology
 dig.
 
-Current state: `/DEVICE_KNIGHT/` shows NOT CONNECTED, `/DEVICE_INDEX/`
-renders from the checked-in snapshot and says so in its provenance line.
-Both heal on their own the moment the sim is vendored.
+Current state: `/DEVICE_KNIGHT/` shows NOT CONNECTED. It heals on its own
+the moment the sim is vendored.
+
+`/DEVICE_INDEX/` HAS BEEN REMOVED and the room must not come back: the path
+is gone, its two noscript links are gone, and `/DEVICE_INDEX/` now falls to
+404.html like any other name that was never a device.
 
 ## 1. Connect knight-sim (the merge step)
 
@@ -24,7 +27,6 @@ Then serve the site root and check:
 - `/DEVICE_KNIGHT/` boots the sim (title screen, playable, audio after first
   keypress)
 - the hub mute button works and survives a reload
-- `/DEVICE_INDEX/` provenance line flips from SNAPSHOT to LIVE
 - deep link `/DEVICE_KNIGHT/?mode=practice&attack=stars&difficulty=2` skips
   the title into practice
 
