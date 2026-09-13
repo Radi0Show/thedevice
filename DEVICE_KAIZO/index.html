@@ -54,20 +54,6 @@
     image-rendering: pixelated;
   }
 
-  #credit {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    margin: 0;
-    padding: 4px 8px;
-    text-align: center;
-    font-size: 11px;
-    color: #555;
-    pointer-events: none;
-    user-select: none;
-  }
-
   #touch { display: none; }
   @media (pointer: coarse) {
     #touch {
@@ -141,14 +127,6 @@
   }
 
   @media (pointer: coarse) and (orientation: landscape) {
-
-    #credit {
-      bottom: auto;
-      top: max(14px, env(safe-area-inset-top));
-      left: max(14px, env(safe-area-inset-left));
-      right: auto;
-      text-align: left;
-    }
     #dpad {
       left: max(12px, env(safe-area-inset-left));
       bottom: auto;
@@ -199,7 +177,6 @@
     max-width: min(90vw, 420px);
     text-align: center;
   }
-  #modeselect .ms-note { margin: 0 0 12px; color: #888; font-size: 11px; }
   #modeselect-msg { margin: 0 0 12px; color: #fff; }
   #modeselect-msg:empty { display: none; }
   #modeselect-rows { display: flex; flex-direction: column; gap: 8px; }
@@ -217,7 +194,6 @@
 </head>
 <body>
   <canvas id="game" width="640" height="480"></canvas>
-  <p id="credit">Game is by Toby Fox and the Deltarune Team</p>
   <div id="touch">
     <div id="dpad" class="pad"></div>
     <div id="btnZ" class="btn">Z</div>
@@ -226,7 +202,6 @@
   </div>
   <div id="modeselect" hidden>
     <div id="modeselect-box">
-      <p class="ms-note">KAIZO &mdash; pre-fight mode select (stand-in widget; not the real menu)</p>
       <p id="modeselect-msg"></p>
       <div id="modeselect-rows"></div>
     </div>

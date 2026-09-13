@@ -11,9 +11,17 @@ function css(c, rgbOf) {
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
-function drawOrbBodyPlaceholder(ctx, x, y, scale, blend, alpha, rgbOf) {
+function drawOrbBody(ctx, e, x, y, scale, blend, alpha, helpers) {
+  const { sprites, blit, rgbOf } = helpers;
+  if (alpha <= 0) return;
+  const entry = sprites.get(e.sprite_index ?? 'spr_sneo_bigcircle');
+  if (entry && entry.frames.length) {
+    blit(entry.frames[0], entry.meta.ox, entry.meta.oy,
+      x, y, scale, scale, e.image_angle ?? 0, clamp01(alpha), blend);
+    return;
+  }
   const r = 25 * Math.abs(scale);
-  if (!(r > 0.5) || alpha <= 0) return;
+  if (!(r > 0.5)) return;
   ctx.save();
   ctx.globalAlpha = clamp01(alpha);
   ctx.strokeStyle = css(blend, rgbOf);
@@ -42,10 +50,10 @@ export function drawObjKnightLightorb(ctx, e, state, helpers) {
   const blend = e.image_blend ?? [255, 255, 255];
   const alpha = e.image_alpha ?? 1;
   if (e.drawSplit) {
-    drawOrbBodyPlaceholder(ctx, e.x + (e.splitx ?? 0), e.y, scale, blend, alpha, rgbOf);
-    drawOrbBodyPlaceholder(ctx, e.x - (e.splitx ?? 0), e.y, scale, blend, alpha, rgbOf);
+    drawOrbBody(ctx, e, e.x + (e.splitx ?? 0), e.y, scale, blend, alpha, helpers);
+    drawOrbBody(ctx, e, e.x - (e.splitx ?? 0), e.y, scale, blend, alpha, helpers);
   } else {
-    drawOrbBodyPlaceholder(ctx, e.x, e.y, scale, blend, alpha, rgbOf);
+    drawOrbBody(ctx, e, e.x, e.y, scale, blend, alpha, helpers);
   }
 
   if (e.con === 0 && (e.radius ?? 0) > 0 && (e.circle_alpha ?? 0) > 0) {

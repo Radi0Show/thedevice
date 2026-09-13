@@ -1,5 +1,6 @@
 
 
+
 import { drawSpriteExt, rgb, c_white } from './draw/gm.js';
 import { writerLines } from '../sim/dialogue.js';
 import { PARTY } from '../sim/damage.js';
@@ -18,11 +19,15 @@ const BP = 152;
 const CHUNK = [0, 213, 426];
 const PANEL_W = 212;
 
+
+
 const B_OFFSET = 336;
 
 const MAROON = 'rgb(128,0,0)';
 
 const BCOLOR = [0, 0, 128];
+
+
 
 function selectionMatrix(ctx, x, y, siner, color) {
   ctx.save();
@@ -48,6 +53,10 @@ function selectionMatrix(ctx, x, y, siner, color) {
   }
   ctx.restore();
 }
+
+
+
+
 
 const BLEND_GRAY = [128, 128, 128];
 const CHARTIME_XSLASH = 11;
@@ -83,10 +92,12 @@ function drawItemList(ctx, state, sprites, font, siner) {
   const page = coord > 5 ? 1 : 0;
   const local = coord - page * 6;
 
+
   const icx = local % 2 === 1 ? 230 : 10;
   const icy = local > 3 ? 445 : local > 1 ? 415 : 385;
   const heart = sprites.get('spr_heart');
   if (heart) drawSpriteExt(ctx, heart, 0, icx, icy, 1, 1, 0, null, 1);
+
 
   const isAct = menu.submenu === 'actgrid';
   const actRows = isAct ? (actsFor(state, menu.charturn) ?? []) : null;
@@ -100,6 +111,7 @@ function drawItemList(ctx, state, sprites, font, siner) {
 
       const xoffset = col === 0 ? 0 : 230;
       const yoffset = i * 30;
+
 
       let charoffset = 0;
       if (actRows?.[idx]?.actor === CHARTIME_XSLASH) {
@@ -139,6 +151,7 @@ function drawItemList(ctx, state, sprites, font, siner) {
     }
   }
 
+
   const sel = rows[coord];
   if (sel) {
     const lh = textHeight(font) || 26;
@@ -148,6 +161,7 @@ function drawItemList(ctx, state, sprites, font, siner) {
     }
   }
 
+
   if (menu.submenu === 'magic' && sel && spellInfo(state, sel.id)) {
 
     const charged = spellCost(state, menu.charturn, sel.id);
@@ -156,11 +170,17 @@ function drawItemList(ctx, state, sprites, font, siner) {
     drawText(ctx, font, `${pct}% TP`, 496, 440, { color: 'rgb(255,160,64)' });
   }
 
+
   if (isAct && (sel?.cost ?? 0) > 0) {
     const pct = gmlRound(((sel.cost ?? 0) / MAX_TENSION) * 100);
     drawText(ctx, font, `${pct}% TP`, 500, 440, { color: 'rgb(255,160,64)' });
   }
 }
+
+
+
+
+
 
 function statusOverlay(state) {
   const o = state.partyStatusBar;
@@ -190,6 +210,7 @@ function drawTargetPicker(ctx, state, sprites, font) {
     if (hpPct >= 0) ctx.fillRect(400, y + 5, hpPct + 1, 16);
     else ctx.fillRect(400 + hpPct, y + 5, -hpPct + 1, 16);
 
+
     const amount = overlay?.values?.[i] ?? 0;
     if (overlay && amount > 0) {
       const lx = 400 + ((hp - amount) / maxhp) * 100;
@@ -203,10 +224,13 @@ function drawTargetPicker(ctx, state, sprites, font) {
   }
 }
 
+
+
 function drawEnemyRow(ctx, state, sprites, font) {
 
   const heart = sprites.get('spr_heart');
   if (heart) drawSpriteExt(ctx, heart, 0, 55, 385, 1, 1, 0, null, 1);
+
 
   drawText(ctx, font, 'Knight', 80, 375, { color: '#ffffff' });
 
@@ -219,6 +243,8 @@ function drawEnemyRow(ctx, state, sprites, font) {
   drawText(ctx, font, 'HP', 424, 364, { yscale: 0.5, color: '#ffffff' });
   drawText(ctx, font, '???', 424, 380, { yscale: 0.5, color: '#ffffff' });
 }
+
+
 
 function panelRise(frame) {
   if (frame >= 12) return 0;
@@ -246,11 +272,13 @@ export function drawMenu(ctx, state, sprites) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   if (rise) ctx.translate(0, rise);
 
+
   ctx.fillStyle = '#000000';
   ctx.fillRect(-10, top - 4, 710, 481 - (top - 4));
   ctx.fillStyle = rgb(BCOLOR);
   ctx.fillRect(-10, top - 3, 710, 1);
   ctx.fillRect(-10, top + 34, 710, 2);
+
 
   const panels = state.partySprites?.length ?? 3;
 
@@ -261,6 +289,7 @@ export function drawMenu(ctx, state, sprites) {
 
     const color = charColorFor(state, c);
     const active = menu.open && menu.charturn === c;
+
 
     ctx.fillStyle = rgb(active ? color : [128, 128, 128]);
     ctx.fillRect(chunk, top - 3 + mmy, PANEL_W, top - 2 - (top - 3 + mmy));
@@ -273,6 +302,7 @@ export function drawMenu(ctx, state, sprites) {
     } else if (active) {
       selectionMatrix(ctx, chunk, top, menu.siner, color);
 
+
       for (let b = 0; b < BUTTONS.length; b++) {
         const spec = BUTTONS[b];
         const entry = sprites.get(spec.sprite(c));
@@ -282,6 +312,8 @@ export function drawMenu(ctx, state, sprites) {
       }
     }
 
+
+
     const stats = partyArtFor(state, c);
     const head = sprites.get(stats.head);
     const name = sprites.get(stats.name);
@@ -290,6 +322,7 @@ export function drawMenu(ctx, state, sprites) {
 
     const hp = state.partyHp?.[c] ?? 0;
     const maxhp = state.partyMaxhp?.[c] ?? PARTY[c].maxhp;
+
 
     const shown = hp;
     let hpColor = '#ffffff';
@@ -309,6 +342,7 @@ export function drawMenu(ctx, state, sprites) {
     const slash = sprites.get('spr_hpslash');
     if (slash) drawSpriteExt(ctx, slash, 0, chunk + 159, B_OFFSET - 4 + mmy, 1, 1, 0, null, 1);
 
+
     ctx.fillStyle = MAROON;
     ctx.fillRect(chunk + 128, B_OFFSET + 11 + mmy, 75, 8);
     if (hp > 0) {
@@ -323,6 +357,7 @@ export function drawMenu(ctx, state, sprites) {
       }
     }
   }
+
 
   if (rise) ctx.translate(0, -rise);
   const font = loadFont();
@@ -353,10 +388,14 @@ export function drawMenu(ctx, state, sprites) {
     drawBattleMsg(ctx, state, font);
   }
 
+
   if (!menu.open && state.pendingAct) drawBattleMsg(ctx, state, font);
 
   ctx.restore();
 }
+
+
+
 
 const warnedSubmenus = new Set();
 

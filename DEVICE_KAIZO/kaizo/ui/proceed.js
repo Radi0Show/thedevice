@@ -15,7 +15,8 @@ export function loadProceed(storage = globalThis.localStorage) {
     if (!raw) return {};
     const v = JSON.parse(raw);
     if (!v || typeof v !== 'object') return {};
-    const out = { presses: v.presses | 0, taken: !!v.taken };
+
+    const out = {};
 
     if (Array.isArray(v.gear) && v.gear.length === WEIRD_ROUTE_PARTY.length) {
       out.gear = v.gear.map((g) => ({

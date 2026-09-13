@@ -19,31 +19,29 @@ import { PARTY } from '../../sim/damage.js';
 import { VICTORY_LINES, buildVictoryScript, setVictoryVariant } from '../../sim/victory-scene.js';
 
 export const KAIZO_NOTE =
-  'KAIZO KNIGHT — a recreation of EnderCat8\'s "Kaizo Roaring Knight" mod '
-  + '(v2.3.3): its schedule, attacks and party, diffed frame by frame against '
-  + 'recordings of the mod. Not the real fight, not our design; every '
-  + 'approximation is ledgered.';
+  'KAIZO KNIGHT — EnderCat8\'s "Kaizo Roaring Knight" v2.3.3, recreated in '
+  + 'the browser. NOT the real fight.';
 
 export const KAIZO_TABLE = {
   1: [
-    { ac: 1, difficulty: 2, name: 'Stars', kaizo: 'max verified difficulty (homing starchildren)' },
-    { ac: 10, difficulty: 0, name: 'Swordfall', kaizo: 'UNUSED content, no oracle' },
+    { ac: 1, difficulty: 2, name: 'Stars', kaizo: 'the game\'s hardest Stars (homing starchildren)' },
+    { ac: 10, difficulty: 0, name: 'Swordfall', kaizo: 'UNUSED content' },
     { ac: 2, difficulty: 3, name: 'Flurry', kaizo: 'phase-3 variant moved up' },
-    { ac: 13, difficulty: 4, name: 'Sword Tunnel', kaizo: 'max verified difficulty' },
-    { ac: 5, difficulty: 2, name: 'Rotating Slash', kaizo: 'max verified difficulty' },
+    { ac: 13, difficulty: 4, name: 'Sword Tunnel', kaizo: 'the game\'s hardest Sword Tunnel' },
+    { ac: 5, difficulty: 2, name: 'Rotating Slash', kaizo: 'the game\'s hardest Rotating Slash' },
   ],
   2: [
-    { ac: 0, difficulty: 0, name: 'Swordslash', kaizo: 'UNUSED content, no oracle' },
+    { ac: 0, difficulty: 0, name: 'Swordslash', kaizo: 'UNUSED content' },
     { ac: 15, difficulty: 0, name: 'Sword Vortex' },
-    { ac: 4, difficulty: 0, name: 'Knight Stream', kaizo: 'UNUSED content, no oracle' },
-    { ac: 3, difficulty: 0, name: 'Sword Tunnel (revised)', kaizo: 'UNUSED content, no oracle' },
+    { ac: 4, difficulty: 0, name: 'Knight Stream', kaizo: 'UNUSED content' },
+    { ac: 3, difficulty: 0, name: 'Sword Tunnel (revised)', kaizo: 'UNUSED content' },
     { ac: 5, difficulty: 2, name: 'Rotating Slash' },
   ],
   3: [
-    { ac: 6, difficulty: 0, name: 'Underbox', kaizo: 'UNUSED content, no oracle' },
-    { ac: 20, difficulty: 0, name: 'Knightlines', kaizo: 'UNUSED content, no oracle' },
+    { ac: 6, difficulty: 0, name: 'Underbox', kaizo: 'UNUSED content' },
+    { ac: 20, difficulty: 0, name: 'Knightlines', kaizo: 'UNUSED content' },
     { ac: 14, difficulty: 0, name: 'Tracking Swords' },
-    { ac: 7, difficulty: 0, name: 'Combination', kaizo: 'UNUSED chain: swordfall -> rotating -> tunnel-revised' },
+    { ac: 7, difficulty: 0, name: 'Combination', kaizo: 'UNUSED chain: swordfall -> rotating -> tunnel (revised)' },
     { ac: 5, difficulty: 2, name: 'Rotating Slash' },
   ],
   4: [
@@ -56,28 +54,23 @@ export const KAIZO_TABLE = {
 export const KAIZO_VERSIONS = {
 
   A: {
-    name: 'KAIZO: AUTHENTIC (the invented remix — NOT the mod)',
+    name: 'KAIZO: AUTHENTIC',
     table: KAIZO_TABLE,
-    invented: 'schedule only',
-    note: 'KAIZO: AUTHENTIC — the original invented remix: vanilla attacks on an '
-      + 'invented schedule. Not the mod; the recreation is ?v=C.',
   },
 
   C: {
-    name: 'KAIZO ROARING KNIGHT v2.3.3 — the recreation (the page\'s default)',
+    name: 'KAIZO ROARING KNIGHT v2.3.3',
     table: VC_TABLE,
     hooks: () => vcHooks({ sideb: false }),
     knight: VC_KNIGHT,
-    invented: 'nothing — recreation of EnderCat8\'s mod (approx ledgered)',
   },
 
   D: {
-    name: 'KAIZO: ORACLE B-SIDE (Weirder Route — Kris & Noelle, WIP)',
+    name: 'KAIZO: WEIRD ROUTE — Kris & Noelle',
     table: VD_TABLE,
     party: WEIRD_ROUTE_PARTY,
     hooks: (roster) => vcHooks({ sideb: true, roster }),
     knight: VC_KNIGHT,
-    invented: 'nothing — recreation of EnderCat8\'s mod (approx ledgered)',
   },
 };
 

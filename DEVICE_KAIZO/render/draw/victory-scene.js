@@ -1,5 +1,6 @@
 
 
+
 import { drawSpriteExt } from './gm.js';
 import { drawSnowBackdrop } from './intro-fx.js';
 import { loadFont, drawText } from '../font.js';
@@ -42,10 +43,13 @@ export function drawVictoryScene(ctx, sc, sprites) {
   ctx.translate(shakeJitter[0], shakeJitter[1]);
   const cam = Math.round(sc.camX);
 
+
   ctx.fillStyle = '#000';
   ctx.fillRect(-16, -16, VIEW_W + 32, VIEW_H + 32);
 
+
   drawSnowBackdrop(ctx, cam, sc.bg.fountain_speed, sprites);
+
 
   if (sc.shard) {
     const s = sc.shard;
@@ -63,8 +67,10 @@ export function drawVictoryScene(ctx, sc, sprites) {
     }
   }
 
+
   const order = Object.values(sc.actors).sort((a, b) => a.y - b.y);
   for (const a of order) drawActor(ctx, sprites, a, cam);
+
 
   const k = sc.knight;
   if (k.visible) {
@@ -92,6 +98,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
     }
   }
 
+
   const hitback = sprites.get('spr_fx_hitback');
   if (hitback) {
     for (const f of sc.hitFx) {
@@ -105,6 +112,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
 
   ctx.restore();
 
+
   if (sc.white.visible && sc.white.alpha > 0) {
     ctx.save();
     ctx.globalAlpha = Math.min(1, sc.white.alpha);
@@ -112,6 +120,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     ctx.restore();
   }
+
 
   if (sc.slash.visible) {
     const streak = sprites.get('spr_roaringknight_slash_white_horizontal');
@@ -122,6 +131,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
       ctx.fillRect(0, sc.slash.y - 4, VIEW_W, 8);
     }
   }
+
 
   if (sc.flash) {
     const f = sc.flash;
@@ -134,6 +144,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
     ctx.restore();
   }
 
+
   const msg = sprites.get('spr_battlemsg');
   if (msg) {
     for (const s of sc.swoons) {
@@ -145,6 +156,7 @@ export function drawVictoryScene(ctx, sc, sprites) {
         stretch + kill, 0, [255, 0, 0], 1 - kill);
     }
   }
+
 
   if (sc.dialogue) {
 

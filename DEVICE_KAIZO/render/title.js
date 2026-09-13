@@ -6,7 +6,7 @@ import { sliceShatter, drawShatterFragment } from './shatter.js';
 import { loadFont, drawText, textWidth, textHeight } from './font.js';
 import { VERSION } from '../web/version.js';
 import {
-  MODES, SETTINGS_PAGES, TITLE_EXTRAS, CREDITS, ITEM_PICKER, GEAR_PAGES,
+  MODES, SETTINGS_PAGES, TITLE_EXTRAS, titleCredits, ITEM_PICKER, GEAR_PAGES,
   pocketOf, previewStats, wornBy, partyTabs, unusedRowStyle,
 } from '../sim/modes.js';
 import { ITEMS, INVENTORY_SIZE } from '../sim/items.js';
@@ -341,10 +341,11 @@ function drawSettings(ctx, title, sprites, font) {
     centred(ctx, font, 'CREDITS', 60, c_white, 1.4);
 
     const PITCH = 78;
-    for (let i = 0; i < CREDITS.length; i++) {
+    const credits = titleCredits(title);
+    for (let i = 0; i < credits.length; i++) {
       const y = 150 + i * PITCH;
       const on = i === s.cursor;
-      const row = CREDITS[i];
+      const row = credits[i];
 
       const nameY = row.who ? y + 22 : y + 11;
       if (on && heart) drawSpriteExt(ctx, heart, 0, 90 + bob, nameY + 4, 1, 1, 0, null, 1);

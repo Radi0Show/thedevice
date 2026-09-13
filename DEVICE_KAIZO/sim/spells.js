@@ -1,5 +1,6 @@
 
 
+
 import { PARTY, statFor } from './damage.js';
 import { spellDamage, damageKnight } from './knight.js';
 import { castRudeBuster } from './rudebuster.js';
@@ -7,8 +8,12 @@ import { applyHeal } from './items.js';
 import { spawnSelfHealNumber } from './dmgnumbers.js';
 import { PARTY as PARTY_STATS, partyMaxhp } from './damage.js';
 
+
+
 const healAmountModifyByEquipment = (amount, ribbons) =>
   amount + Math.ceil(amount / 8) * ribbons;
+
+
 
 function healNumber(state, target, amount) {
   const maxed = state.partyHp[target] >= partyMaxhp(state, target);
@@ -17,10 +22,12 @@ function healNumber(state, target, amount) {
 import { cue } from './audio.js';
 import { ACT_PAGES } from './dialogue.js';
 
+
 const PARTY_POS = [{ x: 126, y: 104 }, { x: 80, y: 142 }, { x: 58, y: 190 }];
 const KNIGHT_POS = { x: 425, y: 78 };
 
 const KNIGHT_AIM = { dx: 60, dy: 90 - 50 };
+
 
 export const SPELLS = {
   2: { name: 'Heal Prayer', descb: 'Heal#Ally', cost: 80, target: 1 },
@@ -30,7 +37,10 @@ export const SPELLS = {
   11: { name: 'UltraHeal', descb: 'Best#healing', cost: 225, target: 1 },
 };
 
+
 export const SPELL_LIST = [[7], [4, 11], [3, 2]];
+
+
 
 export const ACTS = [
   [
@@ -40,6 +50,7 @@ export const ACTS = [
   [{ name: 'S-Action', descb: '' }],
   [{ name: 'R-Action', descb: '' }],
 ];
+
 
 export function spellInfo(state, id) {
   return state?.kaizo?.hooks?.spellInfo?.[id] ?? SPELLS[id];
@@ -52,6 +63,8 @@ export function spellListFor(state, c) {
 export function actsFor(state, c) {
   return state?.kaizo?.hooks?.actList?.(state, c) ?? ACTS[c];
 }
+
+
 
 export function spellCost(state, slot, spellId) {
 
@@ -70,6 +83,10 @@ export function spellCost(state, slot, spellId) {
 export function canAfford(state, spellId, slot = 1) {
   return state.tension >= spellCost(state, slot, spellId);
 }
+
+
+
+
 
 export function resolveActPages(state, c, actId) {
   state.actCounts = state.actCounts ?? {};
@@ -101,10 +118,13 @@ export function holdBreath(state) {
   return n <= 1 ? 'holdbreath_first' : 'holdbreath_again';
 }
 
+
 export function soulSpeed(state) {
   if (!state.knight?.holdbreathcount) return 4;
   return state.roaringActive ? 6 : 5;
 }
+
+
 
 export function castSpell(state, slot, spellId, target = 0, opts = {}) {
 

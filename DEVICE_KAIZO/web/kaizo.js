@@ -19,12 +19,13 @@ import {
 import { getSwordcolor } from '../kaizo/attacks/kaizo-colors.js';
 import { decodeReplay } from '../sim/replay.js';
 import {
-  createTitle, stepTitle, MODES, CREDITS, creditLink, armUnused, partyTabs,
+  createTitle, stepTitle, MODES, titleCredits, creditLink, armUnused, partyTabs,
 } from '../sim/modes.js';
 import {
   loadProceed, saveProceed, weirdRouteTabs, weirdRouteGear,
   gearOverrideFromTabs, padLoadout, PROCEED_VERSION, PROCEED_SHATTER_SPRITE,
 } from '../kaizo/ui/proceed.js';
+import { KAIZO_CREDITS } from '../kaizo/ui/credits.js';
 import { encodeConfig, decodeConfig, NONE } from '../sim/share.js';
 import { WEAPONS, ARMOR, canEquip } from '../sim/equipment.js';
 import { ITEMS } from '../sim/items.js';
@@ -77,9 +78,9 @@ async function loadKaizoOverlay(sprites) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     manifest = await res.json();
   } catch (err) {
+
     console.warn(`kaizo sprite overlay not loaded (${err.message}) — `
-      + 'kaizo-only sprites will draw from their collision masks. '
-      + 'Build it with: node kaizo/tools/pack-kaizo-sprites.mjs');
+      + 'kaizo-only sprites will draw from their collision masks.');
     return 0;
   }
   const loadImage = (src) => new Promise((resolve) => {
@@ -156,7 +157,7 @@ const touch = bindTouch({
     if (a !== 'confirm' || title.mode !== null) return;
     const s = title.settings;
     if (!s || s.page !== 'credits') return;
-    const href = creditLink(CREDITS[s.cursor] ?? {});
+    const href = creditLink(titleCredits(title)[s.cursor] ?? {});
     if (!href) return;
     window.open(href, '_blank', 'noopener,noreferrer');
     syncOpenedLink = href;
@@ -226,6 +227,8 @@ if (replayToken) {
 
 boot('building the title…');
 const title = createTitle();
+
+title.credits = KAIZO_CREDITS;
 
 const SETTINGS_KEY = 'knightsim.settings';
 const KAIZO_SETTINGS_KEY = 'kaizoknight.settings';
@@ -879,9 +882,10 @@ function frame(now) {
         maskHeldInput();
         if (kaizoEndingRouteFor(state) === 'bside') {
           epilogueSeq = createKaizoEpilogue(state);
+
           console.log('[kaizo] B-SIDE EPILOGUE — con '
-            + `${epilogueSeq.con} (${epilogueSeq.route}); the A-Side knighting is NOT played. `
-            + 'It runs and sounds; its visuals are unpainted (G-15).');
+            + `${epilogueSeq.con} (${epilogueSeq.route}); the A-Side knighting is not played. `
+            + 'It runs and sounds; nothing draws it yet.');
         } else {
           cutsceneSeq = createVictoryScene();
         }

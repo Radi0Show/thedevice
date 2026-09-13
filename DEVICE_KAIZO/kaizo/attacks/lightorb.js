@@ -3,6 +3,7 @@
 import { spawn, destroy } from '../../sim/entity.js';
 import {
   lerp, mergeColor, pointDirection, scrEaseIn, lengthdirX, lengthdirY, WHITE,
+  gmlEq, gmlLt,
 } from '../../sim/gml.js';
 import {
   gmlRandom, gmlIrandom, gmlChoose, gmlRandomRange,
@@ -66,20 +67,81 @@ function knightOf(state) {
   return state.entities.find((e) => e.alive && e.type.name === 'obj_knight_enemy') ?? null;
 }
 
-function sparkCreateDraws(rng) {
-  if (!rng) return;
-  gmlIrandom(rng, 3);
-  gmlChoose(rng, [WHITE]);
-  gmlChoose(rng, [-1, 1]);
-  gmlChoose(rng, [-1, 1]);
-  gmlRandom(rng, 360);
-}
+export const knightSpark = {
+  name: 'obj_knight_spark',
 
-function triangleCreateDraws(rng) {
-  if (!rng) return;
-  gmlRandom(rng, 360);
-  gmlChoose(rng, [-1, 1]);
-}
+  create(e, state) {
+    const rng = state.gmlRng;
+    e.image_speed = 0;
+    e.image_index = rng ? gmlIrandom(rng, 3) : 0;
+    e.image_blend = rng ? gmlChoose(rng, [WHITE]) : WHITE;
+    e.image_xscale = rng ? gmlChoose(rng, [-1, 1]) : 1;
+    e.image_yscale = rng ? gmlChoose(rng, [-1, 1]) : 1;
+    e.image_angle = rng ? gmlRandom(rng, 360) : 0;
+    e.life = 2;
+
+    e.sprite_index = 'spr_knight_spark';
+    e.depth = 0;
+  },
+
+  step(e, state) {
+    e.life -= 1;
+    if (e.life === 0) destroy(e, state);
+  },
+};
+
+export const knightTriangle = {
+  name: 'obj_knight_triangle',
+
+  create(e, state) {
+    const rng = state.gmlRng;
+    e.len = 10;
+    e.dir = rng ? gmlRandom(rng, 360) : 0;
+    e.o = rng ? gmlChoose(rng, [-1, 1]) : 1;
+
+    e.sprite_index = 'spr_knight_triangle';
+    e.depth = 0;
+  },
+
+  step(e, state) {
+    e.image_xscale -= 0.4;
+    if (gmlLt(e.image_xscale, 0)) {
+      destroy(e, state);
+      return;
+    }
+    e.dir += (e.o === 1) ? 4 : -4;
+    if (orbOf(state)) {
+      e.x = e.xstart + lengthdirX(e.len, e.dir);
+      e.y = e.ystart + lengthdirY(e.len, e.dir);
+      e.image_angle = e.dir;
+    } else {
+      destroy(e, state);
+    }
+  },
+};
+
+export const knightRing = {
+  name: 'obj_knight_ring',
+
+  create(e) {
+    e.timer = 0;
+    e.image_alpha = 0;
+    e.image_xscale = 1.4;
+    e.image_yscale = 1.4;
+
+    e.sprite_index = 'spr_roaringknight_sword_break_vfx2';
+    e.depth = 0;
+  },
+
+  step(e, state) {
+    e.timer += 1;
+    e.image_alpha += (1 / 3);
+    e.image_xscale -= 0.2;
+    e.image_yscale -= 0.2;
+
+    if (gmlEq(e.image_xscale, 0)) destroy(e, state);
+  },
+};
 
 export const rouxlsPowerUpOrb = {
   name: 'obj_rouxls_power_up_orb',
@@ -240,6 +302,7 @@ export const knightLightorb = {
     e.orbtype = kaizoSideb(state) ? 1 : 0;
     e.splitx = 0;
 
+    e.sprite_index = 'spr_sneo_bigcircle';
     e.depth = 0;
     e.image_blend = WHITE;
 
@@ -269,8 +332,9 @@ export const knightLightorb = {
       if (e.timer === 9) cue(state, 'snd_knight_stretch', 1.5, 0.6);
       if (e.timer % 3 === 0) scrShakescreen(state);
 
-      if (rng) { gmlRandom(rng, 60); gmlRandom(rng, 60); }
-      sparkCreateDraws(rng);
+      const sparkY = rng ? gmlRandom(rng, 60) : 30;
+      const sparkX = rng ? gmlRandom(rng, 60) : 30;
+      spawn(state, knightSpark, { x: (e.x - 30) + sparkX, y: (e.y - 30) + sparkY });
 
       if (e.timer < 40) {
         let aa = 0.25 - (e.timer / 100);
@@ -311,11 +375,20 @@ export const knightLightorb = {
       if (e.orbtype === 1) rep = 2;
       for (let r = 0; r < rep; r += 1) {
 
-        triangleCreateDraws(rng);
-        if (rng) { gmlRandom(rng, 0.5); gmlRandom(rng, 0.7); }
+        const tri = spawn(state, knightTriangle, { x: e.x + x2, y: e.y });
+        tri.image_yscale = 1 + (rng ? gmlRandom(rng, 0.5) : 0);
+        tri.image_xscale = 1 + (rng ? gmlRandom(rng, 0.7) : 0);
 
-        if (rng) { gmlRandom(rng, 60); gmlRandom(rng, 60); }
-        sparkCreateDraws(rng);
+        if (e.timer % 30 === 0 || e.timer === 1) {
+          spawn(state, knightRing, { x: e.x + x2, y: e.y });
+        }
+
+        const sparkY = rng ? gmlRandom(rng, 60) : 30;
+        const sparkX = rng ? gmlRandom(rng, 60) : 30;
+        spawn(state, knightSpark, {
+          x: (e.x - 30) + sparkX + x2,
+          y: (e.y - 30) + sparkY,
+        });
 
         if (e.timer % 10 === 0) {
 

@@ -1,8 +1,12 @@
 
 
+
+
 import { textSoundChar } from './dialogue.js';
 
 const CAM_X = 2230;
+
+
 
 export const VICTORY_CLASH = Object.freeze({
   camX: CAM_X,
@@ -15,15 +19,22 @@ export const VICTORY_CLASH = Object.freeze({
   warpSettle: 95,
 });
 
+
+
 export const CUT_VOLUME = 8;
 
+
+
 let VICTORY_VARIANT = null;
+
+
 
 export function setVictoryVariant(variant) {
   const prev = VICTORY_VARIANT;
   VICTORY_VARIANT = variant ?? null;
   return prev;
 }
+
 
 export function getVictoryVariant() {
   return VICTORY_VARIANT;
@@ -110,6 +121,8 @@ const ease = {
   inout: (t) => (t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t)),
 };
 
+
+
 export function buildVictoryScript() {
   return buildScript();
 }
@@ -178,11 +191,15 @@ function pushHitFx(sc, kx, ky, life, alpha) {
   sc.hitFx.push({ x: kx - 90, y: ky - 90, born: sc.t, life, alpha });
 }
 
+
+
 function fiveCuts(cues, vol = CUT_VOLUME) {
   for (const p of [0.06, 0.1, 0.12, 0.18, 0.24]) {
     cues.push({ name: 'snd_knight_cut2', pitch: p, gain: vol });
   }
 }
+
+
 
 function bigShake(sc, cues) {
   sc.shake = { x: 10, sign: -2, speed: 2, timer: 0, offset: 10 };
@@ -200,11 +217,15 @@ function setTimeoutStep(sc, frames, fn) {
   sc.deferred.push({ at: sc.t + frames, fn });
 }
 
+
+
 const OP_API = Object.freeze({
   fiveCuts, bigShake, pushHitFx, setTimeoutStep, ease,
   CLASH: VICTORY_CLASH,
   CUT_VOLUME,
 });
+
+
 
 export function stepVictoryScene(sc, input, cues) {
   if (sc.done) return;
@@ -213,6 +234,7 @@ export function stepVictoryScene(sc, input, cues) {
   const k = sc.knight;
   const confirmPressed = input.confirm && !sc.lastConfirm;
   sc.lastConfirm = !!input.confirm;
+
 
   if (!k.frozen && !k.hoverPause) {
     k.siner2 += 1;
@@ -288,6 +310,7 @@ export function stepVictoryScene(sc, input, cues) {
     return true;
   });
 
+
   if (sc.warp) {
     const w = sc.warp;
     w.timer += 1;
@@ -343,6 +366,7 @@ export function stepVictoryScene(sc, input, cues) {
     k.index = 5 + Math.floor(srand(sc) * 3 + 2.8);
     k.jolt = [Math.floor(srand(sc) * 5) - 2, Math.floor(srand(sc) * 5) - 2];
   }
+
 
   if (sc.clash) {
     const c = sc.clash;
@@ -446,6 +470,7 @@ export function stepVictoryScene(sc, input, cues) {
     }
   }
 
+
   if (sc.dialogue) {
     const d = sc.dialogue;
     d.timer += 1;
@@ -461,6 +486,7 @@ export function stepVictoryScene(sc, input, cues) {
     if (typed && (line.noWait || confirmPressed)) sc.dialogue = null;
     else return;
   }
+
 
   if (sc.wait > 0) {
     sc.wait -= 1;

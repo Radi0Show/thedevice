@@ -228,6 +228,12 @@ export const creditLink = (row) => (row.link ? `https://${row.link}` : null);
 
 
 
+export function titleCredits(title) {
+  return title?.credits ?? CREDITS;
+}
+
+
+
 export function pocketOf(kind, gear = null) {
   const table = kind === 'weapon' ? WEAPONS : ARMOR;
   const ids = Object.keys(table).map(Number).filter((id) => id !== 26 || kind !== 'weapon');
@@ -453,12 +459,13 @@ function stepSettings(title, pressed) {
 
   if (s.page === 'credits') {
     if (pressed('confirm')) {
-      const href = creditLink(CREDITS[s.cursor]);
+      const href = creditLink(titleCredits(title)[s.cursor] ?? {});
       if (href) { out.link = href; out.selected = true; }
       return out;
     }
-    if (pressed('up')) { s.cursor = (s.cursor + CREDITS.length - 1) % CREDITS.length; out.moved = true; }
-    if (pressed('down')) { s.cursor = (s.cursor + 1) % CREDITS.length; out.moved = true; }
+    const rows = titleCredits(title).length;
+    if (pressed('up')) { s.cursor = (s.cursor + rows - 1) % rows; out.moved = true; }
+    if (pressed('down')) { s.cursor = (s.cursor + 1) % rows; out.moved = true; }
 
     if (pressed('cancel')) {
       leavePage();
